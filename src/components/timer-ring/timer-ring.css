@@ -1,0 +1,57 @@
+.timer-ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  margin: 0 auto;
+}
+
+.timer-ring__svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.timer-ring__track {
+  fill: none;
+  stroke: var(--color-surface);
+  stroke-width: var(--ring-stroke);
+}
+
+.timer-ring__progress {
+  fill: none;
+  stroke: var(--ring-color, var(--color-deep-study));
+  stroke-width: var(--ring-stroke);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.timer-ring__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.timer-ring__time {
+  font-size: calc(var(--font-display) * var(--font-scale));
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
+.timer-ring__label {
+  font-size: calc(var(--font-caption) * var(--font-scale));
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

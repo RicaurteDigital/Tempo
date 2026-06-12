@@ -1,0 +1,41 @@
+.stat-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.stat-bar__label {
+  font-size: calc(var(--font-caption) * var(--font-scale));
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.stat-bar__value {
+  font-size: calc(var(--font-caption) * var(--font-scale));
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-bar__track {
+  height: 4px;
+  background-color: var(--color-surface-high);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.stat-bar__fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 300ms ease-out;
+}
+
+.stat-bar__caption {
+  font-size: calc(var(--font-caption) * var(--font-scale) * 0.9);
+  color: var(--color-text-secondary);
+}

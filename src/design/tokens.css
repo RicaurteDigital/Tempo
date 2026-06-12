@@ -1,0 +1,53 @@
+/* Design system tokens — factory defaults.
+ * These are the fallback values; token-loader.js may override
+ * them from localStorage before this stylesheet loads. */
+
+:root {
+  /* Typography */
+  --font-scale: 1;
+  --font-display: 46px;
+  --font-title: 20px;
+  --font-body: 16px;
+  --font-caption: 12px;
+
+  /* Layout */
+  --card-height-sm: 44px;
+  --card-height-md: 64px;
+  --card-height-lg: 88px;
+  --card-padding: 16px;
+  --grid-gap: 12px;
+  --section-gap: 24px;
+  --timeline-hour-height: 56px;
+  --timeline-gutter: 52px;
+  --timeline-block-radius: 10px;
+  --timeline-block-min-height: 18px;
+  --timeline-now-thickness: 2px;
+  --tabbar-height: 64px;
+
+  /* Radii */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-pill: 999px;
+
+  /* Touch */
+  --touch-target-min: 44px;
+
+  /* Ring (timer progress) */
+  --ring-size: 280px;
+  --ring-stroke: 12px;
+
+  /* Colors */
+  --color-deep-study: #5E5CE6;
+  --color-work: #64D2FF;
+  --color-transport: #98989D;
+  --color-body: #30D158;
+  --color-sleep: #BF5AF2;
+  --color-rest: #66D4CF;
+  --color-leak: #FF453A;
+  --color-surface: #1C1C1E;
+  --color-surface-high: #2C2C2E;
+  --color-border: #38383A;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #98989D;
+  --color-background: #000000;
+}

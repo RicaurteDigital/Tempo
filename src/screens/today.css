@@ -1,0 +1,29 @@
+.today-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  background-color: var(--color-background);
+}
+
+.today-screen__header {
+  padding: var(--card-padding);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+  flex-shrink: 0;
+}
+
+.today-screen__date {
+  font-size: calc(var(--font-title) * var(--font-scale));
+  font-weight: 800;
+  color: var(--color-text-primary);
+  text-transform: capitalize;
+}
+
+.today-screen__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

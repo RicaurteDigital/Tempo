@@ -1,0 +1,98 @@
+/* Animation tokens and keyframes */
+
+/* Spring easing function */
+:root {
+  --ease-spring: cubic-bezier(.32, .72, 0, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 350ms;
+}
+
+/* Screen transitions */
+.screen-enter {
+  animation: screen-slide-in var(--duration-normal) var(--ease-spring) both;
+}
+
+.screen-exit {
+  animation: screen-slide-out var(--duration-fast) var(--ease-spring) both;
+}
+
+@keyframes screen-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes screen-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* Sheet (bottom sheet / nudge) */
+.sheet-enter {
+  animation: sheet-slide-up var(--duration-normal) var(--ease-spring) both;
+}
+
+.sheet-exit {
+  animation: sheet-slide-down var(--duration-fast) var(--ease-spring) both;
+}
+
+@keyframes sheet-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-slide-down {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+/* Fade */
+.fade-in {
+  animation: fade-in var(--duration-fast) ease-out both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Pulse for active timer indicator */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Ring progress — smooth stroke-dashoffset transitions */
+.ring-progress {
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* Reduced motion overrides are handled in global.css */

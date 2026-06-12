@@ -1,0 +1,40 @@
+.app {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--color-text-secondary);
+  font-size: calc(var(--font-body) * var(--font-scale));
+}
+
+.app__title {
+  /* Hidden interactive area for dev panel access (5 rapid taps) */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  cursor: default;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app__title-text {
+  font-size: calc(var(--font-caption) * var(--font-scale));
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

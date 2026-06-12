@@ -1,0 +1,54 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--touch-target-min);
+  padding: 0 var(--card-padding);
+  border: none;
+  border-radius: var(--radius-button);
+  font-family: inherit;
+  font-size: calc(var(--font-body) * var(--font-scale));
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 300ms cubic-bezier(.32,.72,0,1),
+              opacity 200ms ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn--primary {
+  background: var(--btn-color, var(--color-deep-study));
+  color: #000;
+}
+
+.btn--secondary {
+  background: var(--color-surface-high);
+  color: var(--color-text-primary);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.btn--lg {
+  min-height: 56px;
+  font-size: calc(var(--font-title) * var(--font-scale));
+  font-weight: 800;
+  border-radius: var(--radius-card);
+}

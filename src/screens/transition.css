@@ -1,0 +1,98 @@
+.transition {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--section-gap) var(--card-padding);
+  gap: var(--grid-gap);
+  animation: screen-slide-in 300ms cubic-bezier(.32,.72,0,1) both;
+}
+
+@keyframes screen-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.transition__headline {
+  font-size: calc(var(--font-title) * var(--font-scale) * 1.4);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  padding: var(--card-padding) 0;
+}
+
+/* Confirmation card for the just-ended block */
+.transition__confirm-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: var(--card-padding);
+  margin-bottom: var(--grid-gap);
+  display: flex;
+  align-items: center;
+  gap: var(--card-padding);
+  border-left: 3px solid var(--confirm-color, var(--color-text-secondary));
+}
+
+.transition__confirm-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.transition__confirm-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transition__confirm-label {
+  font-size: calc(var(--font-body) * var(--font-scale));
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.transition__confirm-stats {
+  font-size: calc(var(--font-caption) * var(--font-scale));
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.transition__confirm-delta {
+  font-size: calc(var(--font-body) * var(--font-scale));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.transition__confirm-delta--positive {
+  color: var(--color-leak);
+}
+
+.transition__confirm-delta--negative {
+  color: var(--color-body);
+}
+
+.transition__bucket-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--grid-gap);
+}
+
+/* Under-average interruption alert */
+.transition__alert {
+  background: rgba(255, 69, 58, 0.1);
+  border: 1px solid rgba(255, 69, 58, 0.3);
+  border-radius: var(--radius-card);
+  padding: var(--card-padding);
+  margin-bottom: var(--grid-gap);
+}
+
+.transition__alert-text {
+  font-size: calc(var(--font-caption) * var(--font-scale));
+  color: var(--color-leak);
+  font-weight: 600;
+}
