@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import type { TimeEvent } from '../../db/schema';
 import { getBucket } from '../../utils/buckets';
 import { formatDuration } from '../../utils/format';
-import { calculateBlockPosition, calculateNowPosition } from '../../utils/timeline-math';
+import { calculateBlockPosition, calculateNowPosition, calculateLanes } from '../../utils/timeline-math';
 import { tokens } from '../../hooks/use-tokens';
 import './day-agenda.css';
 
@@ -38,6 +38,13 @@ export function DayAgenda({ events, liveEvent, nowMs, dayStartMs, onBlockTap }: 
     allBlocks.push(liveEvent);
   }
 
+  // Generate a mock ID for live event if it doesn't have one, just for lane calc
+  const eventsForLanes = allBlocks.map((ev, i) => ({
+    ...ev,
+    id: String(ev.id ?? `live-${i}`)
+  }));
+  const layoutMap = calculateLanes(eventsForLanes);
+
   return (
     <div className="day-agenda__viewport" ref={containerRef}>
       <div 
@@ -58,35 +65,37 @@ export function DayAgenda({ events, liveEvent, nowMs, dayStartMs, onBlockTap }: 
           </div>
         ))}
 
-        {/* Blocks */}
+        {/* Blocks layer */}
         <div className="day-agenda__blocks-layer">
           {allBlocks.map((event, idx) => {
             const bucket = getBucket(event.bucket);
-            const { topPx, heightPx } = calculateBlockPosition(
-              event.start, 
-              event.end, 
-              dayStartMs, 
-              hourHeight, 
-              minHeight
-            );
+            const { topPx, heightPx } = calculateBlockPosition(event.start, event.end, dayStartMs, hourHeight, minHeight);
             
             const isLeak = event.bucket === 'leak';
             const isLive = liveEvent && liveEvent.start === event.start;
             const durationMs = event.end - event.start;
             
-            // Format time range HH:MM - HH:MM
             const startD = new Date(event.start);
             const endD = new Date(event.end);
             const rangeStr = `${startD.getHours().toString().padStart(2, '0')}:${startD.getMinutes().toString().padStart(2, '0')} - ${endD.getHours().toString().padStart(2, '0')}:${endD.getMinutes().toString().padStart(2, '0')}`;
             
+            // Lane logic
+            const layout = layoutMap[event.id ?? `live-${idx}`] || { laneIndex: 0, totalLanes: 1 };
+            const widthPct = 100 / layout.totalLanes;
+            const leftPct = layout.laneIndex * widthPct;
+
+            const isShort = heightPx <= 30; // Shorter blocks are chip-styled
+
             return (
               <div
                 key={event.id ?? `live-${idx}`}
-                className={`day-agenda__block ${isLive ? 'day-agenda__block--live' : ''} ${isLeak ? 'day-agenda__block--leak' : ''}`}
-                style={{
-                  top: `${topPx}px`,
-                  height: `${heightPx}px`,
-                  '--block-color': bucket.color
+                className={`day-agenda__block ${isLive ? 'day-agenda__block--live' : ''} ${isLeak ? 'day-agenda__block--leak' : ''} ${isShort ? 'day-agenda__block--short' : ''}`}
+                style={{ 
+                  top: `${topPx}px`, 
+                  height: `${heightPx}px`, 
+                  width: `calc(${widthPct}% - 4px)`,
+                  left: `${leftPct}%`,
+                  '--block-color': bucket.color 
                 } as Record<string, string>}
                 onClick={() => onBlockTap(event)}
               >
@@ -95,12 +104,10 @@ export function DayAgenda({ events, liveEvent, nowMs, dayStartMs, onBlockTap }: 
                 <div className="day-agenda__block-content">
                   <span className="day-agenda__block-title">
                     {isLeak && <span className="day-agenda__block-icon">⚠</span>}
-                    {bucket.label}
+                    {isShort ? (isLeak ? '⚠' : bucket.label.split(' ')[0]) : bucket.label}
                   </span>
-                  {heightPx >= 34 && (
-                    <span className="day-agenda__block-caption">
-                      {rangeStr} · {formatDuration(durationMs)}
-                    </span>
+                  {!isShort && (
+                    <span className="day-agenda__block-caption">{rangeStr} · {formatDuration(durationMs)}</span>
                   )}
                 </div>
               </div>

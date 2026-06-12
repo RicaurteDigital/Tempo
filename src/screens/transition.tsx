@@ -8,6 +8,7 @@ import { onSessionStarted } from '../hooks/use-timer';
 import { formatDuration, formatDelta } from '../utils/format';
 import { BucketCard } from '../components/bucket-card';
 import type { NudgeInfo } from '../services/nudges';
+import { InsightCard } from '../components/ui/insight-card';
 import './transition.css';
 
 interface TransitionProps {
@@ -94,11 +95,13 @@ export function Transition({ lastEvent, onSessionStart }: TransitionProps) {
 
           {/* Under-average interruption alert */}
           {underAvgAlert && (
-            <div className="transition__alert">
-              <span className="transition__alert-text">
-                {underAvgAlert.message}
-              </span>
-            </div>
+            <InsightCard 
+              icon="⚠️"
+              iconColor="#FF453A"
+              bodyText={underAvgAlert.message}
+              primaryActionLabel="Ignorar"
+              onPrimaryAction={() => setUnderAvgAlert(null)}
+            />
           )}
         </>
       )}

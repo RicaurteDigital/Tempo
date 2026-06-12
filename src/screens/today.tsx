@@ -3,23 +3,37 @@ import { BUCKETS } from '../utils/buckets';
 import { formatDuration, formatDate } from '../utils/format';
 import { useDay } from '../hooks/use-day';
 import { DayAgenda } from '../components/timeline/day-agenda';
-import { StatBar } from '../components/ui/stat-bar';
+import { DayList } from '../components/timeline/day-list';
+import { MetricCard } from '../components/ui/metric-card';
+import { SessionCard } from '../components/ui/session-card';
+import { Pill } from '../components/ui/pill';
 import { BlockSheet } from '../components/timeline/block-sheet';
 import type { TimeEvent } from '../db/schema';
+import { getBucket } from '../utils/buckets';
+import { useLocation } from 'preact-iso';
+import { elapsedMs } from '../hooks/use-timer';
 import './today.css';
 
 export function TodayScreen() {
+  const { route } = useLocation();
   const [nowMs, setNowMs] = useState(Date.now());
   const [selectedBlock, setSelectedBlock] = useState<TimeEvent | null>(null);
+  const [viewMode, setViewModeState] = useState<'list'|'agenda'>(
+    (localStorage.getItem('tempo-timeline-view') as 'list'|'agenda') || 'list'
+  );
+
+  const setViewMode = (mode: 'list'|'agenda') => {
+    setViewModeState(mode);
+    localStorage.setItem('tempo-timeline-view', mode);
+  };
+
   
-  // For this screen, dayStart is midnight of current day
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const dayStart = today.getTime();
 
   const { events, totals, liveEvent } = useDay(dayStart);
 
-  // Update "now" every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setNowMs(Date.now());
@@ -27,53 +41,86 @@ export function TodayScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  const visibleBuckets = BUCKETS.filter(b => ['deep-study', 'work', 'body', 'leak'].includes(b.id));
+
   return (
     <div className="today-screen">
-      <div className="today-screen__header">
-        <h1 className="today-screen__date">{formatDate(today)}</h1>
-        {/* Progress Rows */}
-        <div className="today-screen__stats">
-          {BUCKETS.map(bucket => {
-            const totalMs = totals[bucket.id] || 0;
-            if (totalMs === 0 && bucket.id !== 'work') return null; // Only show active buckets, but maybe always show work?
-            if (totalMs === 0) return null;
-
-            // Target = defaultAvgMs * 3 as a fake daily target for now
-            // Requirements say "weekly target / 7 from settings". We don't have settings yet.
-            const targetMs = bucket.defaultAvgMs * 2; 
-            const isLeak = bucket.id === 'leak';
-            const progress = isLeak ? 100 : Math.min((totalMs / targetMs) * 100, 100);
-
-            return (
-              <StatBar
-                key={bucket.id}
-                label={bucket.label}
-                valueText={isLeak ? formatDuration(totalMs) : `${formatDuration(totalMs)} / ${formatDuration(targetMs)}`}
-                progressPercent={progress}
-                color={bucket.color}
-                isLeak={isLeak}
-                caption={isLeak ? "menos es mejor" : undefined}
-              />
-            );
-          })}
+      <div className="today-screen__header-row">
+        <div className="today-screen__title-col">
+          <h1 className="today-screen__date">{formatDate(today).split(',')[0]}</h1>
+          <span className="today-screen__date-sub">{formatDate(today).split(',')[1]?.trim() || ''}</span>
         </div>
+        <Pill color="#FF9F0A">🔥 12-day</Pill>
       </div>
 
-      {/* Agenda */}
-      <DayAgenda 
-        events={events}
-        liveEvent={liveEvent}
-        nowMs={nowMs}
-        dayStartMs={dayStart}
-        onBlockTap={setSelectedBlock}
-      />
+      <div className="today-screen__metrics">
+        {liveEvent && (
+          <div className="today-screen__live-card">
+            <SessionCard
+              compact
+              bucketColor={getBucket(liveEvent.bucket).color}
+              bucketLabel={getBucket(liveEvent.bucket).label}
+              elapsedMs={elapsedMs.value}
+              averageMs={BUCKETS.find(b => b.id === liveEvent.bucket)?.defaultAvgMs || 0}
+              onClick={() => route('/tracker')}
+            />
+          </div>
+        )}
+        {visibleBuckets.map(bucket => {
+          const totalMs = totals[bucket.id] || 0;
+          const targetMs = bucket.defaultAvgMs * 2; 
+          const isLeak = bucket.id === 'leak';
+          const progress = isLeak ? 100 : Math.min((totalMs / targetMs) * 100, 100);
 
-      {/* Block Sheet */}
+          return (
+            <MetricCard
+              key={bucket.id}
+              label={bucket.label}
+              valueText={isLeak ? formatDuration(totalMs) : formatDuration(totalMs)}
+              targetText={isLeak ? undefined : formatDuration(targetMs)}
+              progressPercent={progress}
+              bucketColor={bucket.color}
+              isLeak={isLeak}
+            />
+          );
+        })}
+      </div>
+
+      <div className="today-screen__view-toggle">
+        <button 
+          className={`today-screen__toggle-btn ${viewMode === 'list' ? 'today-screen__toggle-btn--active' : ''}`}
+          onClick={() => setViewMode('list')}
+        >
+          Lista
+        </button>
+        <button 
+          className={`today-screen__toggle-btn ${viewMode === 'agenda' ? 'today-screen__toggle-btn--active' : ''}`}
+          onClick={() => setViewMode('agenda')}
+        >
+          Agenda
+        </button>
+      </div>
+
+      <div className="today-screen__agenda-wrapper">
+        {viewMode === 'list' ? (
+          <DayList 
+            events={events}
+            liveEvent={liveEvent}
+            onBlockTap={setSelectedBlock}
+          />
+        ) : (
+          <DayAgenda 
+            events={events}
+            liveEvent={liveEvent}
+            nowMs={nowMs}
+            dayStartMs={dayStart}
+            onBlockTap={setSelectedBlock}
+          />
+        )}
+      </div>
+
       {selectedBlock && (
-        <BlockSheet 
-          event={selectedBlock} 
-          onClose={() => setSelectedBlock(null)} 
-        />
+        <BlockSheet event={selectedBlock} onClose={() => setSelectedBlock(null)} />
       )}
     </div>
   );

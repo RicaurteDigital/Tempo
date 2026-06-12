@@ -40,7 +40,11 @@
 }
 
 .tab-bar__item--active {
-  color: var(--active-color);
+  color: var(--tab-color);
+}
+
+.tab-bar__item {
+  color: var(--tab-color);
 }
 
 .tab-bar__item--active .tab-bar__icon {

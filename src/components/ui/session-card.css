@@ -1,0 +1,70 @@
+.ui-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ui-session-card--compact {
+  gap: 8px;
+}
+
+.ui-session-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ui-session-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.ui-session-card__percent {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.ui-session-card__body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ui-session-card__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-session-card__bucket {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.ui-session-card__timer {
+  font-size: var(--font-display, 48px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--color-text-primary);
+}
+
+.ui-session-card--compact .ui-session-card__timer {
+  font-size: 32px;
+}
+
+.ui-session-card__ring-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-session-card__footer {
+  margin-top: 8px;
+}

@@ -1,0 +1,8 @@
+.ui-section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-top: 20px;
+  margin-bottom: var(--grid-gap, 12px);
+  letter-spacing: -0.01em;
+}

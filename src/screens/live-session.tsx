@@ -4,18 +4,17 @@ import { endSession, getBucketAverage } from '../services/timer';
 import { snoozeNudge, clearSnooze } from '../services/nudges';
 import { onSessionEnded } from '../hooks/use-timer';
 import { getBucket } from '../utils/buckets';
-import { formatTimerDisplay, formatDuration } from '../utils/format';
-import { TimerRing } from '../components/timer-ring';
-import { NudgeSheet } from '../components/nudge-sheet';
-import { Button } from '../components/ui/button';
+import { SessionCard } from '../components/ui/session-card';
+import { InsightCard } from '../components/ui/insight-card';
 import type { TimeEvent } from '../db/schema';
 import './live-session.css';
 
 interface LiveSessionProps {
   onSessionEnd: (event: TimeEvent) => void;
+  onDiscard: () => void;
 }
 
-export function LiveSession({ onSessionEnd }: LiveSessionProps) {
+export function LiveSession({ onSessionEnd, onDiscard }: LiveSessionProps) {
   const session = activeSession.value;
   const elapsed = elapsedMs.value;
   const nudge = currentNudge.value;
@@ -47,6 +46,7 @@ export function LiveSession({ onSessionEnd }: LiveSessionProps) {
     const event = await endSession();
     onSessionEnded();
     if (event) onSessionEnd(event);
+    else onDiscard();
   };
 
   const handleNudgeEnd = async () => {
@@ -55,6 +55,7 @@ export function LiveSession({ onSessionEnd }: LiveSessionProps) {
     const event = await endSession();
     onSessionEnded();
     if (event) onSessionEnd(event);
+    else onDiscard();
   };
 
   const handleNudgeContinue = async () => {
@@ -67,50 +68,29 @@ export function LiveSession({ onSessionEnd }: LiveSessionProps) {
 
   return (
     <div className="live-session">
-      {/* Bucket indicator pill */}
-      <div
-        className="live-session__bucket-indicator"
-        style={{ '--bucket-color': bucket.color } as Record<string, string>}
-      >
-        <div className="live-session__bucket-dot" />
-        <span className="live-session__bucket-name">{bucket.label}</span>
-      </div>
-
-      {/* Hero timer ring */}
-      <TimerRing
-        elapsed={elapsed}
-        average={average}
-        color={bucket.color}
-        timeDisplay={formatTimerDisplay(elapsed)}
-        label={bucket.label}
+      <SessionCard
+        bucketColor={bucket.color}
+        bucketLabel={bucket.label}
+        elapsedMs={elapsed}
+        averageMs={average}
+        onEnd={handleEnd}
       />
 
-      {/* Average info */}
-      <span className="live-session__avg-info">
-        Promedio: {formatDuration(average)}
-      </span>
-
-      {/* End button */}
-      <div className="live-session__end-btn">
-        <Button
-          variant="primary"
-          size="lg"
-          full
-          color={bucket.color}
-          onClick={handleEnd}
-        >
-          Terminar bloque
-        </Button>
-      </div>
-
-      {/* Nudge bottom sheet */}
+      {/* Nudge bottom sheet is handled in SessionCard or via NudgeSheet, but wait...
+          the spec says "Nudge/insight cards: icon chip ... primary filled gray-700 button + text button"
+          This means Nudge should be an InsightCard rendered right below the SessionCard! */}
       {showNudge && nudge && (
-        <NudgeSheet
-          nudge={nudge}
-          bucketColor={bucket.color}
-          onEnd={handleNudgeEnd}
-          onContinue={handleNudgeContinue}
-        />
+        <div className="live-session__nudge-wrapper">
+          <InsightCard
+            icon="🔔"
+            iconColor={bucket.color}
+            bodyText={nudge.message}
+            primaryActionLabel="Terminar"
+            onPrimaryAction={handleNudgeEnd}
+            secondaryActionLabel="Continuar"
+            onSecondaryAction={handleNudgeContinue}
+          />
+        </div>
       )}
     </div>
   );

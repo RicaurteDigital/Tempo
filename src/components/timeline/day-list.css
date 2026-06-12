@@ -1,0 +1,92 @@
+.day-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--card-padding);
+}
+
+.day-list__item {
+  display: flex;
+  gap: 16px;
+  cursor: pointer;
+  position: relative;
+}
+
+.day-list__item:active .day-list__card {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.day-list__track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.day-list__node {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--node-color);
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  z-index: 2;
+}
+
+.day-list__node--leak {
+  background-color: transparent;
+  color: var(--color-leak);
+  font-size: 14px;
+  margin-top: 22px;
+}
+
+.day-list__line {
+  width: 2px;
+  flex: 1;
+  background-color: var(--color-border);
+  margin-top: 4px;
+  margin-bottom: -20px; /* Connect to next node */
+}
+
+.day-list__card {
+  flex: 1;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-card, 16px);
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--color-border);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.day-list__card--live {
+  border-color: var(--color-text-secondary);
+}
+
+.day-list__card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.day-list__card-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.day-list__card-duration {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.day-list__card-caption {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}

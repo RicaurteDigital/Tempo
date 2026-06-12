@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'preact/hooks';
+import { useEffect, useRef, useCallback, useState } from 'preact/hooks';
 import { LocationProvider, Router, Route, useLocation } from 'preact-iso';
 import { activeSession, initTimer } from './hooks/use-timer';
 import { initTokens } from './hooks/use-tokens';
@@ -6,6 +6,7 @@ import { requestPersistentStorage } from './db/database';
 import { LiveSession } from './screens/live-session';
 import { Transition } from './screens/transition';
 import { TodayScreen } from './screens/today';
+import { PlaceholderScreen } from './screens/placeholder';
 import { TabBar } from './components/ui/tab-bar';
 import type { TimeEvent } from './db/schema';
 import { signal } from '@preact/signals';
@@ -13,13 +14,6 @@ import './app.css';
 
 const lastEvent = signal<TimeEvent | null>(null);
 
-function SettingsPlaceholder() {
-  return (
-    <div style={{ padding: 'var(--section-gap)', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-      <h2>Próximamente</h2>
-    </div>
-  );
-}
 
 function MainApp() {
   const { route } = useLocation();
@@ -35,14 +29,21 @@ function MainApp() {
     route('/tracker');
   }, [route]);
 
+  // Handle discarded session (<30s) -> show Hoy
+  const handleDiscard = useCallback(() => {
+    route('/');
+  }, [route]);
+
   return (
     <div className="app__content">
       <Router>
-        <TodayScreen path="/" />
-        <LiveSession path="/tracker" onSessionEnd={handleSessionEnd} />
-        <Transition path="/transition" lastEvent={lastEvent.value} onSessionStart={handleSessionStart} />
-        <SettingsPlaceholder path="/settings" />
-        <TodayScreen default />
+        <Route path="/" component={TodayScreen} />
+        <Route path="/tracker" component={() => <LiveSession onSessionEnd={handleSessionEnd} onDiscard={handleDiscard} />} />
+        <Route path="/transition" component={() => <Transition lastEvent={lastEvent.value} onSessionStart={handleSessionStart} />} />
+        <Route path="/metas" component={() => <PlaceholderScreen title="Metas" icon="🎯" description="Definición de promedios semanales y objetivos de vida." />} />
+        <Route path="/review" component={() => <PlaceholderScreen title="Review" icon="📊" description="Análisis profundo y retrospectiva semanal brutal." />} />
+        <Route path="/ajustes" component={() => <PlaceholderScreen title="Ajustes" icon="⚙️" description="Configuración de diseño y comportamiento." />} />
+        <Route default component={TodayScreen} />
       </Router>
       <TabBar />
     </div>
@@ -103,10 +104,8 @@ export function App() {
 
   return (
     <div className="app">
-      {/* Invisible title bar for dev panel access */}
-      <div className="app__title" onClick={handleTitleTap}>
-        <span className="app__title-text">Tempo</span>
-      </div>
+      {/* Invisible hit area for dev panel access */}
+      <div className="app__title-hit-area" onClick={handleTitleTap} />
 
       <LocationProvider>
         <MainApp />
@@ -115,5 +114,3 @@ export function App() {
   );
 }
 
-// Added useState to fix missing import
-import { useState } from 'preact/hooks';

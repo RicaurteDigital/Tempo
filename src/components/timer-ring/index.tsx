@@ -46,17 +46,19 @@ export function TimerRing({ elapsed, average, color, timeDisplay, label }: Timer
         />
       </svg>
 
-      <div className="timer-ring__content">
-        <span
-          className="timer-ring__time"
-          role="timer"
-          aria-live="polite"
-          aria-label={`Tiempo transcurrido: ${timeDisplay}`}
-        >
-          {timeDisplay}
-        </span>
-        <span className="timer-ring__label">{label}</span>
-      </div>
+      {(timeDisplay || label) && (
+        <div className="timer-ring__content">
+          <span
+            className="timer-ring__time"
+            role="timer"
+            aria-live="polite"
+            aria-label={`Tiempo transcurrido: ${timeDisplay}`}
+          >
+            {timeDisplay}
+          </span>
+          <span className="timer-ring__label">{label}</span>
+        </div>
+      )}
     </div>
   );
 }
