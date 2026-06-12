@@ -1,34 +1,343 @@
 <!DOCTYPE html>
-<html lang="es-419">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="description" content="Tempo — sistema operativo de tiempo personal" />
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Tempo</title>
+<style>
+  :root{
+    --bg:#000; --card:#1C1C1E; --card2:#2C2C2E; --line:#38383A;
+    --txt:#FFF; --mut:#98989D; --dim:#636366;
+    --study:#5E5CE6; --work:#64D2FF; --transport:#98989D; --body:#30D158;
+    --sleep:#BF5AF2; --rest:#66D4CF; --leak:#FF453A; --flame:#FF9F0A;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',system-ui,sans-serif;
+    height:100%;overscroll-behavior:none}
+  body{padding:max(env(safe-area-inset-top),16px) 16px calc(env(safe-area-inset-bottom) + 16px)}
+  .hide{display:none!important}
 
-    <!-- iOS PWA -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Tempo" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  header h1{font-size:21px;font-weight:700;letter-spacing:-.3px}
+  header .date{font-size:13px;color:var(--mut);font-weight:500}
+  .streak{display:flex;align-items:center;gap:6px;background:var(--card);
+    border-radius:999px;padding:7px 13px;font-size:14px;font-weight:600;color:var(--flame)}
+  .gear{background:var(--card);border:none;color:var(--mut);width:36px;height:36px;
+    border-radius:50%;font-size:17px;margin-left:8px}
 
-    <!-- Font preload: Inter Variable latin subset (~38 KB) -->
-    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+  .session{background:var(--card);border-radius:24px;padding:22px 20px 20px;margin-bottom:14px;text-align:center}
+  .session .label{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
+  .session .bname{font-size:24px;font-weight:700;margin:4px 0 14px}
+  .ringwrap{position:relative;width:230px;height:230px;margin:0 auto 10px}
+  .ringwrap svg{transform:rotate(-90deg)}
+  .ring-bg{fill:none;stroke:var(--card2);stroke-width:14}
+  .ring-fg{fill:none;stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .5s linear}
+  .timer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .timer .t{font-size:46px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1}
+  .timer .avg{font-size:12px;color:var(--mut);margin-top:8px;font-weight:500}
+  .endbtn{width:100%;border:none;border-radius:16px;padding:16px;font-size:17px;font-weight:700;
+    color:#000;margin-top:6px;transition:transform .1s}
+  .endbtn:active{transform:scale(.97)}
 
-    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
-    <title>Tempo</title>
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+  .stat{background:var(--card);border-radius:18px;padding:14px 16px}
+  .stat .k{font-size:12px;color:var(--mut);font-weight:600;margin-bottom:6px}
+  .stat .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:13px;color:var(--dim);font-weight:600}
+  .bar{height:5px;background:var(--card2);border-radius:3px;margin-top:10px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:3px}
 
-    <!--
-      Token loader: reads design tokens from localStorage synchronously
-      and applies them to :root BEFORE the app renders. This prevents
-      any flash of default sizes/colors. Dexie (async) is the source
-      of truth — theme.ts re-syncs after boot.
-    -->
-    <script src="/token-loader.js"></script>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  .nudge{position:fixed;left:12px;right:12px;bottom:max(env(safe-area-inset-bottom),12px);
+    background:rgba(28,28,30,.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+    border:1px solid var(--line);border-radius:22px;padding:18px;z-index:50;
+    transform:translateY(140%);transition:transform .35s cubic-bezier(.32,.72,0,1)}
+  .nudge.show{transform:translateY(0)}
+  .nudge h3{font-size:16px;font-weight:700;margin-bottom:4px}
+  .nudge p{font-size:14px;color:var(--mut);line-height:1.45}
+  .nudge .row{display:flex;gap:10px;margin-top:14px}
+  .nudge button{flex:1;border:none;border-radius:13px;padding:13px;font-size:15px;font-weight:700}
+  .nudge .yes{background:var(--txt);color:#000}
+  .nudge .no{background:var(--card2);color:var(--txt)}
+
+  .secthead{display:flex;justify-content:space-between;align-items:baseline;margin:20px 2px 10px}
+  .secthead h2{font-size:17px;font-weight:700}
+  .secthead span{font-size:13px;color:var(--mut);font-weight:600;font-variant-numeric:tabular-nums}
+  .tl{display:flex;flex-direction:column;gap:8px}
+  .tl .item{background:var(--card);border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:12px}
+  .tl .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .tl .nm{flex:1;font-size:15px;font-weight:600}
+  .tl .nm small{display:block;font-size:12px;color:var(--dim);font-weight:500;margin-top:2px}
+  .tl .dur{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--mut)}
+  .empty{color:var(--dim);font-size:14px;text-align:center;padding:26px 0}
+
+  .picker .ph{margin:8px 2px 4px}
+  .picker .ph h2{font-size:30px;font-weight:800;letter-spacing:-.5px}
+  .picker .ph p{font-size:14px;color:var(--mut);margin-top:6px;line-height:1.5}
+  .done{background:var(--card);border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;margin:14px 0 6px}
+  .done .ic{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  .done .tx{flex:1}
+  .done .tx b{font-size:15px;font-weight:700;display:block}
+  .done .tx span{font-size:13px;color:var(--mut)}
+  .done .d{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+  .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .bcard{background:var(--card);border-radius:20px;padding:18px 16px;border:none;text-align:left;
+    color:var(--txt);position:relative;overflow:hidden;transition:transform .1s}
+  .bcard:active{transform:scale(.96)}
+  .bcard .ic{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:20px;margin-bottom:12px}
+  .bcard .n{font-size:16px;font-weight:700;line-height:1.2}
+  .bcard .e{font-size:12px;color:var(--mut);font-weight:500;margin-top:4px}
+  .bcard .edge{position:absolute;top:0;left:0;right:0;height:4px}
+
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-end}
+  .sheet .in{background:var(--card);width:100%;border-radius:24px 24px 0 0;padding:22px 18px calc(env(safe-area-inset-bottom) + 22px);max-height:85vh;overflow:auto}
+  .sheet h2{font-size:19px;font-weight:800;margin-bottom:14px}
+  .prow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--card2)}
+  .prow .dot{width:10px;height:10px;border-radius:50%}
+  .prow .nm{flex:1;font-size:15px;font-weight:600}
+  .prow input{width:64px;background:var(--card2);border:none;border-radius:10px;color:var(--txt);
+    font-size:15px;font-weight:700;padding:8px;text-align:center;font-variant-numeric:tabular-nums}
+  .prow span{font-size:12px;color:var(--dim)}
+  .sheet .acts{display:flex;gap:10px;margin-top:18px}
+  .sheet .acts button{flex:1;border:none;border-radius:13px;padding:13px;font-size:15px;font-weight:700}
+  .pri{background:var(--txt);color:#000}.sec{background:var(--card2);color:var(--txt)}
+  .danger{background:none;border:none;color:var(--leak);font-size:13px;font-weight:600;margin:16px auto 0;display:block}
+</style>
+</head>
+<body>
+
+<header>
+  <div><h1 id="hTitle">Tempo</h1><div class="date" id="hDate"></div></div>
+  <div style="display:flex;align-items:center">
+    <div class="streak"><svg width="14" height="16" viewBox="0 0 14 16" fill="currentColor"><path d="M7 0C7 0 11.5 3.6 11.5 8.2 13 7.3 13.4 5.6 13.4 5.6 14 7 14 8.6 14 9.5 14 13.1 10.9 16 7 16 3.1 16 0 13.1 0 9.5 0 5.3 4.2 4.4 7 0Z"/></svg><span id="streakN">0</span></div>
+    <button class="gear" id="gearBtn" aria-label="Ajustes">&#9881;&#65038;</button>
+  </div>
+</header>
+
+<section id="vLive" class="hide">
+  <div class="session">
+    <div class="label">Sesión actual</div>
+    <div class="bname" id="lName"></div>
+    <div class="ringwrap">
+      <svg width="230" height="230" viewBox="0 0 230 230">
+        <circle class="ring-bg" cx="115" cy="115" r="104"></circle>
+        <circle class="ring-fg" id="ringFg" cx="115" cy="115" r="104"></circle>
+      </svg>
+      <div class="timer"><div class="t" id="lTimer">00:00</div><div class="avg" id="lAvg"></div></div>
+    </div>
+    <button class="endbtn" id="endBtn">Terminar bloque</button>
+  </div>
+
+  <div class="grid2">
+    <div class="stat"><div class="k">Estudio hoy</div><div class="v" id="sStudy">0m</div><div class="bar"><i id="sStudyBar" style="background:var(--study)"></i></div></div>
+    <div class="stat"><div class="k">Fuga hoy</div><div class="v" id="sLeak" style="color:var(--leak)">0m</div><div class="bar"><i id="sLeakBar" style="background:var(--leak)"></i></div></div>
+  </div>
+
+  <div class="secthead"><h2>Hoy</h2><span id="todayTotal">0h 0m</span></div>
+  <div class="tl" id="timeline"></div>
+</section>
+
+<section id="vPicker" class="picker">
+  <div id="doneCard"></div>
+  <div class="ph"><h2 id="pTitle">¿Con qué empezamos?</h2><p>Un toque y el cronómetro arranca. Siempre hay una actividad corriendo — incluso descansar cuenta.</p></div>
+  <div class="bgrid" id="bGrid"></div>
+</section>
+
+<div class="nudge" id="nudge">
+  <h3>Parece que terminaste</h3>
+  <p id="nudgeTxt"></p>
+  <div class="row"><button class="yes" id="nYes">Sí, terminar</button><button class="no" id="nNo">Sigo en esto</button></div>
+</div>
+
+<div class="sheet hide" id="settings">
+  <div class="in">
+    <h2>Parámetros</h2>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:8px">Duración esperada por sesión (minutos). El nudge salta al superarla.</p>
+    <div id="pList"></div>
+    <div class="acts"><button class="sec" id="expBtn">Exportar JSON</button><button class="pri" id="saveBtn">Guardar</button></div>
+    <button class="danger" id="wipeBtn">Borrar toda la data</button>
+  </div>
+</div>
+
+<script>
+const BUCKETS = [
+  {id:'study', name:'Estudio PM',   icon:'🎓', col:'var(--study)', hex:'#5E5CE6', exp:120},
+  {id:'work',  name:'Trabajo',      icon:'💼', col:'var(--work)',  hex:'#64D2FF', exp:180},
+  {id:'transport', name:'Transporte', icon:'🚌', col:'var(--transport)', hex:'#98989D', exp:45},
+  {id:'body',  name:'Cuerpo',       icon:'💪', col:'var(--body)',  hex:'#30D158', exp:60},
+  {id:'sleep', name:'Sueño',        icon:'🌙', col:'var(--sleep)', hex:'#BF5AF2', exp:450},
+  {id:'rest',  name:'Descanso',     icon:'☁️', col:'var(--rest)',  hex:'#66D4CF', exp:45},
+  {id:'leak',  name:'Fuga',         icon:'📱', col:'var(--leak)',  hex:'#FF453A', exp:15},
+];
+const $ = id => document.getElementById(id);
+const KEY = 'tempo_v1';
+
+let S = load();
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) return s; }catch(e){}
+  const params = {}; BUCKETS.forEach(b => params[b.id] = b.exp);
+  return {events:[], current:null, params, nudgeDismissedAt:0};
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+const bucket = id => BUCKETS.find(b => b.id === id);
+
+function fmtClock(s){
+  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return h ? `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`
+           : `${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`;
+}
+function fmtH(s){
+  const h = Math.floor(s/3600), m = Math.round(s%3600/60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+function startOfDay(t){ const d = new Date(t); d.setHours(0,0,0,0); return d.getTime(); }
+
+function avgFor(id){
+  const done = S.events.filter(e => e.b === id);
+  if (done.length >= 3) return done.reduce((a,e)=>a+(e.end-e.start),0)/done.length/1000;
+  return S.params[id]*60;
+}
+function todayEvents(){ const t0 = startOfDay(Date.now()); return S.events.filter(e => e.end > t0); }
+function todayTotal(id){
+  const t0 = startOfDay(Date.now());
+  let s = todayEvents().filter(e => !id || e.b === id).reduce((a,e)=>a+(e.end-Math.max(e.start,t0)),0);
+  if (S.current && (!id || S.current.b === id)) s += Date.now()-Math.max(S.current.start, startOfDay(Date.now()));
+  return s/1000;
+}
+function streak(){
+  let n = 0, day = startOfDay(Date.now());
+  for(;;){
+    const has = S.events.some(e => e.end > day && e.start < day + 864e5) || (n===0 && S.current);
+    if (has){ n++; day -= 864e5; } else break;
+  }
+  return n;
+}
+
+const CIRC = 2*Math.PI*104;
+$('ringFg').style.strokeDasharray = CIRC;
+
+function startActivity(id){
+  S.current = {b:id, start:Date.now()}; S.nudgeDismissedAt = 0; save(); render();
+}
+function endActivity(){
+  if(!S.current) return null;
+  const ev = {b:S.current.b, start:S.current.start, end:Date.now()};
+  if (ev.end - ev.start >= 30000) S.events.push(ev);
+  S.current = null; save();
+  return ev;
+}
+
+let lastEnded = null;
+$('endBtn').onclick = () => { hideNudge(); lastEnded = endActivity(); render(); };
+$('nYes').onclick  = () => { hideNudge(); lastEnded = endActivity(); render(); };
+$('nNo').onclick   = () => { S.nudgeDismissedAt = Date.now(); save(); hideNudge(); };
+function hideNudge(){ $('nudge').classList.remove('show'); }
+
+function render(){
+  $('hDate').textContent = new Date().toLocaleDateString('es', {weekday:'long', day:'numeric', month:'short'});
+  $('streakN').textContent = streak();
+  if (S.current){ $('vLive').classList.remove('hide'); $('vPicker').classList.add('hide'); renderLive(); }
+  else { $('vLive').classList.add('hide'); $('vPicker').classList.remove('hide'); renderPicker(); }
+}
+
+function renderLive(){
+  const b = bucket(S.current.b);
+  $('lName').textContent = b.name;
+  $('lName').style.color = b.col;
+  $('ringFg').style.stroke = b.hex;
+  $('endBtn').style.background = b.hex;
+  $('lAvg').textContent = 'Esperado: ' + fmtH(avgFor(b.id));
+  renderStats(); renderTimeline(); tick();
+}
+
+function tick(){
+  if (!S.current) return;
+  const el = Math.floor((Date.now()-S.current.start)/1000);
+  $('lTimer').textContent = fmtClock(el);
+  const exp = avgFor(S.current.b);
+  $('ringFg').style.strokeDashoffset = CIRC * (1 - Math.min(el/exp, 1));
+  if (el > exp && Date.now() - S.nudgeDismissedAt > 15*60000 && !$('nudge').classList.contains('show')){
+    const b = bucket(S.current.b);
+    $('nudgeTxt').textContent = `Llevas ${fmtH(el)} en ${b.name} y tu duración esperada es ${fmtH(exp)}. ¿Cerramos el bloque?`;
+    $('nudge').classList.add('show');
+  }
+}
+setInterval(tick, 1000);
+setInterval(()=>{ if(S.current){ renderStats(); $('streakN').textContent = streak(); } }, 30000);
+
+function renderStats(){
+  const st = todayTotal('study'), lk = todayTotal('leak');
+  $('sStudy').innerHTML = fmtH(st) + ' <small>/ 5h</small>';
+  $('sStudyBar').style.width = Math.min(st/(5*3600)*100,100)+'%';
+  $('sLeak').textContent = fmtH(lk);
+  $('sLeakBar').style.width = Math.min(lk/(2*3600)*100,100)+'%';
+  $('todayTotal').textContent = fmtH(todayTotal());
+}
+
+function renderTimeline(){
+  const evs = todayEvents().slice(-12).reverse();
+  $('timeline').innerHTML = evs.length ? evs.map(e => {
+    const b = bucket(e.b);
+    const t = d => new Date(d).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="item"><div class="dot" style="background:${b.hex}"></div>
+      <div class="nm">${b.name}<small>${t(e.start)} — ${t(e.end)}</small></div>
+      <div class="dur" ${e.b==='leak'?'style="color:var(--leak)"':''}>${fmtH((e.end-e.start)/1000)}</div></div>`;
+  }).join('') : '<div class="empty">Aún no hay bloques hoy.</div>';
+}
+
+function renderPicker(){
+  if (lastEnded){
+    const b = bucket(lastEnded.b);
+    const dur = (lastEnded.end-lastEnded.start)/1000, exp = avgFor(b.id);
+    const diff = dur-exp;
+    $('doneCard').innerHTML = `<div class="done">
+      <div class="ic" style="background:${b.hex}22;color:${b.hex}">${b.icon}</div>
+      <div class="tx"><b>${b.name} registrado</b>
+      <span>${diff>=0?'+':'−'}${fmtH(Math.abs(diff))} vs esperado</span></div>
+      <div class="d" style="color:${b.hex}">${fmtH(dur)}</div></div>`;
+    $('pTitle').textContent = '¿Qué sigue?';
+  } else { $('doneCard').innerHTML=''; $('pTitle').textContent='¿Con qué empezamos?'; }
+  const list = BUCKETS.filter(b => !lastEnded || b.id !== lastEnded.b);
+  $('bGrid').innerHTML = list.map(b => `
+    <button class="bcard" onclick="startActivity('${b.id}')">
+      <div class="edge" style="background:${b.hex}"></div>
+      <div class="ic" style="background:${b.hex}22">${b.icon}</div>
+      <div class="n">${b.name}</div>
+      <div class="e">~${fmtH(avgFor(b.id))} por sesión</div>
+    </button>`).join('');
+}
+
+$('gearBtn').onclick = () => {
+  $('pList').innerHTML = BUCKETS.map(b => `
+    <div class="prow"><div class="dot" style="background:${b.hex}"></div>
+    <div class="nm">${b.name}</div>
+    <input type="number" min="5" max="720" id="p_${b.id}" value="${S.params[b.id]}"><span>min</span></div>`).join('');
+  $('settings').classList.remove('hide');
+};
+$('saveBtn').onclick = () => {
+  BUCKETS.forEach(b => { const v = parseInt($('p_'+b.id).value); if(v>0) S.params[b.id]=v; });
+  save(); $('settings').classList.add('hide'); render();
+};
+$('settings').onclick = e => { if(e.target === $('settings')) $('settings').classList.add('hide'); };
+$('expBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(S,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'tempo-data.json'; a.click();
+};
+$('wipeBtn').onclick = () => {
+  if (confirm('¿Borrar TODA la data? Esto no se puede deshacer.')){
+    localStorage.removeItem(KEY); location.reload();
+  }
+};
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+render();
+</script>
+</body>
 </html>

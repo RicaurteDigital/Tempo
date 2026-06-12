@@ -1,0 +1,12 @@
+{
+  "name": "Tempo — Time OS",
+  "short_name": "Tempo",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "description": "Sistema operativo personal de tiempo. Un toque, una actividad, cero excusas.",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
