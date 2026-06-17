@@ -83,6 +83,9 @@ const WorkTracker = (() => {
         <div class="wt-hero-timer${onBreak ? ' wt-timer-break' : ''}" id="wt-htimer">
           ${onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn)}
         </div>
+        <div class="wt-hero-accumulated" id="wt-accumulated">
+          Total shift: ${WTRules.fmtHours(WTRules.shiftHours(run.shift))}
+        </div>
         <div class="wt-hero-since">
           ${onBreak ? 'Break since ' + _fmtTime(_breakStart) : 'Since ' + _fmtTime(run.entry.clockIn)}
         </div>
@@ -99,8 +102,16 @@ const WorkTracker = (() => {
 
       _heroTimer = setInterval(() => {
         const el = document.getElementById('wt-htimer');
-        if (el) el.textContent = onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn);
-        else clearInterval(_heroTimer);
+        const acc = document.getElementById('wt-accumulated');
+        if (!el) { clearInterval(_heroTimer); return; }
+        el.textContent = onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn);
+        if (acc && !onBreak) {
+          const completedSecs = (run.shift.entries || [])
+            .filter(e => e.clockOut)
+            .reduce((sum, e) => sum + (new Date(e.clockOut) - new Date(e.clockIn)) / 1000, 0);
+          const currentSecs = (Date.now() - new Date(run.entry.clockIn)) / 1000;
+          acc.textContent = 'Total shift: ' + WTRules.fmtHours((completedSecs + currentSecs) / 3600);
+        }
       }, 1000);
     } else {
       const cta = document.createElement('button');

@@ -632,3 +632,11 @@
   font-size: 14px; font-weight: 700; border-radius: 16px;
   padding: 15px 18px; cursor: pointer;
 }
+
+.wt-hero-accumulated {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64D2FF;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
