@@ -1,0 +1,24 @@
+/* work-tracker/styles.css */
+#wt-root { padding: 0px; color: var(--txt); }
+.wt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.wt-header button { background: var(--card2); border: none; color: var(--txt); padding: 8px 16px; border-radius: 99px; font-weight: bold; }
+.wt-header h2 { font-size: 16px; margin: 0; color: var(--work); }
+.wt-stats { background: var(--card); padding: 18px; border-radius: 20px; margin-bottom: 20px; font-size: 16px; font-weight: bold; line-height: 1.5; }
+.wt-actions { display: flex; gap: 10px; margin-bottom: 20px; }
+.wt-btn-primary { flex: 1; background: var(--work); color: #000; border: none; padding: 14px; border-radius: 14px; font-weight: bold; font-size: 15px; }
+.wt-btn-secondary { flex: 1; background: var(--card2); color: var(--txt); border: none; padding: 14px; border-radius: 14px; font-weight: bold; font-size: 15px; }
+.wt-shift-card { background: var(--card); padding: 16px; border-radius: 18px; margin-bottom: 12px; border-left: 5px solid var(--work); }
+.wt-shift-header { font-size: 15px; margin-bottom: 8px; }
+.wt-shift-header span { color: var(--mut); font-weight: 500; font-size: 13px; }
+.wt-shift-times { background: var(--card2); padding: 12px; border-radius: 12px; font-family: monospace; font-size: 14px; margin-bottom: 10px; }
+.wt-shift-times div { margin-bottom: 4px; }
+.wt-shift-footer { display: flex; justify-content: space-between; align-items: center; }
+.wt-edit-hint { font-size: 11px; color: var(--dim); }
+.wt-btn-danger { background: rgba(255,69,58,0.2); color: var(--leak); border: none; padding: 8px 16px; border-radius: 10px; font-weight: bold; font-size: 13px; }
+.wt-btn-small { background: var(--txt); color: #000; border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-size: 13px; }
+.wt-empty { text-align: center; color: var(--mut); padding: 40px 0; font-size: 14px; }
+@media print {
+  body { background: white !important; color: black !important; padding: 0 !important; }
+  .wt-actions, .wt-btn-danger, .wt-btn-small, .wt-edit-hint, header, .streak, .gear { display: none !important; }
+  .wt-shift-card { border: 1px solid #ccc; break-inside: avoid; }
+}

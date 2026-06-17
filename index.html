@@ -115,6 +115,9 @@
 <header>
   <div><h1 id="hTitle">Tempo</h1><div class="date" id="hDate"></div></div>
   <div style="display:flex;align-items:center">
+    <!-- En el header/nav, agrega el botón de la pestaña Trabajo -->
+    <button onclick="switchTab('work')" id="tab-work" style="background:var(--card);border:none;color:#FFF;padding:8px 12px;border-radius:12px;margin-right:10px;font-weight:bold;font-size:13px;">💼 Trabajo</button>
+    <button onclick="switchTab('tempo')" id="tab-tempo" style="background:var(--card);border:none;color:#FFF;padding:8px 12px;border-radius:12px;margin-right:10px;font-weight:bold;font-size:13px;display:none;">⏱️ Tempo</button>
     <div class="streak"><svg width="14" height="16" viewBox="0 0 14 16" fill="currentColor"><path d="M7 0C7 0 11.5 3.6 11.5 8.2 13 7.3 13.4 5.6 13.4 5.6 14 7 14 8.6 14 9.5 14 13.1 10.9 16 7 16 3.1 16 0 13.1 0 9.5 0 5.3 4.2 4.4 7 0Z"/></svg><span id="streakN">0</span></div>
     <button class="gear" id="gearBtn" aria-label="Ajustes">&#9881;&#65038;</button>
   </div>
@@ -148,6 +151,9 @@
   <div class="ph"><h2 id="pTitle">¿Con qué empezamos?</h2><p>Un toque y el cronómetro arranca. Siempre hay una actividad corriendo — incluso descansar cuenta.</p></div>
   <div class="bgrid" id="bGrid"></div>
 </section>
+
+<!-- Contenedor del módulo, oculto por defecto -->
+<div id="wt-root" class="hide"></div>
 
 <div class="nudge" id="nudge">
   <h3>Parece que terminaste</h3>
@@ -238,6 +244,25 @@ $('endBtn').onclick = () => { hideNudge(); lastEnded = endActivity(); render(); 
 $('nYes').onclick  = () => { hideNudge(); lastEnded = endActivity(); render(); };
 $('nNo').onclick   = () => { S.nudgeDismissedAt = Date.now(); save(); hideNudge(); };
 function hideNudge(){ $('nudge').classList.remove('show'); }
+
+function switchTab(tab) {
+  // oculta todas las secciones
+  document.getElementById('vLive').classList.add('hide');
+  document.getElementById('vPicker').classList.add('hide');
+  document.getElementById('wt-root').classList.add('hide');
+
+  if (tab === 'work') {
+    document.getElementById('wt-root').classList.remove('hide');
+    document.getElementById('tab-work').style.display = 'none';
+    document.getElementById('tab-tempo').style.display = 'block';
+    WorkTracker.mount(document.getElementById('wt-root'));
+  } else {
+    // lógica original de Tempo
+    document.getElementById('tab-work').style.display = 'block';
+    document.getElementById('tab-tempo').style.display = 'none';
+    render();
+  }
+}
 
 function render(){
   $('hDate').textContent = new Date().toLocaleDateString('es', {weekday:'long', day:'numeric', month:'short'});
@@ -339,5 +364,12 @@ $('wipeBtn').onclick = () => {
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 render();
 </script>
+<!-- ===== WORK TRACKER MODULE START ===== -->
+<link rel="stylesheet" href="work-tracker/styles.css">
+<script src="work-tracker/types.js"></script>
+<script src="work-tracker/db.js"></script>
+<script src="work-tracker/rules.js"></script>
+<script src="work-tracker/ui.js"></script>
+<!-- ===== WORK TRACKER MODULE END ===== -->
 </body>
 </html>
