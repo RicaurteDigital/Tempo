@@ -176,7 +176,24 @@ const WorkTracker = (() => {
           const openEntry = shift.entries.find(e => !e.clockOut);
           if (openEntry) { openEntry.clockOut = _breakStart; WTDb.saveShift(shift); }
         }
-        _go('home');
+        // Update DOM in place — no navigation
+        const hero = breakBtn.closest('.wt-hero');
+        if (hero) {
+          hero.classList.add('wt-hero-break');
+          hero.querySelector('.wt-hero-label').textContent = 'ON BREAK';
+          hero.querySelector('.wt-hero-timer').classList.add('wt-timer-break');
+          hero.querySelector('#wt-htimer').textContent = '00:00';
+          const outBtn2 = hero.querySelector('#wt-hero-out');
+          if (outBtn2) { outBtn2.disabled = true; outBtn2.style.opacity = '0.4'; }
+          breakBtn.className = 'wt-breakend-btn';
+          breakBtn.innerHTML = '▶ End Break';
+          clearInterval(_heroTimer);
+          _heroTimer = setInterval(() => {
+            const el = document.getElementById('wt-htimer');
+            if (el) el.textContent = _elapsed(_breakStart);
+            else clearInterval(_heroTimer);
+          }, 1000);
+        }
       } else {
         // END BREAK: open new entry, record break duration as note
         const breakEnd = new Date().toISOString();
@@ -191,7 +208,9 @@ const WorkTracker = (() => {
             clockIn: breakEnd,
             clockOut: null,
             breakMinutes: 0,
-            note: paidBreak ? `Break paid (${breakMins}m)` : `After break (${breakMins}m unpaid)`
+            note: paidBreak
+              ? `${run.shift.shiftType} break · ${breakMins}m · +$${((breakMins/60)*(run.shift.hourlyRate||NYC_MIN_WAGE)).toFixed(2)} paid`
+              : `${run.shift.shiftType} break · ${breakMins}m unpaid · missed $${((breakMins/60)*(run.shift.hourlyRate||NYC_MIN_WAGE)).toFixed(2)}`
           });
           WTDb.saveShift(shift);
         }
