@@ -616,3 +616,19 @@
 .wt-sum-row:last-child { border-bottom: none; }
 .wt-sum-row span { color: #98989D; }
 .wt-sum-row strong { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.wt-hero-break {
+  background: linear-gradient(160deg, #2a1500 0%, #1a0d00 100%);
+  border-color: #FF9500;
+}
+.wt-timer-break { color: #FF9500; }
+.wt-breakstart-btn {
+  background: #2C2C2E; border: none; color: #fff;
+  font-size: 14px; font-weight: 700; border-radius: 16px;
+  padding: 15px 18px; cursor: pointer;
+}
+.wt-breakend-btn {
+  background: #FF9500; border: none; color: #000;
+  font-size: 14px; font-weight: 700; border-radius: 16px;
+  padding: 15px 18px; cursor: pointer;
+}

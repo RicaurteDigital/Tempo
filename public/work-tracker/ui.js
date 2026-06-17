@@ -5,6 +5,7 @@ const WorkTracker = (() => {
   let _view = 'home';
   let _date = null;
   let _heroTimer = null;
+  let _breakStart = null;
 
   function mount(el) {
     _root = el;
@@ -58,6 +59,7 @@ const WorkTracker = (() => {
     const settings = WTDb.getSettings();
     const run = _running();
     const locs = WTDb.getLocations();
+    const onBreak = _breakStart !== null;
 
     const w = document.createElement('div');
     w.className = 'wt-screen';
@@ -73,21 +75,31 @@ const WorkTracker = (() => {
 
     if (run) {
       const hero = document.createElement('div');
-      hero.className = 'wt-hero';
+      hero.className = 'wt-hero' + (onBreak ? ' wt-hero-break' : '');
       hero.innerHTML = `
-        <div class="wt-hero-label">Clocked In</div>
+        <div class="wt-hero-label">${onBreak ? 'ON BREAK' : 'CLOCKED IN'}</div>
         <div class="wt-hero-location">${run.shift.locationName}</div>
         <div class="wt-hero-shift">${run.shift.shiftType} · $${run.shift.hourlyRate}/hr</div>
-        <div class="wt-hero-timer" id="wt-htimer">${_elapsed(run.entry.clockIn)}</div>
-        <div class="wt-hero-since">Since ${_fmtTime(run.entry.clockIn)}</div>
+        <div class="wt-hero-timer${onBreak ? ' wt-timer-break' : ''}" id="wt-htimer">
+          ${onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn)}
+        </div>
+        <div class="wt-hero-since">
+          ${onBreak ? 'Break since ' + _fmtTime(_breakStart) : 'Since ' + _fmtTime(run.entry.clockIn)}
+        </div>
         <div class="wt-hero-actions">
-          <button class="wt-clockout-hero" id="wt-hero-out">Clock Out</button>
-          <button class="wt-add-period-hero" id="wt-hero-break">+ Break End</button>
+          <button class="wt-clockout-hero" id="wt-hero-out"
+            ${onBreak ? 'disabled style="opacity:.4"' : ''}>
+            Clock Out
+          </button>
+          <button class="${onBreak ? 'wt-breakend-btn' : 'wt-breakstart-btn'}" id="wt-hero-break">
+            ${onBreak ? '▶ End Break' : '⏸ Start Break'}
+          </button>
         </div>`;
       w.appendChild(hero);
+
       _heroTimer = setInterval(() => {
         const el = document.getElementById('wt-htimer');
-        if (el) el.textContent = _elapsed(run.entry.clockIn);
+        if (el) el.textContent = onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn);
         else clearInterval(_heroTimer);
       }, 1000);
     } else {
@@ -153,16 +165,37 @@ const WorkTracker = (() => {
     }
     const outBtn = w.querySelector('#wt-hero-out');
     if (outBtn) outBtn.onclick = () => _doClockOut(run.shift.id, run.entry.id);
+
     const breakBtn = w.querySelector('#wt-hero-break');
     if (breakBtn) breakBtn.onclick = () => {
-      // Close current entry (end break), open new one (back to work)
-      const shift = WTDb.getShifts().find(s => s.id === run.shift.id);
-      if (!shift) return;
-      const openEntry = shift.entries.find(e => !e.clockOut);
-      if (openEntry) {
-        openEntry.clockOut = new Date().toISOString();
-        shift.entries.push({ id: generateId(), clockIn: new Date().toISOString(), clockOut: null, breakMinutes: 0 });
-        WTDb.saveShift(shift);
+      if (_breakStart === null) {
+        // START BREAK: record time, close current entry
+        _breakStart = new Date().toISOString();
+        const shift = WTDb.getShifts().find(s => s.id === run.shift.id);
+        if (shift) {
+          const openEntry = shift.entries.find(e => !e.clockOut);
+          if (openEntry) { openEntry.clockOut = _breakStart; WTDb.saveShift(shift); }
+        }
+        _go('home');
+      } else {
+        // END BREAK: open new entry, record break duration as note
+        const breakEnd = new Date().toISOString();
+        const breakMins = Math.round((new Date(breakEnd) - new Date(_breakStart)) / 60000);
+        const shift = WTDb.getShifts().find(s => s.id === run.shift.id);
+        if (shift) {
+          const s = WTDb.getSettings();
+          const locSettings = (s.locationSettings || {})[shift.locationId] || {};
+          const paidBreak = locSettings.paidBreaks || false;
+          shift.entries.push({
+            id: generateId(),
+            clockIn: breakEnd,
+            clockOut: null,
+            breakMinutes: 0,
+            note: paidBreak ? `Break paid (${breakMins}m)` : `After break (${breakMins}m unpaid)`
+          });
+          WTDb.saveShift(shift);
+        }
+        _breakStart = null;
         _go('home');
       }
     };
@@ -214,6 +247,13 @@ const WorkTracker = (() => {
           <span class="wt-entry-dur">${eHrs > 0 ? WTRules.fmtHours(eHrs) : '—'}</span>
         </div>
         <button class="wt-entry-del" data-sid="${shift.id}" data-eid="${e.id}">✕</button>`;
+
+      if (e.note) {
+        const noteEl = document.createElement('div');
+        noteEl.style.cssText = 'font-size:11px;color:#636366;padding:2px 0 6px;';
+        noteEl.textContent = e.note;
+        row.appendChild(noteEl);
+      }
 
       row.querySelectorAll('.wt-time-val').forEach(b => {
         b.onclick = () => _showEditTime(b.dataset.sid, b.dataset.eid, b.dataset.f);
@@ -423,19 +463,29 @@ const WorkTracker = (() => {
         <div class="wt-settings-title">Work Locations</div>
         <div id="wt-loc-list">
           ${locs.length === 0 ? '<div style="color:#636366;font-size:14px;padding:8px 0">No locations yet.</div>' :
-            locs.map(l => `<div class="wt-loc-row">
-              <div class="wt-loc-dot" style="background:${l.color}"></div>
-              <span class="wt-loc-name">${l.name}</span>
-              <span class="wt-loc-rate">$${l.hourlyRate}/hr</span>
-              <button class="wt-loc-del" data-lid="${l.id}">✕</button>
-            </div>`).join('')}
+            locs.map(l => {
+              const locS = ((settings.locationSettings||{})[l.id]||{});
+              return `<div class="wt-loc-row">
+                <div class="wt-loc-dot" style="background:${l.color}"></div>
+                <div style="flex:1">
+                  <span class="wt-loc-name">${l.name}</span>
+                  <span style="font-size:11px;color:#636366;margin-left:6px">${locS.paidBreaks ? '· Paid breaks' : ''}</span>
+                </div>
+                <span class="wt-loc-rate">$${l.hourlyRate}/hr</span>
+                <button class="wt-loc-del" data-lid="${l.id}">✕</button>
+              </div>`;
+            }).join('')}
         </div>
         <div class="wt-add-form" style="margin-top:14px">
           <input id="wt-loc-name" class="wt-input" placeholder="Work location name" type="text" autocapitalize="words">
           <input id="wt-loc-rate" class="wt-input wt-input-sm" placeholder="$/hr" type="number" step="0.50" min="16.50" value="${NYC_MIN_WAGE}" inputmode="decimal">
           <input id="wt-loc-color" type="color" value="#5E5CE6" class="wt-color-input">
-          <button class="wt-btn wt-btn-primary" style="flex:0 0 auto;padding:11px 18px" id="wt-add-loc">Add</button>
         </div>
+        <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#98989D;margin-top:10px;cursor:pointer">
+          <input type="checkbox" id="wt-loc-paid-break" style="width:18px;height:18px;accent-color:#5E5CE6">
+          Breaks are paid at this location
+        </label>
+        <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-add-loc">Add Location</button>
       </div>
       <div class="wt-settings-block">
         <div class="wt-settings-title">Pay Settings</div>
@@ -462,8 +512,14 @@ const WorkTracker = (() => {
       const name = w.querySelector('#wt-loc-name').value.trim();
       const rate = parseFloat(w.querySelector('#wt-loc-rate').value) || NYC_MIN_WAGE;
       const color = w.querySelector('#wt-loc-color').value;
-      if (!name) { alert('Enter a restaurant name.'); return; }
-      WTDb.saveLocation({ id: generateId(), name, hourlyRate: rate, color });
+      const paidBreaks = w.querySelector('#wt-loc-paid-break').checked;
+      if (!name) { alert('Enter a work location name.'); return; }
+      const loc = { id: generateId(), name, hourlyRate: rate, color };
+      WTDb.saveLocation(loc);
+      const s = WTDb.getSettings();
+      if (!s.locationSettings) s.locationSettings = {};
+      s.locationSettings[loc.id] = { paidBreaks };
+      WTDb.saveSettings(s);
       _go('settings');
     };
     w.querySelector('#wt-pay-period').onchange = function() {
@@ -564,6 +620,7 @@ const WorkTracker = (() => {
     if (!shift) return;
     const entry = shift.entries.find(e => e.id === entryId);
     if (entry) { entry.clockOut = new Date().toISOString(); WTDb.saveShift(shift); }
+    _breakStart = null;
     _go('home');
   }
 
@@ -593,7 +650,6 @@ const WorkTracker = (() => {
       const reader = new FileReader();
       reader.onload = async ev => {
         await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
-        // Show photo inline
         const btn = document.querySelector(`[data-pid="${photoKey}"]`);
         if (btn) {
           const img = document.createElement('img');
@@ -603,7 +659,6 @@ const WorkTracker = (() => {
           btn.textContent = '✓ Proof saved';
           btn.classList.add('has-photo');
         }
-        // Also auto-download to Camera Roll
         const a = document.createElement('a');
         a.href = ev.target.result;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
