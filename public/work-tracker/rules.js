@@ -94,9 +94,10 @@ const WTRules = (() => {
   function getRecentWeeks(n) {
     n = n || 8;
     const weeks = [];
-    const ws = getWeekStart(new Date());
+    let ws = getWeekStart(new Date());
     for (let i = 0; i < n; i++) {
       weeks.push(new Date(ws));
+      ws = new Date(ws);
       ws.setDate(ws.getDate() - 7);
     }
     return weeks;
