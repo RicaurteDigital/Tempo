@@ -154,7 +154,18 @@ const WorkTracker = (() => {
     const outBtn = w.querySelector('#wt-hero-out');
     if (outBtn) outBtn.onclick = () => _doClockOut(run.shift.id, run.entry.id);
     const breakBtn = w.querySelector('#wt-hero-break');
-    if (breakBtn) breakBtn.onclick = () => _addPeriod(run.shift.id);
+    if (breakBtn) breakBtn.onclick = () => {
+      // Close current entry (end break), open new one (back to work)
+      const shift = WTDb.getShifts().find(s => s.id === run.shift.id);
+      if (!shift) return;
+      const openEntry = shift.entries.find(e => !e.clockOut);
+      if (openEntry) {
+        openEntry.clockOut = new Date().toISOString();
+        shift.entries.push({ id: generateId(), clockIn: new Date().toISOString(), clockOut: null, breakMinutes: 0 });
+        WTDb.saveShift(shift);
+        _go('home');
+      }
+    };
   }
 
   function _ShiftCard(shift) {
@@ -420,7 +431,7 @@ const WorkTracker = (() => {
             </div>`).join('')}
         </div>
         <div class="wt-add-form" style="margin-top:14px">
-          <input id="wt-loc-name" class="wt-input" placeholder="Restaurant name" type="text" autocapitalize="words">
+          <input id="wt-loc-name" class="wt-input" placeholder="Work location name" type="text" autocapitalize="words">
           <input id="wt-loc-rate" class="wt-input wt-input-sm" placeholder="$/hr" type="number" step="0.50" min="16.50" value="${NYC_MIN_WAGE}" inputmode="decimal">
           <input id="wt-loc-color" type="color" value="#5E5CE6" class="wt-color-input">
           <button class="wt-btn wt-btn-primary" style="flex:0 0 auto;padding:11px 18px" id="wt-add-loc">Add</button>
@@ -582,7 +593,22 @@ const WorkTracker = (() => {
       const reader = new FileReader();
       reader.onload = async ev => {
         await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
-        alert('✓ Photo saved\nAlso downloaded to Camera Roll as backup.');
+        // Show photo inline
+        const btn = document.querySelector(`[data-pid="${photoKey}"]`);
+        if (btn) {
+          const img = document.createElement('img');
+          img.src = ev.target.result;
+          img.style.cssText = 'width:100%;border-radius:10px;margin-top:8px;max-height:200px;object-fit:cover';
+          btn.parentNode.insertBefore(img, btn.nextSibling);
+          btn.textContent = '✓ Proof saved';
+          btn.classList.add('has-photo');
+        }
+        // Also auto-download to Camera Roll
+        const a = document.createElement('a');
+        a.href = ev.target.result;
+        const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
+        a.download = 'Tempo_proof_' + now + '.jpg';
+        a.click();
       };
       reader.readAsDataURL(file);
     };
