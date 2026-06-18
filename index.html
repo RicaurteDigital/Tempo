@@ -31,7 +31,7 @@
   .gear{background:var(--card);border:none;color:var(--mut);width:36px;height:36px;
     border-radius:50%;font-size:17px;margin-left:8px}
 
-  .session{background:var(--card);border-radius:24px;padding:22px 20px 20px;margin-bottom:14px;text-align:center}
+  .session{background:rgba(28,28,30,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:22px 20px 20px;margin-bottom:14px;text-align:center}
   .session .label{font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
   .session .bname{font-size:24px;font-weight:700;margin:4px 0 14px}
   .ringwrap{position:relative;width:230px;height:230px;margin:0 auto 10px}
@@ -46,7 +46,7 @@
   .endbtn:active{transform:scale(.97)}
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-  .stat{background:var(--card);border-radius:18px;padding:14px 16px}
+  .stat{background:rgba(28,28,30,0.5);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:14px 16px}
   .stat .k{font-size:12px;color:var(--mut);font-weight:600;margin-bottom:6px}
   .stat .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
   .stat .v small{font-size:13px;color:var(--dim);font-weight:600}
@@ -86,7 +86,7 @@
   .done .tx span{font-size:13px;color:var(--mut)}
   .done .d{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
   .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  .bcard{background:var(--card);border-radius:20px;padding:18px 16px;border:none;text-align:left;
+  .bcard{background:rgba(28,28,30,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.08)!important;border-radius:20px;padding:18px 16px;text-align:left;
     color:var(--txt);position:relative;overflow:hidden;transition:transform .1s}
   .bcard:active{transform:scale(.96)}
   .bcard .ic{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;
@@ -96,7 +96,7 @@
   .bcard .edge{position:absolute;top:0;left:0;right:0;height:4px}
 
   .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-end}
-  .sheet .in{background:var(--card);width:100%;border-radius:24px 24px 0 0;padding:22px 18px calc(env(safe-area-inset-bottom) + 22px);max-height:85vh;overflow:auto}
+  .sheet .in{background:rgba(28,28,30,0.92);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border-top:1px solid rgba(255,255,255,0.1);width:100%;border-radius:24px 24px 0 0;padding:22px 18px calc(env(safe-area-inset-bottom) + 22px);max-height:85vh;overflow:auto}
   .sheet h2{font-size:19px;font-weight:800;margin-bottom:14px}
   .prow{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--card2)}
   .prow .dot{width:10px;height:10px;border-radius:50%}

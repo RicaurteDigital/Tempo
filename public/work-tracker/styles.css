@@ -57,8 +57,10 @@
 
 /* ── ACTIVE SESSION HERO ─────────────────────────────── */
 .wt-hero {
-  background: linear-gradient(160deg, #1a1a2e 0%, #0d0d1a 100%);
-  border: 1px solid #2C2C2E;
+  background: linear-gradient(160deg, rgba(26,26,46,0.85) 0%, rgba(13,13,26,0.9) 100%);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(94,92,230,0.25);
   border-radius: 24px;
   padding: 22px 20px 18px;
   margin-bottom: 14px;
@@ -174,7 +176,10 @@
   margin-bottom: 14px;
 }
 .wt-stat-card {
-  background: #1C1C1E;
+  background: rgba(28,28,30,0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.07);
   border-radius: 18px;
   padding: 14px 16px;
 }
@@ -232,7 +237,10 @@
 
 /* ── SHIFT CARD ──────────────────────────────────────── */
 .wt-shift {
-  background: #1C1C1E;
+  background: rgba(28,28,30,0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 20px;
   overflow: hidden;
   margin-bottom: 10px;
@@ -391,7 +399,10 @@
 
 /* ── WEEK ROWS ───────────────────────────────────────── */
 .wt-week {
-  background: #1C1C1E;
+  background: rgba(28,28,30,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.07);
   border-radius: 18px;
   padding: 14px 16px;
   margin-bottom: 10px;
@@ -507,7 +518,10 @@
 
 /* ── SETTINGS ────────────────────────────────────────── */
 .wt-settings-block {
-  background: #1C1C1E;
+  background: rgba(28,28,30,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.07);
   border-radius: 20px;
   padding: 16px;
   margin-bottom: 12px;
@@ -572,7 +586,10 @@
   align-items: flex-end;
 }
 .wt-modal {
-  background: #1C1C1E;
+  background: rgba(28,28,30,0.92);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border-top: 1px solid rgba(255,255,255,0.1);
   width: 100%;
   border-radius: 28px 28px 0 0;
   padding: 8px 20px calc(env(safe-area-inset-bottom,0px) + 28px);
@@ -600,7 +617,10 @@
 
 /* ── SUMMARY CARD ────────────────────────────────────── */
 .wt-summary {
-  background: #1C1C1E;
+  background: rgba(28,28,30,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.07);
   border-radius: 18px;
   padding: 14px 16px;
   margin-bottom: 14px;
