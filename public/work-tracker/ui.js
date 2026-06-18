@@ -324,16 +324,19 @@ const WorkTracker = (() => {
     };
   }
 
-  function _ShiftCard(shift) {
+  function _ShiftCard(shift, forceExpanded) {
     const locs = WTDb.getLocations();
     const loc = locs.find(l => l.id === shift.locationId);
     const color = loc ? loc.color : '#5E5CE6';
     const hrs = WTRules.shiftHours(shift);
     const earn = hrs * (shift.hourlyRate || NYC_MIN_WAGE);
+    const isRunning = (shift.entries || []).some(e => !e.clockOut);
+    const isExpanded = forceExpanded || isRunning;
 
     const card = document.createElement('div');
-    card.className = 'wt-shift';
+    card.className = 'wt-shift' + (isExpanded ? ' wt-shift-expanded' : ' wt-shift-collapsed');
 
+    // ── HEADER (always visible) ──
     const top = document.createElement('div');
     top.className = 'wt-shift-top';
     top.style.borderLeftColor = color;
@@ -345,8 +348,14 @@ const WorkTracker = (() => {
       <div class="wt-shift-right">
         <div class="wt-shift-hrs">${WTRules.fmtHours(hrs)}</div>
         <div class="wt-shift-earn">${WTRules.fmtMoney(earn)}</div>
+        ${!isRunning ? `<div class="wt-shift-chevron">${isExpanded ? '▲' : '▼'}</div>` : ''}
       </div>`;
     card.appendChild(top);
+
+    // ── BODY (collapsible) ──
+    const body = document.createElement('div');
+    body.className = 'wt-shift-body';
+    body.style.display = isExpanded ? 'block' : 'none';
 
     const entriesDiv = document.createElement('div');
     entriesDiv.className = 'wt-entries';
@@ -355,33 +364,27 @@ const WorkTracker = (() => {
     const first = reversed[0];
     const older = reversed.slice(1);
 
-    // Always render the most recent entry in full
     if (first) {
-      const row = _buildEntryRow(shift, first);
-      entriesDiv.appendChild(row.row);
-      entriesDiv.appendChild(row.photoRow);
+      const built = _buildEntryRow(shift, first);
+      entriesDiv.appendChild(built.row);
+      entriesDiv.appendChild(built.photoRow);
     }
 
-    // Older entries — collapsed by default
     if (older.length > 0) {
       const collapseWrap = document.createElement('div');
       collapseWrap.className = 'wt-entries-collapse';
-
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'wt-collapse-btn';
       toggleBtn.textContent = `+ Ver ${older.length} anterior${older.length > 1 ? 'es' : ''}`;
       let expanded = false;
-
       const olderDiv = document.createElement('div');
       olderDiv.className = 'wt-entries-older';
       olderDiv.style.display = 'none';
-
       older.forEach(e => {
         const built = _buildEntryRow(shift, e);
         olderDiv.appendChild(built.row);
         olderDiv.appendChild(built.photoRow);
       });
-
       toggleBtn.onclick = () => {
         expanded = !expanded;
         olderDiv.style.display = expanded ? 'block' : 'none';
@@ -389,13 +392,38 @@ const WorkTracker = (() => {
           ? '▲ Ocultar anteriores'
           : `+ Ver ${older.length} anterior${older.length > 1 ? 'es' : ''}`;
       };
-
       collapseWrap.appendChild(toggleBtn);
       collapseWrap.appendChild(olderDiv);
       entriesDiv.appendChild(collapseWrap);
     }
 
-    card.appendChild(entriesDiv);
+    body.appendChild(entriesDiv);
+
+    const footer = document.createElement('div');
+    footer.className = 'wt-shift-footer';
+    footer.innerHTML = `
+      <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
+      <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
+    footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
+    footer.querySelector('.wt-del-shift').onclick = () => { if (WTDb.deleteShift(shift.id)) _go('home'); };
+    body.appendChild(footer);
+    card.appendChild(body);
+
+    // ── TAP TO EXPAND (only non-running shifts) ──
+    if (!isRunning) {
+      top.style.cursor = 'pointer';
+      top.onclick = () => {
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        const chev = top.querySelector('.wt-shift-chevron');
+        if (chev) chev.textContent = open ? '▼' : '▲';
+        card.classList.toggle('wt-shift-expanded', !open);
+        card.classList.toggle('wt-shift-collapsed', open);
+      };
+    }
+
+    return card;
+  }
 
   function _buildEntryRow(shift, e) {
     const row = document.createElement('div');
@@ -447,17 +475,6 @@ const WorkTracker = (() => {
     });
 
     return { row, photoRow };
-  }
-
-    const footer = document.createElement('div');
-    footer.className = 'wt-shift-footer';
-    footer.innerHTML = `
-      <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
-      <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
-    footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
-    footer.querySelector('.wt-del-shift').onclick = () => { if (WTDb.deleteShift(shift.id)) _go('home'); };
-    card.appendChild(footer);
-    return card;
   }
 
   function _Week() {

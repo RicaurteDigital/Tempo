@@ -655,3 +655,16 @@
   border-top: 1px solid #2C2C2E;
   margin-top: 4px;
 }
+
+.wt-shift-collapsed .wt-shift-top {
+  padding-bottom: 14px;
+}
+.wt-shift-chevron {
+  font-size: 10px;
+  color: #636366;
+  margin-top: 4px;
+  text-align: right;
+}
+.wt-shift-expanded {
+  border: 1px solid #2C2C2E;
+}
