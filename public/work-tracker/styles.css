@@ -640,3 +640,18 @@
   margin-bottom: 4px;
   font-variant-numeric: tabular-nums;
 }
+
+.wt-collapse-btn {
+  background: none;
+  border: none;
+  color: #5E5CE6;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0 4px;
+  display: block;
+}
+.wt-entries-older {
+  border-top: 1px solid #2C2C2E;
+  margin-top: 4px;
+}

@@ -350,60 +350,104 @@ const WorkTracker = (() => {
 
     const entriesDiv = document.createElement('div');
     entriesDiv.className = 'wt-entries';
-    [...(shift.entries || [])].reverse().forEach(e => {
-      const row = document.createElement('div');
-      row.className = 'wt-entry' + (!e.clockOut ? ' wt-entry-live' : '');
-      const eHrs = WTRules.entryHours(e);
-      row.innerHTML = `
-        <div class="wt-time-group">
-          <div class="wt-time-pill">
-            <span class="wt-time-lbl">IN</span>
-            <button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockIn">${_fmtTime(e.clockIn)}</button>
-          </div>
-          <span class="wt-time-sep">→</span>
-          <div class="wt-time-pill">
-            <span class="wt-time-lbl">OUT</span>
-            ${e.clockOut
-              ? `<button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockOut">${_fmtTime(e.clockOut)}</button>`
-              : `<span class="wt-time-running">Running</span>`}
-          </div>
-          <span class="wt-entry-dur">${eHrs > 0 ? WTRules.fmtHours(eHrs) : '—'}</span>
-        </div>
-        <button class="wt-entry-del" data-sid="${shift.id}" data-eid="${e.id}">✕</button>`;
 
-      if (e.note) {
-        const noteEl = document.createElement('div');
-        noteEl.style.cssText = 'font-size:11px;color:#636366;padding:2px 0 6px;';
-        noteEl.textContent = e.note;
-        row.appendChild(noteEl);
-      }
+    const reversed = [...(shift.entries || [])].reverse();
+    const first = reversed[0];
+    const older = reversed.slice(1);
 
-      row.querySelectorAll('.wt-time-val').forEach(b => {
-        b.onclick = () => _showEditTime(b.dataset.sid, b.dataset.eid, b.dataset.f);
-      });
-      row.querySelector('.wt-entry-del').onclick = () => _delEntry(shift.id, e.id);
+    // Always render the most recent entry in full
+    if (first) {
+      const row = _buildEntryRow(shift, first);
+      entriesDiv.appendChild(row.row);
+      entriesDiv.appendChild(row.photoRow);
+    }
 
-      const photoRow = document.createElement('div');
-      photoRow.className = 'wt-photo-row';
-      photoRow.innerHTML = `
-        <button class="wt-photo-btn" data-pid="${shift.id}_in_${e.id}">📷 In proof</button>
-        ${e.clockOut ? `<button class="wt-photo-btn" data-pid="${shift.id}_out_${e.id}">📷 Out proof</button>` : ''}`;
-      photoRow.querySelectorAll('.wt-photo-btn').forEach(b => {
-        b.onclick = () => _doPhoto(shift.id, b.dataset.pid);
-        // Load saved photo if exists
-        WTDb.getPhoto(shift.id, b.dataset.pid).then(base64 => {
-          if (base64) {
-            b.textContent = '✓ View proof';
-            b.classList.add('has-photo');
-            b.onclick = () => _viewOrReplacePhoto(shift.id, b.dataset.pid, base64);
-          }
-        });
+    // Older entries — collapsed by default
+    if (older.length > 0) {
+      const collapseWrap = document.createElement('div');
+      collapseWrap.className = 'wt-entries-collapse';
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'wt-collapse-btn';
+      toggleBtn.textContent = `+ Ver ${older.length} anterior${older.length > 1 ? 'es' : ''}`;
+      let expanded = false;
+
+      const olderDiv = document.createElement('div');
+      olderDiv.className = 'wt-entries-older';
+      olderDiv.style.display = 'none';
+
+      older.forEach(e => {
+        const built = _buildEntryRow(shift, e);
+        olderDiv.appendChild(built.row);
+        olderDiv.appendChild(built.photoRow);
       });
 
-      entriesDiv.appendChild(row);
-      entriesDiv.appendChild(photoRow);
-    });
+      toggleBtn.onclick = () => {
+        expanded = !expanded;
+        olderDiv.style.display = expanded ? 'block' : 'none';
+        toggleBtn.textContent = expanded
+          ? '▲ Ocultar anteriores'
+          : `+ Ver ${older.length} anterior${older.length > 1 ? 'es' : ''}`;
+      };
+
+      collapseWrap.appendChild(toggleBtn);
+      collapseWrap.appendChild(olderDiv);
+      entriesDiv.appendChild(collapseWrap);
+    }
+
     card.appendChild(entriesDiv);
+
+  function _buildEntryRow(shift, e) {
+    const row = document.createElement('div');
+    row.className = 'wt-entry' + (!e.clockOut ? ' wt-entry-live' : '');
+    const eHrs = WTRules.entryHours(e);
+    row.innerHTML = `
+      <div class="wt-time-group">
+        <div class="wt-time-pill">
+          <span class="wt-time-lbl">IN</span>
+          <button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockIn">${_fmtTime(e.clockIn)}</button>
+        </div>
+        <span class="wt-time-sep">→</span>
+        <div class="wt-time-pill">
+          <span class="wt-time-lbl">OUT</span>
+          ${e.clockOut
+            ? `<button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockOut">${_fmtTime(e.clockOut)}</button>`
+            : `<span class="wt-time-running">Running</span>`}
+        </div>
+        <span class="wt-entry-dur">${eHrs > 0 ? WTRules.fmtHours(eHrs) : '—'}</span>
+      </div>
+      <button class="wt-entry-del" data-sid="${shift.id}" data-eid="${e.id}">✕</button>`;
+
+    if (e.note) {
+      const noteEl = document.createElement('div');
+      noteEl.style.cssText = 'font-size:11px;color:#636366;padding:2px 0 6px;';
+      noteEl.textContent = e.note;
+      row.appendChild(noteEl);
+    }
+
+    row.querySelectorAll('.wt-time-val').forEach(b => {
+      b.onclick = () => _showEditTime(b.dataset.sid, b.dataset.eid, b.dataset.f);
+    });
+    row.querySelector('.wt-entry-del').onclick = () => _delEntry(shift.id, e.id);
+
+    const photoRow = document.createElement('div');
+    photoRow.className = 'wt-photo-row';
+    photoRow.innerHTML = `
+      <button class="wt-photo-btn" data-pid="${shift.id}_in_${e.id}">📷 In proof</button>
+      ${e.clockOut ? `<button class="wt-photo-btn" data-pid="${shift.id}_out_${e.id}">📷 Out proof</button>` : ''}`;
+    photoRow.querySelectorAll('.wt-photo-btn').forEach(b => {
+      b.onclick = () => _doPhoto(shift.id, b.dataset.pid);
+      WTDb.getPhoto(shift.id, b.dataset.pid).then(base64 => {
+        if (base64) {
+          b.textContent = '✓ View proof';
+          b.classList.add('has-photo');
+          b.onclick = () => _viewOrReplacePhoto(shift.id, b.dataset.pid, base64);
+        }
+      });
+    });
+
+    return { row, photoRow };
+  }
 
     const footer = document.createElement('div');
     footer.className = 'wt-shift-footer';
