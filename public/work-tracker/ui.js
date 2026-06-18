@@ -5,7 +5,7 @@ const WorkTracker = (() => {
   let _view = 'home';
   let _date = null;
   let _heroTimer = null;
-  let _breakStart = null;
+  let _breakStart = localStorage.getItem('wt_break_start') || null;
 
   function mount(el) {
     _root = el;
@@ -183,29 +183,83 @@ const WorkTracker = (() => {
       if (_breakStart === null) {
         // START BREAK: record time, close current entry
         _breakStart = new Date().toISOString();
+        localStorage.setItem('wt_break_start', _breakStart);
         const shift = WTDb.getShifts().find(s => s.id === run.shift.id);
         if (shift) {
           const openEntry = shift.entries.find(e => !e.clockOut);
           if (openEntry) { openEntry.clockOut = _breakStart; WTDb.saveShift(shift); }
         }
-        // Update DOM in place — no navigation
-        const hero = breakBtn.closest('.wt-hero');
-        if (hero) {
-          hero.classList.add('wt-hero-break');
-          hero.querySelector('.wt-hero-label').textContent = 'ON BREAK';
-          hero.querySelector('.wt-hero-timer').classList.add('wt-timer-break');
-          hero.querySelector('#wt-htimer').textContent = '00:00';
-          const outBtn2 = hero.querySelector('#wt-hero-out');
-          if (outBtn2) { outBtn2.disabled = true; outBtn2.style.opacity = '0.4'; }
-          breakBtn.className = 'wt-breakend-btn';
-          breakBtn.innerHTML = '▶ End Break';
-          clearInterval(_heroTimer);
-          _heroTimer = setInterval(() => {
-            const el = document.getElementById('wt-htimer');
-            if (el) el.textContent = _elapsed(_breakStart);
-            else clearInterval(_heroTimer);
-          }, 1000);
-        }
+        // Show photo prompt first, then update DOM
+        const breakStartTime = _breakStart;
+        const heroEl = breakBtn.closest('.wt-hero');
+        const photoOvBreak = document.createElement('div');
+        photoOvBreak.className = 'wt-overlay';
+        photoOvBreak.innerHTML = `
+          <div class="wt-modal">
+            <div class="wt-modal-handle"></div>
+            <div class="wt-modal-title">📷 Starting break</div>
+            <p style="color:#98989D;font-size:14px;margin-bottom:18px">
+              Take a photo as proof you clocked out at ${_fmtTime(breakStartTime)}.
+            </p>
+            <div style="display:flex;gap:10px">
+              <button class="wt-btn wt-btn-primary" id="wt-take-photo-bs" style="flex:2">📷 Take Photo</button>
+              <button class="wt-btn wt-btn-secondary" id="wt-skip-photo-bs" style="flex:1">Skip (<span id="wt-skip-count-bs">5</span>)</button>
+            </div>
+          </div>`;
+        document.body.appendChild(photoOvBreak);
+
+        const activateBreakUI = () => {
+          if (heroEl) {
+            heroEl.classList.add('wt-hero-break');
+            heroEl.querySelector('.wt-hero-label').textContent = 'ON BREAK';
+            heroEl.querySelector('.wt-hero-timer').classList.add('wt-timer-break');
+            heroEl.querySelector('#wt-htimer').textContent = '00:00';
+            const outBtn2 = heroEl.querySelector('#wt-hero-out');
+            if (outBtn2) { outBtn2.disabled = true; outBtn2.style.opacity = '0.4'; }
+            breakBtn.className = 'wt-breakend-btn';
+            breakBtn.innerHTML = '▶ End Break';
+            clearInterval(_heroTimer);
+            _heroTimer = setInterval(() => {
+              const el = document.getElementById('wt-htimer');
+              if (el) el.textContent = _elapsed(_breakStart);
+              else clearInterval(_heroTimer);
+            }, 1000);
+          }
+        };
+
+        let bsCount = 5;
+        const bsCountdown = setInterval(() => {
+          bsCount--;
+          const el = document.getElementById('wt-skip-count-bs');
+          if (el) el.textContent = bsCount;
+          if (bsCount <= 0) {
+            clearInterval(bsCountdown);
+            photoOvBreak.remove();
+            activateBreakUI();
+          }
+        }, 1000);
+
+        photoOvBreak.querySelector('#wt-take-photo-bs').onclick = () => {
+          clearInterval(bsCountdown);
+          photoOvBreak.remove();
+          // Take photo of the break start (clock out proof)
+          const shiftForPhoto = WTDb.getShifts().find(s => s.id === run.shift.id);
+          const closedEntry = shiftForPhoto && shiftForPhoto.entries.find(e => e.clockOut === breakStartTime);
+          if (shiftForPhoto && closedEntry) {
+            _doPhotoThenCallback(
+              shiftForPhoto.id,
+              `${shiftForPhoto.id}_out_${closedEntry.id}`,
+              activateBreakUI
+            );
+          } else {
+            activateBreakUI();
+          }
+        };
+        photoOvBreak.querySelector('#wt-skip-photo-bs').onclick = () => {
+          clearInterval(bsCountdown);
+          photoOvBreak.remove();
+          activateBreakUI();
+        };
       } else {
         // END BREAK: open new entry, record break duration as note
         const breakEnd = new Date().toISOString();
@@ -228,6 +282,7 @@ const WorkTracker = (() => {
           WTDb.saveShift(shift);
         }
         _breakStart = null;
+        localStorage.removeItem('wt_break_start');
 
         // Show immediate photo prompt for break end proof
         const photoOv = document.createElement('div');
@@ -731,6 +786,7 @@ const WorkTracker = (() => {
     const clockOutTime = new Date().toISOString();
     if (entry) { entry.clockOut = clockOutTime; WTDb.saveShift(shift); }
     _breakStart = null;
+    localStorage.removeItem('wt_break_start');
 
     // Show immediate photo prompt with 5-second skip countdown
     const photoOv = document.createElement('div');
@@ -903,6 +959,27 @@ const WorkTracker = (() => {
         a.download = 'Tempo_clockin_' + now + '.jpg';
         a.click();
         _go('home');
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  }
+
+  function _doPhotoThenCallback(shiftId, photoKey, callback) {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) { callback(); return; }
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
+        const a = document.createElement('a');
+        a.href = ev.target.result;
+        const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
+        a.download = 'Tempo_break_' + now + '.jpg';
+        a.click();
+        callback();
       };
       reader.readAsDataURL(file);
     };
