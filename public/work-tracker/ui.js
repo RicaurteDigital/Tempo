@@ -405,7 +405,11 @@ const WorkTracker = (() => {
       <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
       <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
     footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
-    footer.querySelector('.wt-del-shift').onclick = () => { if (WTDb.deleteShift(shift.id)) _go('home'); };
+    footer.querySelector('.wt-del-shift').onclick = () => {
+      if (!confirm('Delete this shift and ALL its proof photos? This cannot be undone.')) return;
+      if (!confirm('Are you sure? This is permanent.')) return;
+      if (WTDb.deleteShift(shift.id)) _go('home');
+    };
     body.appendChild(footer);
     card.appendChild(body);
 
@@ -894,7 +898,8 @@ const WorkTracker = (() => {
   }
 
   function _delEntry(shiftId, entryId) {
-    if (!confirm('Delete this period? Cannot be undone.')) return;
+    if (!confirm('Delete this period and its proof photos? Cannot be undone.')) return;
+    if (!confirm('Are you sure? This is permanent.')) return;
     const shift = WTDb.getShifts().find(s => s.id === shiftId);
     if (!shift) return;
     shift.entries = shift.entries.filter(e => e.id !== entryId);
@@ -1002,7 +1007,11 @@ const WorkTracker = (() => {
       </div>`;
     document.body.appendChild(ov);
     ov.querySelector('#wt-vp-close').onclick = () => ov.remove();
-    ov.querySelector('#wt-vp-replace').onclick = () => { ov.remove(); _doPhoto(shiftId, photoKey); };
+    ov.querySelector('#wt-vp-replace').onclick = () => {
+      if (!confirm('Replace this proof photo? The current photo will be permanently lost.')) return;
+      ov.remove();
+      _doPhoto(shiftId, photoKey);
+    };
   }
 
   function _doPhotoThenHome(shiftId, photoKey) {
