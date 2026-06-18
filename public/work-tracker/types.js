@@ -1,6 +1,35 @@
 // work-tracker/types.js
 const WT_VERSION = 1;
-const DEFAULT_SHIFTS = ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Event', 'Double'];
+const WORK_PROFILES = {
+  restaurant: {
+    label: 'Restaurant',
+    shifts: ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Event', 'Double'],
+    suggestedRate: 16.50
+  },
+  office: {
+    label: 'Office / Corporate',
+    shifts: ['Morning', 'Afternoon', 'Full Day', 'Overtime', 'Remote', 'Meeting'],
+    suggestedRate: 25.00
+  },
+  freelance: {
+    label: 'Freelance / Events',
+    shifts: ['Half Day', 'Full Day', 'Evening', 'Weekend', 'Event', 'Consultation'],
+    suggestedRate: 35.00
+  },
+  construction: {
+    label: 'Construction / Field',
+    shifts: ['Day Shift', 'Night Shift', 'Weekend', 'Overtime', 'On-Call'],
+    suggestedRate: 22.00
+  },
+  custom: {
+    label: 'Custom',
+    shifts: [],
+    suggestedRate: 0
+  }
+};
+
+// Keep DEFAULT_SHIFTS for backward compatibility
+const DEFAULT_SHIFTS = WORK_PROFILES.restaurant.shifts;
 const NYC_MIN_WAGE = 16.50;
 const OVERTIME_THRESHOLD = 40;
 const OVERTIME_MULTIPLIER = 1.5;

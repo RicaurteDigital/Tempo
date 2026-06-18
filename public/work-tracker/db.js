@@ -64,7 +64,10 @@ const WTDb = (() => {
       return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
         payDay: 'friday',
         payPeriod: 'weekly',
-        defaultHourlyRate: NYC_MIN_WAGE,
+        defaultHourlyRate: 16.50,
+        overtimeThreshold: 40,
+        overtimeMultiplier: 1.5,
+        workProfile: 'restaurant',
         customShiftNames: []
       };
     } catch { return {}; }

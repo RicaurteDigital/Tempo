@@ -674,7 +674,7 @@ const WorkTracker = (() => {
         </div>
         <div class="wt-add-form" style="margin-top:14px">
           <input id="wt-loc-name" class="wt-input" placeholder="Work location name" type="text" autocapitalize="words">
-          <input id="wt-loc-rate" class="wt-input wt-input-sm" placeholder="$/hr" type="number" step="0.50" min="16.50" value="${NYC_MIN_WAGE}" inputmode="decimal">
+          <input id="wt-loc-rate" class="wt-input wt-input-sm" placeholder="$/hr" type="number" step="0.50" min="0" value="${(WORK_PROFILES[settings.workProfile]||WORK_PROFILES.restaurant).suggestedRate||16.50}" inputmode="decimal">
           <input id="wt-loc-color" type="color" value="#5E5CE6" class="wt-color-input">
         </div>
         <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#98989D;margin-top:10px;cursor:pointer">
@@ -684,7 +684,23 @@ const WorkTracker = (() => {
         <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-add-loc">Add Location</button>
       </div>
       <div class="wt-settings-block">
-        <div class="wt-settings-title">Pay Settings</div>
+        <div class="wt-settings-title">Work Profile & Pay Rules</div>
+        <div class="wt-setting-row">
+          <label>Work Profile</label>
+          <select class="wt-select-sm" id="wt-work-profile">
+            ${Object.entries(WORK_PROFILES).map(([key, p]) =>
+              `<option value="${key}" ${settings.workProfile===key?'selected':''}>${p.label}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <p class="wt-note" id="wt-profile-note" style="margin-bottom:8px">
+          ${(() => {
+            const p = WORK_PROFILES[settings.workProfile] || WORK_PROFILES.restaurant;
+            return p.shifts.length > 0
+              ? `Shifts: ${p.shifts.slice(0,3).join(', ')}… · Suggested rate: $${p.suggestedRate}/hr`
+              : 'Define your own shift names when adding a location.';
+          })()}
+        </p>
         <div class="wt-setting-row">
           <label>Pay Period</label>
           <select class="wt-select-sm" id="wt-pay-period">
@@ -721,6 +737,18 @@ const WorkTracker = (() => {
     w.querySelector('#wt-pay-period').onchange = function() {
       const s = WTDb.getSettings(); s.payPeriod = this.value; WTDb.saveSettings(s);
     };
+    w.querySelector('#wt-work-profile')?.addEventListener('change', function() {
+      const s = WTDb.getSettings();
+      s.workProfile = this.value;
+      WTDb.saveSettings(s);
+      const p = WORK_PROFILES[this.value] || WORK_PROFILES.restaurant;
+      const note = document.getElementById('wt-profile-note');
+      if (note) note.textContent = p.shifts.length > 0
+        ? `Shifts: ${p.shifts.slice(0,3).join(', ')}… · Suggested rate: $${p.suggestedRate}/hr`
+        : 'Define your own shift names when adding a location.';
+      const rateInput = document.getElementById('wt-loc-rate');
+      if (rateInput && p.suggestedRate > 0) rateInput.value = p.suggestedRate;
+    });
     w.querySelector('#wt-import-btn').onclick = () => w.querySelector('#wt-import-file').click();
     w.querySelector('#wt-import-file').onchange = function() {
       const file = this.files[0]; if (!file) return;
@@ -748,7 +776,12 @@ const WorkTracker = (() => {
         </select>
         <label class="wt-modal-label">Shift Type</label>
         <select class="wt-input" id="wt-ms">
-          ${DEFAULT_SHIFTS.map(s => `<option>${s}</option>`).join('')}
+          ${(() => {
+            const s = WTDb.getSettings();
+            const profile = WORK_PROFILES[s.workProfile] || WORK_PROFILES.restaurant;
+            const shifts = profile.shifts.length > 0 ? profile.shifts : DEFAULT_SHIFTS;
+            return shifts.map(sh => `<option>${sh}</option>`).join('');
+          })()}
           <option value="__custom">Custom…</option>
         </select>
         <div id="wt-custom-wrap" style="display:none;margin-top:8px">
