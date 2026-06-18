@@ -691,9 +691,43 @@ const WorkTracker = (() => {
     const shift = WTDb.getShifts().find(s => s.id === shiftId);
     if (!shift) return;
     const entry = shift.entries.find(e => e.id === entryId);
-    if (entry) { entry.clockOut = new Date().toISOString(); WTDb.saveShift(shift); }
+    const clockOutTime = new Date().toISOString();
+    if (entry) { entry.clockOut = clockOutTime; WTDb.saveShift(shift); }
     _breakStart = null;
-    _go('home');
+
+    // Show immediate photo prompt with 5-second skip countdown
+    const photoOv = document.createElement('div');
+    photoOv.className = 'wt-overlay';
+    photoOv.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">📷 Clock Out proof</div>
+        <p style="color:#98989D;font-size:14px;margin-bottom:18px">Take a photo as proof of your clock out at ${_fmtTime(clockOutTime)}. This is your timestamp evidence.</p>
+        <div style="display:flex;gap:10px">
+          <button class="wt-btn wt-btn-primary" id="wt-take-photo-out" style="flex:2">📷 Take Photo</button>
+          <button class="wt-btn wt-btn-secondary" id="wt-skip-photo-out" style="flex:1">Skip (<span id="wt-skip-count-out">5</span>)</button>
+        </div>
+      </div>`;
+    document.body.appendChild(photoOv);
+
+    let count = 5;
+    const countdown = setInterval(() => {
+      count--;
+      const el = document.getElementById('wt-skip-count-out');
+      if (el) el.textContent = count;
+      if (count <= 0) { clearInterval(countdown); photoOv.remove(); _go('home'); }
+    }, 1000);
+
+    photoOv.querySelector('#wt-take-photo-out').onclick = () => {
+      clearInterval(countdown);
+      photoOv.remove();
+      _doPhotoThenHome(shiftId, `${shiftId}_out_${entryId}`);
+    };
+    photoOv.querySelector('#wt-skip-photo-out').onclick = () => {
+      clearInterval(countdown);
+      photoOv.remove();
+      _go('home');
+    };
   }
 
   function _addPeriod(shiftId) {
