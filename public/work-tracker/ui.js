@@ -709,7 +709,10 @@ const WorkTracker = (() => {
             <option value="biweekly" ${settings.payPeriod==='biweekly'?'selected':''}>Bi-Weekly</option>
           </select>
         </div>
-        <p class="wt-note">NYC minimum wage 2026: $${NYC_MIN_WAGE}/hr<br>Overtime: 1.5× after 40 hours/week</p>
+        <p class="wt-note" id="wt-labor-note">
+          Overtime kicks in after ${settings.overtimeThreshold||40}h/week at ${settings.overtimeMultiplier||1.5}× rate.
+          Update these values in this section when your local laws change.
+        </p>
       </div>
       <div class="wt-settings-block">
         <div class="wt-settings-title">Data & Backup</div>
