@@ -65,8 +65,6 @@ const WTDb = (() => {
         payDay: 'friday',
         payPeriod: 'weekly',
         defaultHourlyRate: 16.50,
-        overtimeThreshold: 40,
-        overtimeMultiplier: 1.5,
         workProfile: 'restaurant',
         customShiftNames: []
       };

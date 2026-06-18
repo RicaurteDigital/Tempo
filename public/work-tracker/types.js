@@ -30,6 +30,45 @@ const WORK_PROFILES = {
 
 // Keep DEFAULT_SHIFTS for backward compatibility
 const DEFAULT_SHIFTS = WORK_PROFILES.restaurant.shifts;
+
+const DEFAULT_OT_RULES = {
+  restaurant: {
+    calculateBy: 'week',
+    levels: [
+      { after: 40, per: 'week', multiplier: 1.5 }
+    ]
+  },
+  office: {
+    calculateBy: 'week',
+    levels: [
+      { after: 40, per: 'week', multiplier: 1.5 }
+    ]
+  },
+  freelance: {
+    calculateBy: 'week',
+    levels: []  // flat rate, no OT
+  },
+  construction: {
+    calculateBy: 'week',
+    levels: [
+      { after: 40, per: 'week', multiplier: 1.5 }
+    ]
+  },
+  california_restaurant: {
+    calculateBy: 'both',
+    levels: [
+      { after: 8,  per: 'day',  multiplier: 1.5 },
+      { after: 12, per: 'day',  multiplier: 2.0 },
+      { after: 40, per: 'week', multiplier: 1.5 }
+    ]
+  },
+  custom: {
+    calculateBy: 'week',
+    levels: [
+      { after: 40, per: 'week', multiplier: 1.5 }
+    ]
+  }
+};
 const NYC_MIN_WAGE = 16.50;
 const OVERTIME_THRESHOLD = 40;
 const OVERTIME_MULTIPLIER = 1.5;

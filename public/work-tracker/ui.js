@@ -674,13 +674,54 @@ const WorkTracker = (() => {
         </div>
         <div class="wt-add-form" style="margin-top:14px">
           <input id="wt-loc-name" class="wt-input" placeholder="Work location name" type="text" autocapitalize="words">
-          <input id="wt-loc-rate" class="wt-input wt-input-sm" placeholder="$/hr" type="number" step="0.50" min="0" value="${(WORK_PROFILES[settings.workProfile]||WORK_PROFILES.restaurant).suggestedRate||16.50}" inputmode="decimal">
+          <input id="wt-loc-rate" class="wt-input wt-input-sm" placeholder="$/hr" type="number" step="0.50" min="0" inputmode="decimal">
           <input id="wt-loc-color" type="color" value="#5E5CE6" class="wt-color-input">
         </div>
         <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#98989D;margin-top:10px;cursor:pointer">
           <input type="checkbox" id="wt-loc-paid-break" style="width:18px;height:18px;accent-color:#5E5CE6">
           Breaks are paid at this location
         </label>
+
+        <div class="wt-settings-block" style="margin-top:12px;background:rgba(255,255,255,0.04)">
+          <div class="wt-settings-title">Overtime Rules for this location</div>
+          <div class="wt-setting-row">
+            <label>Calculate OT by</label>
+            <select class="wt-select-sm" id="wt-ot-calcby">
+              <option value="week">Week total</option>
+              <option value="day">Day total</option>
+              <option value="both">Both (use best for worker)</option>
+            </select>
+          </div>
+          <div class="wt-setting-row">
+            <label>Level 1: after</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="wt-ot1-after" class="wt-input" style="width:64px;flex:none" value="40" min="1" inputmode="numeric">
+              <select class="wt-select-sm" id="wt-ot1-per">
+                <option value="week">hrs/week</option>
+                <option value="day">hrs/day</option>
+              </select>
+              <span style="color:#98989D;font-size:13px">→</span>
+              <input type="number" id="wt-ot1-mult" class="wt-input" style="width:64px;flex:none" value="1.5" min="1" step="0.25" inputmode="decimal">
+              <span style="color:#98989D;font-size:13px">×</span>
+            </div>
+          </div>
+          <div class="wt-setting-row" id="wt-ot2-row" style="display:none">
+            <label>Level 2: after</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="wt-ot2-after" class="wt-input" style="width:64px;flex:none" value="12" min="1" inputmode="numeric">
+              <select class="wt-select-sm" id="wt-ot2-per">
+                <option value="day">hrs/day</option>
+                <option value="week">hrs/week</option>
+              </select>
+              <span style="color:#98989D;font-size:13px">→</span>
+              <input type="number" id="wt-ot2-mult" class="wt-input" style="width:64px;flex:none" value="2.0" min="1" step="0.25" inputmode="decimal">
+              <span style="color:#98989D;font-size:13px">×</span>
+            </div>
+          </div>
+          <button class="wt-text-btn" id="wt-add-ot2" style="margin-top:8px">+ Add Level 2 (double time)</button>
+          <p class="wt-note" style="margin-top:8px">No OT? Leave Level 1 empty and set multiplier to 1.0</p>
+        </div>
+
         <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-add-loc">Add Location</button>
       </div>
       <div class="wt-settings-block">
@@ -725,11 +766,29 @@ const WorkTracker = (() => {
     w.querySelectorAll('.wt-loc-del').forEach(b => { b.onclick = () => { WTDb.deleteLocation(b.dataset.lid); _go('settings'); }; });
     w.querySelector('#wt-add-loc').onclick = () => {
       const name = w.querySelector('#wt-loc-name').value.trim();
-      const rate = parseFloat(w.querySelector('#wt-loc-rate').value) || NYC_MIN_WAGE;
+      const rate = parseFloat(w.querySelector('#wt-loc-rate').value);
       const color = w.querySelector('#wt-loc-color').value;
       const paidBreaks = w.querySelector('#wt-loc-paid-break').checked;
       if (!name) { alert('Enter a work location name.'); return; }
-      const loc = { id: generateId(), name, hourlyRate: rate, color };
+      if (!rate || rate <= 0) { alert('Enter a valid hourly rate.'); return; }
+
+      const calcBy = w.querySelector('#wt-ot-calcby').value;
+      const ot1After = parseFloat(w.querySelector('#wt-ot1-after').value) || 40;
+      const ot1Per = w.querySelector('#wt-ot1-per').value;
+      const ot1Mult = parseFloat(w.querySelector('#wt-ot1-mult').value) || 1.5;
+      const showOT2 = w.querySelector('#wt-ot2-row').style.display !== 'none';
+      const levels = [{ after: ot1After, per: ot1Per, multiplier: ot1Mult }];
+      if (showOT2) {
+        const ot2After = parseFloat(w.querySelector('#wt-ot2-after').value);
+        const ot2Per = w.querySelector('#wt-ot2-per').value;
+        const ot2Mult = parseFloat(w.querySelector('#wt-ot2-mult').value) || 2.0;
+        if (ot2After > 0) levels.push({ after: ot2After, per: ot2Per, multiplier: ot2Mult });
+      }
+
+      const loc = {
+        id: generateId(), name, hourlyRate: rate, color,
+        overtimeRules: { calculateBy: calcBy, levels }
+      };
       WTDb.saveLocation(loc);
       const s = WTDb.getSettings();
       if (!s.locationSettings) s.locationSettings = {};
@@ -737,6 +796,32 @@ const WorkTracker = (() => {
       WTDb.saveSettings(s);
       _go('settings');
     };
+
+    // Show/hide OT level 2
+    w.querySelector('#wt-add-ot2')?.addEventListener('click', () => {
+      const row = w.querySelector('#wt-ot2-row');
+      const btn = w.querySelector('#wt-add-ot2');
+      const visible = row.style.display !== 'none';
+      row.style.display = visible ? 'none' : 'flex';
+      btn.textContent = visible ? '+ Add Level 2 (double time)' : '− Remove Level 2';
+    });
+
+    // Work profile change — suggest rate only if field is empty
+    w.querySelector('#wt-work-profile')?.addEventListener('change', function() {
+      const s = WTDb.getSettings();
+      s.workProfile = this.value;
+      WTDb.saveSettings(s);
+      const p = WORK_PROFILES[this.value] || WORK_PROFILES.restaurant;
+      const note = document.getElementById('wt-profile-note');
+      if (note) note.textContent = p.shifts.length > 0
+        ? `Shifts: ${p.shifts.slice(0,3).join(', ')}…`
+        : 'Define your own shift names.';
+      // Only suggest rate if field is empty
+      const rateInput = w.querySelector('#wt-loc-rate');
+      if (rateInput && (!rateInput.value || rateInput.value === '0')) {
+        rateInput.value = p.suggestedRate > 0 ? p.suggestedRate : '';
+      }
+    });
     w.querySelector('#wt-pay-period').onchange = function() {
       const s = WTDb.getSettings(); s.payPeriod = this.value; WTDb.saveSettings(s);
     };
