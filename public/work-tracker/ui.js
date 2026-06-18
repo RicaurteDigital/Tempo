@@ -211,12 +211,13 @@ const WorkTracker = (() => {
         const breakEnd = new Date().toISOString();
         const breakMins = Math.round((new Date(breakEnd) - new Date(_breakStart)) / 60000);
         const shift = WTDb.getShifts().find(s => s.id === run.shift.id);
+        const newEntryId = generateId();
         if (shift) {
           const s = WTDb.getSettings();
           const locSettings = (s.locationSettings || {})[shift.locationId] || {};
           const paidBreak = locSettings.paidBreaks || false;
           shift.entries.push({
-            id: generateId(),
+            id: newEntryId,
             clockIn: breakEnd,
             clockOut: null,
             breakMinutes: 0,
@@ -227,7 +228,43 @@ const WorkTracker = (() => {
           WTDb.saveShift(shift);
         }
         _breakStart = null;
-        _go('home');
+
+        // Show immediate photo prompt for break end proof
+        const photoOv = document.createElement('div');
+        photoOv.className = 'wt-overlay';
+        photoOv.innerHTML = `
+          <div class="wt-modal">
+            <div class="wt-modal-handle"></div>
+            <div class="wt-modal-title">📷 Back from break</div>
+            <p style="color:#98989D;font-size:14px;margin-bottom:18px">
+              ${breakMins}m break ended at ${_fmtTime(breakEnd)}. Take a photo as proof you're back on the clock.
+            </p>
+            <div style="display:flex;gap:10px">
+              <button class="wt-btn wt-btn-primary" id="wt-take-photo-break" style="flex:2">📷 Take Photo</button>
+              <button class="wt-btn wt-btn-secondary" id="wt-skip-photo-break" style="flex:1">Skip (<span id="wt-skip-count-break">5</span>)</button>
+            </div>
+          </div>`;
+        document.body.appendChild(photoOv);
+
+        let count = 5;
+        const countdown = setInterval(() => {
+          count--;
+          const el = document.getElementById('wt-skip-count-break');
+          if (el) el.textContent = count;
+          if (count <= 0) { clearInterval(countdown); photoOv.remove(); _go('home'); }
+        }, 1000);
+
+        photoOv.querySelector('#wt-take-photo-break').onclick = () => {
+          clearInterval(countdown);
+          photoOv.remove();
+          if (shift) _doPhotoThenHome(shift.id, `${shift.id}_in_${newEntryId}`);
+          else _go('home');
+        };
+        photoOv.querySelector('#wt-skip-photo-break').onclick = () => {
+          clearInterval(countdown);
+          photoOv.remove();
+          _go('home');
+        };
       }
     };
   }
