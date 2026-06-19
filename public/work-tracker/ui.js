@@ -925,7 +925,7 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
           <button id="wt-rate-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;flex-shrink:0;line-height:1;padding-bottom:2px;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">−</button>
-          <input id="wt-mr" type="number" step="0.25" min="0" inputmode="decimal"
+          <input id="wt-mr" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
             value="${initialRate}"
             style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;cursor:text;user-select:text;-webkit-user-select:text">
           <button id="wt-rate-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;flex-shrink:0;line-height:1;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
@@ -952,12 +952,12 @@ const WorkTracker = (() => {
     // Stepper buttons
     ov.querySelector('#wt-rate-minus').onclick = () => {
       const input = ov.querySelector('#wt-mr');
-      const val = parseFloat(input.value) || 0;
+      const val = parseFloat(input.value.replace(',','.')) || 0;
       input.value = Math.max(0, val - 0.25).toFixed(2);
     };
     ov.querySelector('#wt-rate-plus').onclick = () => {
       const input = ov.querySelector('#wt-mr');
-      const val = parseFloat(input.value) || 0;
+      const val = parseFloat(input.value.replace(',','.')) || 0;
       input.value = (val + 0.25).toFixed(2);
     };
 
@@ -1275,7 +1275,7 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
           <button id="wt-es-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;line-height:1;padding-bottom:2px;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">−</button>
-          <input id="wt-es-rate" type="number" step="0.25" min="0" inputmode="decimal"
+          <input id="wt-es-rate" type="text" inputmode="decimal" pattern="[0-9]*\.?[0-9]*"
             value="${shift.hourlyRate}"
             style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;cursor:text;user-select:text;-webkit-user-select:text">
           <button id="wt-es-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
@@ -1291,11 +1291,13 @@ const WorkTracker = (() => {
     };
     ov.querySelector('#wt-es-minus').onclick = () => {
       const i = ov.querySelector('#wt-es-rate');
-      i.value = Math.max(0, (parseFloat(i.value)||0) - 0.25).toFixed(2);
+      const v = parseFloat(i.value.replace(',','.')) || 0;
+      i.value = Math.max(0, v - 0.25).toFixed(2);
     };
     ov.querySelector('#wt-es-plus').onclick = () => {
       const i = ov.querySelector('#wt-es-rate');
-      i.value = ((parseFloat(i.value)||0) + 0.25).toFixed(2);
+      const v = parseFloat(i.value.replace(',','.')) || 0;
+      i.value = (v + 0.25).toFixed(2);
     };
     ov.querySelector('#wt-es-cancel').onclick = () => ov.remove();
     ov.querySelector('#wt-es-save').onclick = () => {
