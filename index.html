@@ -17,6 +17,8 @@
     --sleep:#BF5AF2; --rest:#66D4CF; --leak:#FF453A; --flame:#FF9F0A;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  input{cursor:text;user-select:text;-webkit-user-select:text;}
+  input:focus{user-select:text;-webkit-user-select:text;}
   html,body{background:var(--bg);color:var(--txt);
     font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',system-ui,sans-serif;
     height:100%;overscroll-behavior:none}
@@ -329,7 +331,8 @@ $('pList').innerHTML = BUCKETS.map(b => `
     <div class="prow">
       <div class="dot" style="background:${b.hex}"></div>
       <input type="text" id="n_${b.id}" value="${S.names && S.names[b.id] ? S.names[b.id] : b.name}"
-        style="flex:1;background:#2C2C2E;border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;padding:8px 10px;outline:none;min-width:0">
+        style="flex:1;background:#2C2C2E;border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;padding:8px 10px;outline:none;min-width:0"
+        onclick="this.select()" onfocus="this.select()">
       <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:10px;overflow:hidden;margin-left:8px">
         <button onclick="document.getElementById('p_${b.id}').value=Math.max(5,parseInt(document.getElementById('p_${b.id}').value||5)-5)"
           style="width:36px;height:36px;background:none;border:none;color:#98989D;font-size:20px;font-weight:200;cursor:pointer;line-height:1"
@@ -338,7 +341,7 @@ $('pList').innerHTML = BUCKETS.map(b => `
           onpointerleave="this.style.background='none';this.style.color='#98989D'">−</button>
         <input type="text" inputmode="numeric" id="p_${b.id}" value="${S.params[b.id]}"
           style="width:44px;background:none;border:none;color:#fff;font-size:15px;font-weight:700;text-align:center;padding:0;outline:none;font-variant-numeric:tabular-nums"
-          onclick="this.select()">
+          onclick="this.select()" onfocus="this.select()">
         <button onclick="document.getElementById('p_${b.id}').value=Math.min(720,parseInt(document.getElementById('p_${b.id}').value||5)+5)"
           style="width:36px;height:36px;background:none;border:none;color:#98989D;font-size:18px;font-weight:200;cursor:pointer;line-height:1"
           onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
