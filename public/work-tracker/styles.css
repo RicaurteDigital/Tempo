@@ -688,3 +688,15 @@
 .wt-shift-expanded {
   border: 1px solid #2C2C2E;
 }
+
+/* Hide browser number input spinners everywhere */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
