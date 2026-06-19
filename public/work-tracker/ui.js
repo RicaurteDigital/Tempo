@@ -79,8 +79,8 @@ const WorkTracker = (() => {
       hero.innerHTML = `
         <div class="wt-hero-label">${onBreak ? 'ON BREAK' : 'CLOCKED IN'}</div>
         <div class="wt-hero-location">${run.shift.locationName}</div>
-        <div class="wt-hero-shift" id="wt-hero-shift-edit" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px">
-          ${run.shift.shiftType} · $${run.shift.hourlyRate}/hr ✏️
+        <div class="wt-hero-shift" id="wt-hero-shift-edit" style="cursor:pointer">
+          ${run.shift.shiftType} · $${run.shift.hourlyRate}/hr
         </div>
         <div class="wt-hero-timer${onBreak ? ' wt-timer-break' : ''}" id="wt-htimer">
           ${onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn)}
@@ -924,11 +924,11 @@ const WorkTracker = (() => {
         </div>
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
-          <button id="wt-rate-minus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;font-weight:300;cursor:pointer;flex-shrink:0">−</button>
+          <button id="wt-rate-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;flex-shrink:0;line-height:1;padding-bottom:2px">−</button>
           <input id="wt-mr" type="number" step="0.25" min="0" inputmode="decimal"
             value="${initialRate}"
-            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield">
-          <button id="wt-rate-plus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;font-weight:300;cursor:pointer;flex-shrink:0">+</button>
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none">
+          <button id="wt-rate-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;flex-shrink:0;line-height:1">+</button>
         </div>
         <div class="wt-modal-actions">
           <button class="wt-btn wt-btn-secondary" id="wt-cancel">Cancel</button>
@@ -1274,11 +1274,11 @@ const WorkTracker = (() => {
         </div>
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
-          <button id="wt-es-minus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;cursor:pointer">−</button>
+          <button id="wt-es-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;line-height:1;padding-bottom:2px">−</button>
           <input id="wt-es-rate" type="number" step="0.25" min="0" inputmode="decimal"
             value="${shift.hourlyRate}"
-            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none">
-          <button id="wt-es-plus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;cursor:pointer">+</button>
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none">
+          <button id="wt-es-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1">+</button>
         </div>
         <div class="wt-modal-actions">
           <button class="wt-btn wt-btn-secondary" id="wt-es-cancel">Cancel</button>
