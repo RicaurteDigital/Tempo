@@ -947,11 +947,7 @@ const WorkTracker = (() => {
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
-    // Select all on tap for every input in this modal
-    ov.querySelectorAll('input[type="text"], input[type="number"]').forEach(inp => {
-      inp.addEventListener('focus', () => inp.select());
-      inp.addEventListener('click', () => inp.select());
-    });
+    ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
 
     // Location change → update rate
     ov.querySelector('#wt-ml').onchange = function() {
@@ -1050,11 +1046,7 @@ const WorkTracker = (() => {
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
-    // Select all on tap for every input in this modal
-    ov.querySelectorAll('input[type="text"], input[type="number"]').forEach(inp => {
-      inp.addEventListener('focus', () => inp.select());
-      inp.addEventListener('click', () => inp.select());
-    });
+    ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
     ov.querySelector('#wt-ec').onclick = () => ov.remove();
     ov.querySelector('#wt-es').onclick = () => {
       const [h, m] = ov.querySelector('#wt-etime').value.split(':');
@@ -1230,11 +1222,7 @@ const WorkTracker = (() => {
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
-    // Select all on tap for every input in this modal
-    ov.querySelectorAll('input[type="text"], input[type="number"]').forEach(inp => {
-      inp.addEventListener('focus', () => inp.select());
-      inp.addEventListener('click', () => inp.select());
-    });
+    ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
     ov.querySelector('#wt-vp-close').onclick = () => ov.remove();
     ov.querySelector('#wt-vp-replace').onclick = () => {
       if (!confirm('Replace this proof photo? The current photo will be permanently lost.')) return;
@@ -1348,11 +1336,7 @@ const WorkTracker = (() => {
       </div>`;
 
     document.body.appendChild(ov);
-    // Select all on tap for every input in this modal
-    ov.querySelectorAll('input[type="text"], input[type="number"]').forEach(inp => {
-      inp.addEventListener('focus', () => inp.select());
-      inp.addEventListener('click', () => inp.select());
-    });
+    ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
 
     const rateInput = ov.querySelector('#wt-el-rate');
@@ -1460,11 +1444,7 @@ const WorkTracker = (() => {
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
-    // Select all on tap for every input in this modal
-    ov.querySelectorAll('input[type="text"], input[type="number"]').forEach(inp => {
-      inp.addEventListener('focus', () => inp.select());
-      inp.addEventListener('click', () => inp.select());
-    });
+    ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
     ov.querySelector('#wt-es-type').onchange = function() {
       ov.querySelector('#wt-es-custom-wrap').style.display = this.value === '__custom' ? 'block' : 'none';
     };
