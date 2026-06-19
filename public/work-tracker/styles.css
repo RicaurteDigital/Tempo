@@ -699,4 +699,7 @@ input[type=number]::-webkit-outer-spin-button {
 input[type=number] {
   -moz-appearance: textfield;
   appearance: textfield;
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
 }

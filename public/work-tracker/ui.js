@@ -927,7 +927,7 @@ const WorkTracker = (() => {
           <button id="wt-rate-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;flex-shrink:0;line-height:1;padding-bottom:2px;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">−</button>
           <input id="wt-mr" type="number" step="0.25" min="0" inputmode="decimal"
             value="${initialRate}"
-            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none">
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;cursor:text;user-select:text;-webkit-user-select:text">
           <button id="wt-rate-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;flex-shrink:0;line-height:1;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
         </div>
         <div class="wt-modal-actions">
@@ -1277,7 +1277,7 @@ const WorkTracker = (() => {
           <button id="wt-es-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;line-height:1;padding-bottom:2px;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">−</button>
           <input id="wt-es-rate" type="number" step="0.25" min="0" inputmode="decimal"
             value="${shift.hourlyRate}"
-            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none">
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield;-webkit-appearance:none;appearance:none;cursor:text;user-select:text;-webkit-user-select:text">
           <button id="wt-es-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
         </div>
         <div class="wt-modal-actions">
