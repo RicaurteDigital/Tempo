@@ -665,14 +665,18 @@ const WorkTracker = (() => {
           ${locs.length === 0 ? '<div style="color:#636366;font-size:14px;padding:8px 0">No locations yet.</div>' :
             locs.map(l => {
               const locS = ((settings.locationSettings||{})[l.id]||{});
-              return `<div class="wt-loc-row">
+              const ot = l.overtimeRules || DEFAULT_OT_RULES.restaurant;
+              const otSummary = ot.levels && ot.levels.length > 0
+                ? `OT: ${ot.levels[0].after}h/${ot.levels[0].per} ×${ot.levels[0].multiplier}`
+                : 'No OT';
+              return `<div class="wt-loc-row" style="cursor:pointer" data-edit-loc="${l.id}">
                 <div class="wt-loc-dot" style="background:${l.color}"></div>
                 <div style="flex:1">
                   <span class="wt-loc-name">${l.name}</span>
-                  <span style="font-size:11px;color:#636366;margin-left:6px">${locS.paidBreaks ? '· Paid breaks' : ''}</span>
+                  <div style="font-size:11px;color:#636366;margin-top:2px">${locS.paidBreaks ? '· Paid breaks · ' : ''}${otSummary}</div>
                 </div>
                 <span class="wt-loc-rate">$${l.hourlyRate}/hr</span>
-                <button class="wt-loc-del" data-lid="${l.id}">✕</button>
+                <button class="wt-loc-del" data-lid="${l.id}" style="z-index:2">✕</button>
               </div>`;
             }).join('')}
         </div>
@@ -768,6 +772,12 @@ const WorkTracker = (() => {
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
     w.querySelectorAll('.wt-loc-del').forEach(b => { b.onclick = () => { WTDb.deleteLocation(b.dataset.lid); _go('settings'); }; });
+    w.querySelectorAll('[data-edit-loc]').forEach(row => {
+      row.onclick = (e) => {
+        if (e.target.classList.contains('wt-loc-del')) return;
+        _showEditLocation(row.dataset.editLoc);
+      };
+    });
     w.querySelector('#wt-add-loc').onclick = () => {
       const name = w.querySelector('#wt-loc-name').value.trim();
       const rate = parseFloat(w.querySelector('#wt-loc-rate').value);
@@ -1237,6 +1247,141 @@ const WorkTracker = (() => {
       reader.readAsDataURL(file);
     };
     input.click();
+  }
+
+  function _showEditLocation(locId) {
+    const locs = WTDb.getLocations();
+    const loc = locs.find(l => l.id === locId);
+    if (!loc) return;
+    const settings = WTDb.getSettings();
+    const locS = ((settings.locationSettings||{})[loc.id]||{});
+    const ot = loc.overtimeRules || DEFAULT_OT_RULES.restaurant;
+    const level1 = (ot.levels && ot.levels[0]) ? ot.levels[0] : { after: 40, per: 'week', multiplier: 1.5 };
+    const level2 = (ot.levels && ot.levels[1]) ? ot.levels[1] : null;
+
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    ov.innerHTML = `
+      <div class="wt-modal" style="max-height:85vh;overflow-y:auto">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">Edit Location</div>
+        <label class="wt-modal-label">Name</label>
+        <input id="wt-el-name" class="wt-input" type="text" value="${loc.name}" autocapitalize="words">
+        <label class="wt-modal-label">Hourly Rate ($/hr)</label>
+        <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+          <button id="wt-el-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;line-height:1"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
+            onpointerup="this.style.background='none';this.style.color='#98989D'"
+            onpointerleave="this.style.background='none';this.style.color='#98989D'">−</button>
+          <input id="wt-el-rate" type="text" inputmode="decimal" value="${loc.hourlyRate}"
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;cursor:text">
+          <button id="wt-el-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
+            onpointerup="this.style.background='none';this.style.color='#98989D'"
+            onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
+        </div>
+        <label class="wt-modal-label">Color</label>
+        <input id="wt-el-color" type="color" value="${loc.color}" style="width:100%;height:44px;border-radius:12px;border:none;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#98989D;margin-top:14px;cursor:pointer">
+          <input type="checkbox" id="wt-el-paid-break" style="width:18px;height:18px;accent-color:#5E5CE6" ${locS.paidBreaks?'checked':''}>
+          Breaks are paid at this location
+        </label>
+        <div style="margin-top:16px;background:rgba(255,255,255,0.04);border-radius:14px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:#636366;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Overtime Rules</div>
+          <div class="wt-setting-row">
+            <label>Calculate OT by</label>
+            <select class="wt-select-sm" id="wt-el-calcby">
+              <option value="week" ${ot.calculateBy==='week'?'selected':''}>Week total</option>
+              <option value="day" ${ot.calculateBy==='day'?'selected':''}>Day total</option>
+              <option value="both" ${ot.calculateBy==='both'?'selected':''}>Both (best for worker)</option>
+            </select>
+          </div>
+          <div class="wt-setting-row">
+            <label>Level 1: after</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="wt-el-ot1-after" class="wt-input" style="width:64px;flex:none" value="${level1.after}" inputmode="numeric">
+              <select class="wt-select-sm" id="wt-el-ot1-per">
+                <option value="week" ${level1.per==='week'?'selected':''}>hrs/week</option>
+                <option value="day" ${level1.per==='day'?'selected':''}>hrs/day</option>
+              </select>
+              <span style="color:#98989D;font-size:13px">→</span>
+              <input type="number" id="wt-el-ot1-mult" class="wt-input" style="width:64px;flex:none" value="${level1.multiplier}" step="0.25" inputmode="decimal">
+              <span style="color:#98989D;font-size:13px">×</span>
+            </div>
+          </div>
+          <div class="wt-setting-row" id="wt-el-ot2-row" style="${level2?'display:flex':'display:none'}">
+            <label>Level 2: after</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="number" id="wt-el-ot2-after" class="wt-input" style="width:64px;flex:none" value="${level2?level2.after:12}" inputmode="numeric">
+              <select class="wt-select-sm" id="wt-el-ot2-per">
+                <option value="day" ${level2&&level2.per==='day'?'selected':''}>hrs/day</option>
+                <option value="week" ${level2&&level2.per==='week'?'selected':''}>hrs/week</option>
+              </select>
+              <span style="color:#98989D;font-size:13px">→</span>
+              <input type="number" id="wt-el-ot2-mult" class="wt-input" style="width:64px;flex:none" value="${level2?level2.multiplier:2.0}" step="0.25" inputmode="decimal">
+              <span style="color:#98989D;font-size:13px">×</span>
+            </div>
+          </div>
+          <button id="wt-el-add-ot2" style="margin-top:8px;color:#5E5CE6;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;padding:0">
+            ${level2 ? '− Remove Level 2' : '+ Add Level 2 (double time)'}
+          </button>
+        </div>
+        <div class="wt-modal-actions" style="margin-top:20px">
+          <button class="wt-btn wt-btn-secondary" id="wt-el-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-el-save">Save</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+
+    const rateInput = ov.querySelector('#wt-el-rate');
+    rateInput.addEventListener('focus', () => rateInput.select());
+    rateInput.addEventListener('click', () => rateInput.select());
+    ov.querySelector('#wt-el-minus').onclick = () => {
+      const v = parseFloat(rateInput.value.replace(',','.')) || 0;
+      rateInput.value = Math.max(0, v - 0.25).toFixed(2);
+    };
+    ov.querySelector('#wt-el-plus').onclick = () => {
+      const v = parseFloat(rateInput.value.replace(',','.')) || 0;
+      rateInput.value = (v + 0.25).toFixed(2);
+    };
+    ov.querySelector('#wt-el-add-ot2').onclick = () => {
+      const row = ov.querySelector('#wt-el-ot2-row');
+      const btn = ov.querySelector('#wt-el-add-ot2');
+      const visible = row.style.display !== 'none';
+      row.style.display = visible ? 'none' : 'flex';
+      btn.textContent = visible ? '+ Add Level 2 (double time)' : '− Remove Level 2';
+    };
+    ov.querySelector('#wt-el-cancel').onclick = () => ov.remove();
+    ov.querySelector('#wt-el-save').onclick = () => {
+      const name = ov.querySelector('#wt-el-name').value.trim();
+      const rate = parseFloat(rateInput.value.replace(',','.'));
+      const color = ov.querySelector('#wt-el-color').value;
+      const paidBreaks = ov.querySelector('#wt-el-paid-break').checked;
+      if (!name) { alert('Enter a location name.'); return; }
+      if (!rate || rate <= 0) { alert('Enter a valid rate.'); return; }
+      const calcBy = ov.querySelector('#wt-el-calcby').value;
+      const ot1After = parseFloat(ov.querySelector('#wt-el-ot1-after').value) || 40;
+      const ot1Per = ov.querySelector('#wt-el-ot1-per').value;
+      const ot1Mult = parseFloat(ov.querySelector('#wt-el-ot1-mult').value) || 1.5;
+      const showOT2 = ov.querySelector('#wt-el-ot2-row').style.display !== 'none';
+      const levels = [{ after: ot1After, per: ot1Per, multiplier: ot1Mult }];
+      if (showOT2) {
+        const ot2After = parseFloat(ov.querySelector('#wt-el-ot2-after').value);
+        const ot2Per = ov.querySelector('#wt-el-ot2-per').value;
+        const ot2Mult = parseFloat(ov.querySelector('#wt-el-ot2-mult').value) || 2.0;
+        if (ot2After > 0) levels.push({ after: ot2After, per: ot2Per, multiplier: ot2Mult });
+      }
+      loc.name = name; loc.hourlyRate = rate; loc.color = color;
+      loc.overtimeRules = { calculateBy: calcBy, levels };
+      WTDb.saveLocation(loc);
+      const s = WTDb.getSettings();
+      if (!s.locationSettings) s.locationSettings = {};
+      s.locationSettings[loc.id] = { paidBreaks };
+      WTDb.saveSettings(s);
+      ov.remove(); _go('settings');
+    };
   }
 
   function _doPhotoThenCallback(shiftId, photoKey, callback) {
