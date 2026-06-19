@@ -961,6 +961,11 @@ const WorkTracker = (() => {
       input.value = (val + 0.25).toFixed(2);
     };
 
+    // Single tap = select all, double tap = edit in place  
+    const mrInput = ov.querySelector('#wt-mr');
+    mrInput.addEventListener('focus', () => mrInput.select());
+    mrInput.addEventListener('click', () => mrInput.select());
+
     ov.querySelector('#wt-cancel').onclick = () => ov.remove();
     ov.querySelector('#wt-clockin-now').onclick = () => {
       const locId = ov.querySelector('#wt-ml').value;
@@ -1299,6 +1304,11 @@ const WorkTracker = (() => {
       const v = parseFloat(i.value.replace(',','.')) || 0;
       i.value = (v + 0.25).toFixed(2);
     };
+    // Single tap = select all, double tap = edit in place
+    const esRateInput = ov.querySelector('#wt-es-rate');
+    esRateInput.addEventListener('focus', () => esRateInput.select());
+    esRateInput.addEventListener('click', () => esRateInput.select());
+
     ov.querySelector('#wt-es-cancel').onclick = () => ov.remove();
     ov.querySelector('#wt-es-save').onclick = () => {
       const typeSel = ov.querySelector('#wt-es-type');
