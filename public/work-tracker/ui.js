@@ -79,7 +79,9 @@ const WorkTracker = (() => {
       hero.innerHTML = `
         <div class="wt-hero-label">${onBreak ? 'ON BREAK' : 'CLOCKED IN'}</div>
         <div class="wt-hero-location">${run.shift.locationName}</div>
-        <div class="wt-hero-shift">${run.shift.shiftType} · $${run.shift.hourlyRate}/hr</div>
+        <div class="wt-hero-shift" id="wt-hero-shift-edit" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px">
+          ${run.shift.shiftType} · $${run.shift.hourlyRate}/hr ✏️
+        </div>
         <div class="wt-hero-timer${onBreak ? ' wt-timer-break' : ''}" id="wt-htimer">
           ${onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn)}
         </div>
@@ -177,6 +179,8 @@ const WorkTracker = (() => {
     }
     const outBtn = w.querySelector('#wt-hero-out');
     if (outBtn) outBtn.onclick = () => _doClockOut(run.shift.id, run.entry.id);
+    const shiftEditBtn = w.querySelector('#wt-hero-shift-edit');
+    if (shiftEditBtn) shiftEditBtn.onclick = () => _showEditShift(run.shift);
 
     const breakBtn = w.querySelector('#wt-hero-break');
     if (breakBtn) breakBtn.onclick = () => {
@@ -849,9 +853,57 @@ const WorkTracker = (() => {
     };
   }
 
+  function _suggestShiftType(profile) {
+    const now = new Date();
+    const hour = now.getHours() + now.getMinutes() / 60;
+    const dow = now.getDay(); // 0=Sun, 6=Sat
+    const isWeekend = dow === 0 || dow === 6;
+
+    const suggestions = {
+      restaurant: () => {
+        if (hour >= 0 && hour < 5)   return 'Late Night';
+        if (hour >= 5 && hour < 10)  return 'Breakfast';
+        if (isWeekend && hour >= 10 && hour < 15) return 'Brunch';
+        if (hour >= 10 && hour < 16) return 'Lunch';
+        if (hour >= 16 || hour < 0)  return 'Dinner';
+        return 'Breakfast';
+      },
+      office: () => {
+        if (hour >= 6 && hour < 12)  return 'Morning';
+        if (hour >= 12 && hour < 17) return 'Afternoon';
+        if (hour >= 17 && hour < 22) return 'Evening';
+        return 'Full Day';
+      },
+      freelance: () => {
+        if (hour >= 6 && hour < 13)  return 'Half Day';
+        if (hour >= 13 && hour < 19) return 'Afternoon';
+        if (hour >= 19)              return 'Evening';
+        return 'Full Day';
+      },
+      construction: () => {
+        if (hour >= 5 && hour < 15)  return 'Day Shift';
+        if (hour >= 15 || hour < 5)  return 'Night Shift';
+        return 'Day Shift';
+      },
+      custom: () => ''
+    };
+
+    const fn = suggestions[profile] || suggestions.restaurant;
+    return fn();
+  }
+
   function _showAddShift(dateStr) {
     const locs = WTDb.getLocations();
     if (!locs.length) { alert('Add a location in Settings first.'); _go('settings'); return; }
+
+    const settings = WTDb.getSettings();
+    const profile = settings.workProfile || 'restaurant';
+    const suggested = _suggestShiftType(profile);
+    const profileShifts = (WORK_PROFILES[profile]||WORK_PROFILES.restaurant).shifts;
+    // Get rate from first location as default
+    const firstLoc = locs[0];
+    const initialRate = firstLoc ? firstLoc.hourlyRate : 16.50;
+
     const ov = document.createElement('div');
     ov.className = 'wt-overlay';
     ov.innerHTML = `
@@ -862,53 +914,79 @@ const WorkTracker = (() => {
         <select class="wt-input" id="wt-ml">
           ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}">${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
         </select>
-        <label class="wt-modal-label">Shift Type</label>
+        <label class="wt-modal-label">Shift Type <span style="font-size:10px;color:#5E5CE6;font-weight:700;letter-spacing:.5px">AUTO-DETECTED</span></label>
         <select class="wt-input" id="wt-ms">
-          ${(() => {
-            const s = WTDb.getSettings();
-            const profile = WORK_PROFILES[s.workProfile] || WORK_PROFILES.restaurant;
-            const shifts = profile.shifts.length > 0 ? profile.shifts : DEFAULT_SHIFTS;
-            return shifts.map(sh => `<option>${sh}</option>`).join('');
-          })()}
+          ${profileShifts.map(s => `<option ${s===suggested?'selected':''}>${s}</option>`).join('')}
           <option value="__custom">Custom…</option>
         </select>
         <div id="wt-custom-wrap" style="display:none;margin-top:8px">
           <input id="wt-mc" class="wt-input" placeholder="Shift name" type="text">
         </div>
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
-        <input id="wt-mr" class="wt-input" type="number" step="0.50" value="${NYC_MIN_WAGE}" inputmode="decimal">
+        <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+          <button id="wt-rate-minus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;font-weight:300;cursor:pointer;flex-shrink:0">−</button>
+          <input id="wt-mr" type="number" step="0.25" min="0" inputmode="decimal"
+            value="${initialRate}"
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none;-moz-appearance:textfield">
+          <button id="wt-rate-plus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;font-weight:300;cursor:pointer;flex-shrink:0">+</button>
+        </div>
         <div class="wt-modal-actions">
           <button class="wt-btn wt-btn-secondary" id="wt-cancel">Cancel</button>
           <button class="wt-btn wt-btn-primary" id="wt-clockin-now">⏱ Clock In Now</button>
         </div>
       </div>`;
     document.body.appendChild(ov);
+
+    // Location change → update rate
     ov.querySelector('#wt-ml').onchange = function() {
-      ov.querySelector('#wt-mr').value = this.options[this.selectedIndex].dataset.rate;
+      const rate = this.options[this.selectedIndex].dataset.rate;
+      if (rate) ov.querySelector('#wt-mr').value = rate;
     };
+    // Trigger on load to set initial rate from first location
+    ov.querySelector('#wt-ml').dispatchEvent(new Event('change'));
+
     ov.querySelector('#wt-ms').onchange = function() {
       ov.querySelector('#wt-custom-wrap').style.display = this.value === '__custom' ? 'block' : 'none';
     };
+
+    // Stepper buttons
+    ov.querySelector('#wt-rate-minus').onclick = () => {
+      const input = ov.querySelector('#wt-mr');
+      const val = parseFloat(input.value) || 0;
+      input.value = Math.max(0, val - 0.25).toFixed(2);
+    };
+    ov.querySelector('#wt-rate-plus').onclick = () => {
+      const input = ov.querySelector('#wt-mr');
+      const val = parseFloat(input.value) || 0;
+      input.value = (val + 0.25).toFixed(2);
+    };
+
     ov.querySelector('#wt-cancel').onclick = () => ov.remove();
     ov.querySelector('#wt-clockin-now').onclick = () => {
       const locId = ov.querySelector('#wt-ml').value;
       const loc = locs.find(l => l.id === locId);
       const sSel = ov.querySelector('#wt-ms');
-      const shiftType = sSel.value === '__custom' ? (ov.querySelector('#wt-mc').value.trim() || 'Custom') : sSel.value;
-      const rate = parseFloat(ov.querySelector('#wt-mr').value) || NYC_MIN_WAGE;
+      const shiftType = sSel.value === '__custom'
+        ? (ov.querySelector('#wt-mc').value.trim() || 'Custom') : sSel.value;
+      const rate = parseFloat(ov.querySelector('#wt-mr').value);
+      if (!rate || rate <= 0) { alert('Enter a valid hourly rate.'); return; }
       const entryId = generateId();
       const shiftId = generateId();
       const clockInTime = new Date().toISOString();
-      WTDb.saveShift({ id: shiftId, date: dateStr, locationId: locId, locationName: loc.name, hourlyRate: rate, shiftType, entries: [{ id: entryId, clockIn: clockInTime, clockOut: null, breakMinutes: 0 }] });
+      WTDb.saveShift({
+        id: shiftId, date: dateStr,
+        locationId: locId, locationName: loc.name,
+        hourlyRate: rate, shiftType,
+        entries: [{ id: entryId, clockIn: clockInTime, clockOut: null, breakMinutes: 0 }]
+      });
       ov.remove();
-      // Show immediate photo prompt with 5-second skip countdown
       const photoOv = document.createElement('div');
       photoOv.className = 'wt-overlay';
       photoOv.innerHTML = `
         <div class="wt-modal">
           <div class="wt-modal-handle"></div>
           <div class="wt-modal-title">📷 Clock In proof</div>
-          <p style="color:#98989D;font-size:14px;margin-bottom:18px">Take a photo as proof of your clock in at ${_fmtTime(clockInTime)}. This is your timestamp evidence.</p>
+          <p style="color:#98989D;font-size:14px;margin-bottom:18px">Take a photo as proof of your clock in at ${_fmtTime(clockInTime)}.</p>
           <div style="display:flex;gap:10px">
             <button class="wt-btn wt-btn-primary" id="wt-take-photo" style="flex:2">📷 Take Photo</button>
             <button class="wt-btn wt-btn-secondary" id="wt-skip-photo" style="flex:1">Skip (<span id="wt-skip-count">5</span>)</button>
@@ -923,14 +1001,11 @@ const WorkTracker = (() => {
         if (count <= 0) { clearInterval(countdown); photoOv.remove(); _go('home'); }
       }, 1000);
       photoOv.querySelector('#wt-take-photo').onclick = () => {
-        clearInterval(countdown);
-        photoOv.remove();
+        clearInterval(countdown); photoOv.remove();
         _doPhotoThenHome(shiftId, `${shiftId}_in_${entryId}`);
       };
       photoOv.querySelector('#wt-skip-photo').onclick = () => {
-        clearInterval(countdown);
-        photoOv.remove();
-        _go('home');
+        clearInterval(countdown); photoOv.remove(); _go('home');
       };
     };
   }
@@ -1175,6 +1250,69 @@ const WorkTracker = (() => {
       reader.readAsDataURL(file);
     };
     input.click();
+  }
+
+  function _showEditShift(shift) {
+    const settings = WTDb.getSettings();
+    const profile = settings.workProfile || 'restaurant';
+    const profileShifts = (WORK_PROFILES[profile]||WORK_PROFILES.restaurant).shifts;
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    ov.style.zIndex = '400';
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">Edit Current Shift</div>
+        <label class="wt-modal-label">Shift Type</label>
+        <select class="wt-input" id="wt-es-type">
+          ${profileShifts.map(s => `<option ${s===shift.shiftType?'selected':''}>${s}</option>`).join('')}
+          <option value="__custom" ${!profileShifts.includes(shift.shiftType)?'selected':''}>Custom…</option>
+        </select>
+        <div id="wt-es-custom-wrap" style="${!profileShifts.includes(shift.shiftType)?'':'display:none'};margin-top:8px">
+          <input id="wt-es-custom" class="wt-input" placeholder="Shift name"
+            value="${!profileShifts.includes(shift.shiftType)?shift.shiftType:''}" type="text">
+        </div>
+        <label class="wt-modal-label">Hourly Rate ($/hr)</label>
+        <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+          <button id="wt-es-minus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;cursor:pointer">−</button>
+          <input id="wt-es-rate" type="number" step="0.25" min="0" inputmode="decimal"
+            value="${shift.hourlyRate}"
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;padding:0;outline:none">
+          <button id="wt-es-plus" style="width:52px;height:52px;background:none;border:none;color:#fff;font-size:22px;cursor:pointer">+</button>
+        </div>
+        <div class="wt-modal-actions">
+          <button class="wt-btn wt-btn-secondary" id="wt-es-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-es-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#wt-es-type').onchange = function() {
+      ov.querySelector('#wt-es-custom-wrap').style.display = this.value === '__custom' ? 'block' : 'none';
+    };
+    ov.querySelector('#wt-es-minus').onclick = () => {
+      const i = ov.querySelector('#wt-es-rate');
+      i.value = Math.max(0, (parseFloat(i.value)||0) - 0.25).toFixed(2);
+    };
+    ov.querySelector('#wt-es-plus').onclick = () => {
+      const i = ov.querySelector('#wt-es-rate');
+      i.value = ((parseFloat(i.value)||0) + 0.25).toFixed(2);
+    };
+    ov.querySelector('#wt-es-cancel').onclick = () => ov.remove();
+    ov.querySelector('#wt-es-save').onclick = () => {
+      const typeSel = ov.querySelector('#wt-es-type');
+      const newType = typeSel.value === '__custom'
+        ? (ov.querySelector('#wt-es-custom').value.trim() || shift.shiftType)
+        : typeSel.value;
+      const newRate = parseFloat(ov.querySelector('#wt-es-rate').value) || shift.hourlyRate;
+      const saved = WTDb.getShifts().find(s => s.id === shift.id);
+      if (saved) {
+        saved.shiftType = newType;
+        saved.hourlyRate = newRate;
+        WTDb.saveShift(saved);
+      }
+      ov.remove();
+      _go('home');
+    };
   }
 
   return { mount };
