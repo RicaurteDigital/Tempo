@@ -935,6 +935,7 @@ const WorkTracker = (() => {
           <button class="wt-btn wt-btn-primary" id="wt-clockin-now">⏱ Clock In Now</button>
         </div>
       </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
 
     // Location change → update rate
@@ -1032,6 +1033,7 @@ const WorkTracker = (() => {
           <button class="wt-btn wt-btn-primary" id="wt-es">Save</button>
         </div>
       </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
     ov.querySelector('#wt-ec').onclick = () => ov.remove();
     ov.querySelector('#wt-es').onclick = () => {
@@ -1206,6 +1208,7 @@ const WorkTracker = (() => {
           <button class="wt-btn wt-btn-primary" id="wt-vp-replace">📷 Replace</button>
         </div>
       </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
     ov.querySelector('#wt-vp-close').onclick = () => ov.remove();
     ov.querySelector('#wt-vp-replace').onclick = () => {
@@ -1290,6 +1293,7 @@ const WorkTracker = (() => {
           <button class="wt-btn wt-btn-primary" id="wt-es-save">Save</button>
         </div>
       </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
     ov.querySelector('#wt-es-type').onchange = function() {
       ov.querySelector('#wt-es-custom-wrap').style.display = this.value === '__custom' ? 'block' : 'none';
