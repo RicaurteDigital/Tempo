@@ -192,6 +192,12 @@ function load(){
 function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
 const bucket = id => BUCKETS.find(b => b.id === id);
 
+function bucketName(id) {
+  const b = BUCKETS.find(b => b.id === id);
+  if (!b) return id;
+  return (S.names && S.names[id]) ? S.names[id] : b.name;
+}
+
 function fmtClock(s){
   const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
   return h ? `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`
@@ -253,7 +259,7 @@ function render(){
 
 function renderLive(){
   const b = bucket(S.current.b);
-  $('lName').textContent = b.name;
+  $('lName').textContent = bucketName(b.id);
   $('lName').style.color = b.col;
   $('ringFg').style.stroke = b.hex;
   $('endBtn').style.background = b.hex;
@@ -291,7 +297,7 @@ function renderTimeline(){
     const b = bucket(e.b);
     const t = d => new Date(d).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
     return `<div class="item"><div class="dot" style="background:${b.hex}"></div>
-      <div class="nm">${b.name}<small>${t(e.start)} — ${t(e.end)}</small></div>
+      <div class="nm">${bucketName(b.id)}<small>${t(e.start)} — ${t(e.end)}</small></div>
       <div class="dur" ${e.b==='leak'?'style="color:var(--leak)"':''}>${fmtH((e.end-e.start)/1000)}</div></div>`;
   }).join('') : '<div class="empty">Aún no hay bloques hoy.</div>';
 }
@@ -303,7 +309,7 @@ function renderPicker(){
     const diff = dur-exp;
     $('doneCard').innerHTML = `<div class="done">
       <div class="ic" style="background:${b.hex}22;color:${b.hex}">${b.icon}</div>
-      <div class="tx"><b>${b.name} registrado</b>
+      <div class="tx"><b>${bucketName(b.id)} registrado</b>
       <span>${diff>=0?'+':'−'}${fmtH(Math.abs(diff))} vs esperado</span></div>
       <div class="d" style="color:${b.hex}">${fmtH(dur)}</div></div>`;
     $('pTitle').textContent = '¿Qué sigue?';
@@ -313,20 +319,44 @@ function renderPicker(){
     <button class="bcard" onclick="startActivity('${b.id}')">
       <div class="edge" style="background:${b.hex}"></div>
       <div class="ic" style="background:${b.hex}22">${b.icon}</div>
-      <div class="n">${b.name}</div>
+      <div class="n">${bucketName(b.id)}</div>
       <div class="e">~${fmtH(avgFor(b.id))} por sesión</div>
     </button>`).join('');
 }
 
 $('gearBtn').onclick = () => {
-  $('pList').innerHTML = BUCKETS.map(b => `
-    <div class="prow"><div class="dot" style="background:${b.hex}"></div>
-    <div class="nm">${b.name}</div>
-    <input type="number" min="5" max="720" id="p_${b.id}" value="${S.params[b.id]}"><span>min</span></div>`).join('');
+$('pList').innerHTML = BUCKETS.map(b => `
+    <div class="prow">
+      <div class="dot" style="background:${b.hex}"></div>
+      <input type="text" id="n_${b.id}" value="${S.names && S.names[b.id] ? S.names[b.id] : b.name}"
+        style="flex:1;background:#2C2C2E;border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;padding:8px 10px;outline:none;min-width:0">
+      <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:10px;overflow:hidden;margin-left:8px">
+        <button onclick="document.getElementById('p_${b.id}').value=Math.max(5,parseInt(document.getElementById('p_${b.id}').value||5)-5)"
+          style="width:36px;height:36px;background:none;border:none;color:#98989D;font-size:20px;font-weight:200;cursor:pointer;line-height:1"
+          onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
+          onpointerup="this.style.background='none';this.style.color='#98989D'"
+          onpointerleave="this.style.background='none';this.style.color='#98989D'">−</button>
+        <input type="text" inputmode="numeric" id="p_${b.id}" value="${S.params[b.id]}"
+          style="width:44px;background:none;border:none;color:#fff;font-size:15px;font-weight:700;text-align:center;padding:0;outline:none;font-variant-numeric:tabular-nums"
+          onclick="this.select()">
+        <button onclick="document.getElementById('p_${b.id}').value=Math.min(720,parseInt(document.getElementById('p_${b.id}').value||5)+5)"
+          style="width:36px;height:36px;background:none;border:none;color:#98989D;font-size:18px;font-weight:200;cursor:pointer;line-height:1"
+          onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
+          onpointerup="this.style.background='none';this.style.color='#98989D'"
+          onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
+      </div>
+      <span style="font-size:12px;color:#636366;margin-left:6px">min</span>
+    </div>`).join('');
   $('settings').classList.remove('hide');
 };
 $('saveBtn').onclick = () => {
-  BUCKETS.forEach(b => { const v = parseInt($('p_'+b.id).value); if(v>0) S.params[b.id]=v; });
+  if (!S.names) S.names = {};
+  BUCKETS.forEach(b => {
+    const v = parseInt($('p_'+b.id).value);
+    if (v > 0) S.params[b.id] = v;
+    const nameInput = document.getElementById('n_'+b.id);
+    if (nameInput && nameInput.value.trim()) S.names[b.id] = nameInput.value.trim();
+  });
   save(); $('settings').classList.add('hide'); render();
 };
 $('settings').onclick = e => { if(e.target === $('settings')) $('settings').classList.add('hide'); };
