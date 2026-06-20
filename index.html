@@ -127,9 +127,11 @@
 <!-- TABS -->
 <div id="mainTabBar" style="display:flex;gap:8px;margin-bottom:16px">
   <button id="tabTempo" onclick="switchTab('tempo')" style="flex:1;padding:10px;border:none;border-radius:14px;font-size:14px;font-weight:700;background:#5E5CE6;color:#fff">⏱ Tempo</button>
+  <button id="tabStudy" onclick="switchTab('study')" style="flex:1;padding:10px;border:none;border-radius:14px;font-size:14px;font-weight:700;background:var(--card2);color:var(--txt)">📚 Estudio</button>
   <button id="tabWork" onclick="switchTab('work')" style="flex:1;padding:10px;border:none;border-radius:14px;font-size:14px;font-weight:700;background:var(--card2);color:var(--txt)">💼 Trabajo</button>
 </div>
 <div id="wt-root" class="hide"></div>
+<div id="st-root" class="hide"></div>
 
 <section id="vLive" class="hide">
   <div class="session">
@@ -377,16 +379,33 @@ $('wipeBtn').onclick = () => {
   }
 };
 
+let studyMounted = false;
+let workMounted = false;
+
 function switchTab(tab) {
+  const isTempo = tab === 'tempo';
   const isWork = tab === 'work';
-  $('tabTempo').style.background = isWork ? 'var(--card2)' : '#5E5CE6';
-  $('tabTempo').style.color = isWork ? 'var(--txt)' : '#fff';
+  const isStudy = tab === 'study';
+
+  $('tabTempo').style.background = isTempo ? '#5E5CE6' : 'var(--card2)';
+  $('tabTempo').style.color = isTempo ? '#fff' : 'var(--txt)';
+
+  $('tabStudy').style.background = isStudy ? '#5E5CE6' : 'var(--card2)';
+  $('tabStudy').style.color = isStudy ? '#fff' : 'var(--txt)';
+
   $('tabWork').style.background = isWork ? '#64D2FF' : 'var(--card2)';
   $('tabWork').style.color = isWork ? '#000' : 'var(--txt)';
-  $('vLive').classList.toggle('hide', isWork);
-  $('vPicker').classList.toggle('hide', isWork);
+
+  $('vLive').classList.toggle('hide', !isTempo);
+  $('vPicker').classList.toggle('hide', !isTempo);
   $('wt-root').classList.toggle('hide', !isWork);
-  if (isWork) WorkTracker.mount($('wt-root'));
+  $('st-root').classList.toggle('hide', !isStudy);
+
+  if (isWork && !workMounted) { WorkTracker.mount($('wt-root')); workMounted = true; }
+  else if (isWork) { WorkTracker.mount($('wt-root')); }
+
+  if (isStudy && !studyMounted) { StudyTracker.mount($('st-root')); studyMounted = true; }
+  else if (isStudy) { StudyTracker.mount($('st-root')); }
 }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
@@ -398,5 +417,10 @@ render();
 <script src="work-tracker/db.js"></script>
 <script src="work-tracker/rules.js"></script>
 <script src="work-tracker/ui.js"></script>
+<link rel="stylesheet" href="study-tracker/styles.css">
+<script src="study-tracker/types.js"></script>
+<script src="study-tracker/db.js"></script>
+<script src="study-tracker/rules.js"></script>
+<script src="study-tracker/ui.js"></script>
 </body>
 </html>
