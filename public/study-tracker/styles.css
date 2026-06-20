@@ -314,3 +314,17 @@
   transition: all .1s;
 }
 .st-stepper-btn:active { background: rgba(255,255,255,0.12); color: #fff; }
+
+input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 12px;
+}

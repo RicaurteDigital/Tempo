@@ -381,8 +381,8 @@ const StudyTracker = (() => {
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
           <input id="st-sub-name" class="st-input" placeholder="Subject name" type="text" style="flex:1" autocapitalize="words">
-          <input id="st-sub-emoji" class="st-input" placeholder="📚" type="text" style="width:56px;flex:none;text-align:center;font-size:20px">
-          <input id="st-sub-color" type="color" value="#5E5CE6" style="width:44px;height:44px;border-radius:12px;border:none;cursor:pointer;flex-shrink:0">
+          <input id="st-sub-emoji" class="st-input" placeholder="Icon" type="text" maxlength="2" style="width:56px;flex:none;text-align:center;font-size:18px;font-family:'Apple Color Emoji','Segoe UI Emoji',sans-serif">
+          <input id="st-sub-color" type="color" value="#5E5CE6" style="width:44px;height:44px;border-radius:12px;border:none;cursor:pointer;flex-shrink:0;-webkit-appearance:none;appearance:none;padding:0">
         </div>
         <button class="st-btn st-btn-primary" style="margin-top:12px;width:100%" id="st-add-sub">Add Subject</button>
       </div>
