@@ -1307,12 +1307,30 @@ const WorkTracker = (() => {
         ctx.font = `bold ${Math.round(stampH * 0.13)}px -apple-system, SF Pro Display, Inter, sans-serif`;
         ctx.fillText('Tempo · ' + photoLabel + ' proof', pad, H + lineH * 3.9);
 
-        // Download
-        const link = document.createElement('a');
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
         const date = firstIn ? new Date(firstIn).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
-        link.download = `Tempo_${locName.replace(/\s+/g,'_')}_${photoLabel.replace(/\s+/g,'_')}_${date}.jpg`;
-        link.href = canvas.toDataURL('image/jpeg', 0.92);
-        link.click();
+        const filename = `Tempo_${locName.replace(/\s+/g,'_')}_${photoLabel.replace(/\s+/g,'_')}_${date}.jpg`;
+
+        // On iOS Safari, link.download doesn't save to Camera Roll — open full screen so user can long-press save
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+          const previewOv = document.createElement('div');
+          previewOv.style.cssText = 'position:fixed;inset:0;background:#000;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+          previewOv.innerHTML = `
+            <p style="color:#98989D;font-size:13px;margin-bottom:16px;text-align:center">
+              Mantén presionada la imagen → <strong style="color:#fff">Añadir a fotos</strong>
+            </p>
+            <img src="${dataUrl}" style="max-width:100%;max-height:75vh;border-radius:12px;object-fit:contain">
+            <button style="margin-top:20px;background:#2C2C2E;border:none;color:#fff;padding:14px 32px;border-radius:14px;font-size:15px;font-weight:700">Cerrar</button>`;
+          previewOv.querySelector('button').onclick = () => previewOv.remove();
+          document.body.appendChild(previewOv);
+        } else {
+          // Android and desktop — direct download works
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = dataUrl;
+          link.click();
+        }
       };
       img.src = currentBase64;
     };
