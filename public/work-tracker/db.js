@@ -59,6 +59,30 @@ const WTDb = (() => {
     });
   }
 
+  function getTaxSettings() {
+    try {
+      const raw = localStorage.getItem('wt_tax_settings');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      profile: 'CUSTOM',
+      federal: 22,
+      socialSecurity: 6.2,
+      medicare: 1.45,
+      state: 0,
+      local: 0,
+      pfl: 0,
+      otherLabel: '',
+      other: 0,
+      showEstimate: true
+    };
+  }
+
+  function saveTaxSettings(t) {
+    localStorage.setItem('wt_tax_settings', JSON.stringify(t));
+    return t;
+  }
+
   function getSettings() {
     try {
       return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
@@ -147,6 +171,7 @@ const WTDb = (() => {
     getShifts, saveShift, deleteShift, getShiftsForDate, getShiftsForWeek,
     getSettings, saveSettings,
     savePhoto, getPhoto,
-    exportData, importData
+    exportData, importData,
+    getTaxSettings, saveTaxSettings
   };
 })();
