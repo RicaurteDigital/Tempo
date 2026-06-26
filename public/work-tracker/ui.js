@@ -1210,22 +1210,114 @@ const WorkTracker = (() => {
     const ov = document.createElement('div');
     ov.className = 'wt-overlay';
     ov.style.zIndex = '400';
+
+    // Extract metadata from photoKey (format: shiftId_clockin / shiftId_clockout / shiftId_break_N)
+    const shifts = WTDb.getShifts();
+    const shift = shifts.find(s => s.id === shiftId);
+    const settings = WTDb.getSettings();
+    const locs = WTDb.getLocations();
+    const loc = shift ? locs.find(l => l.id === shift.locationId) : null;
+    const locName = loc ? loc.name : 'Work';
+    const shiftType = shift ? (shift.shiftType || 'Shift') : 'Shift';
+    const entries = shift ? (shift.entries || []) : [];
+    const firstIn = entries.length > 0 ? entries[0].clockIn : null;
+    const lastOut = entries.length > 0 ? entries[entries.length-1].clockOut : null;
+    const fmtDt = iso => iso ? new Date(iso).toLocaleString('en-US', {
+      month:'short', day:'numeric', year:'numeric',
+      hour:'2-digit', minute:'2-digit', hour12:true
+    }) : '—';
+    const fmtTime = iso => iso ? new Date(iso).toLocaleTimeString('en-US', {
+      hour:'2-digit', minute:'2-digit', hour12:true
+    }) : '—';
+
+    let photoLabel = 'Proof';
+    if (photoKey && photoKey.includes('clockin')) photoLabel = 'Clock In';
+    else if (photoKey && photoKey.includes('clockout')) photoLabel = 'Clock Out';
+    else if (photoKey && photoKey.includes('break')) photoLabel = 'Break';
+
     ov.innerHTML = `
       <div class="wt-modal">
         <div class="wt-modal-handle"></div>
-        <div class="wt-modal-title">Proof photo</div>
-        <img src="${currentBase64}" style="width:100%;border-radius:14px;max-height:300px;object-fit:cover;margin-bottom:16px">
+        <div class="wt-modal-title">Proof photo · ${photoLabel}</div>
+        <img id="wt-proof-img" src="${currentBase64}" style="width:100%;border-radius:14px;max-height:300px;object-fit:cover;margin-bottom:12px">
+        <div style="background:rgba(28,28,30,0.8);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7">
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#fff">${locName} · ${shiftType}</div>
+          <div style="color:#98989D">📍 <span style="color:#fff">IN:</span> ${fmtDt(firstIn)}</div>
+          <div style="color:#98989D">🏁 <span style="color:#fff">OUT:</span> ${lastOut ? fmtDt(lastOut) : '<span style="color:#64D2FF">Running</span>'}</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <button class="wt-btn wt-btn-primary" id="wt-vp-download">⬇ Download with stamp</button>
+        </div>
         <div style="display:flex;gap:10px">
           <button class="wt-btn wt-btn-secondary" id="wt-vp-close">Close</button>
-          <button class="wt-btn wt-btn-primary" id="wt-vp-replace">📷 Replace</button>
+          <button class="wt-btn wt-btn-secondary" id="wt-vp-replace">📷 Replace</button>
         </div>
       </div>`;
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+
     document.body.appendChild(ov);
-    ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+
     ov.querySelector('#wt-vp-close').onclick = () => ov.remove();
+
+    ov.querySelector('#wt-vp-download').onclick = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const W = img.naturalWidth || 1080;
+        const H = img.naturalHeight || 1080;
+        const stampH = Math.round(H * 0.22);
+        canvas.width = W;
+        canvas.height = H + stampH;
+        const ctx = canvas.getContext('2d');
+
+        // Draw original photo
+        ctx.drawImage(img, 0, 0, W, H);
+
+        // Stamp background
+        ctx.fillStyle = 'rgba(10,10,12,0.95)';
+        ctx.fillRect(0, H, W, stampH);
+
+        // Accent bar top of stamp
+        ctx.fillStyle = '#5E5CE6';
+        ctx.fillRect(0, H, W, Math.round(stampH * 0.04));
+
+        const pad = Math.round(W * 0.05);
+        const lineH = Math.round(stampH * 0.22);
+
+        // Location + shift type
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold ${Math.round(stampH * 0.18)}px -apple-system, SF Pro Display, Inter, sans-serif`;
+        ctx.fillText(locName + ' · ' + shiftType, pad, H + lineH);
+
+        // IN label + time
+        ctx.fillStyle = '#98989D';
+        ctx.font = `${Math.round(stampH * 0.14)}px -apple-system, SF Pro Display, Inter, sans-serif`;
+        ctx.fillText('IN', pad, H + lineH * 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(fmtDt(firstIn), pad + Math.round(W * 0.07), H + lineH * 2);
+
+        // OUT label + time
+        ctx.fillStyle = '#98989D';
+        ctx.fillText('OUT', pad, H + lineH * 3);
+        ctx.fillStyle = lastOut ? '#FFFFFF' : '#64D2FF';
+        ctx.fillText(lastOut ? fmtDt(lastOut) : 'Still running', pad + Math.round(W * 0.07), H + lineH * 3);
+
+        // Photo type label (Clock In / Clock Out / Break)
+        ctx.fillStyle = '#5E5CE6';
+        ctx.font = `bold ${Math.round(stampH * 0.13)}px -apple-system, SF Pro Display, Inter, sans-serif`;
+        ctx.fillText('Tempo · ' + photoLabel + ' proof', pad, H + lineH * 3.9);
+
+        // Download
+        const link = document.createElement('a');
+        const date = firstIn ? new Date(firstIn).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+        link.download = `Tempo_${locName.replace(/\s+/g,'_')}_${photoLabel.replace(/\s+/g,'_')}_${date}.jpg`;
+        link.href = canvas.toDataURL('image/jpeg', 0.92);
+        link.click();
+      };
+      img.src = currentBase64;
+    };
+
     ov.querySelector('#wt-vp-replace').onclick = () => {
-      if (!confirm('Replace this proof photo? The current photo will be permanently lost.')) return;
       ov.remove();
       _doPhoto(shiftId, photoKey);
     };
