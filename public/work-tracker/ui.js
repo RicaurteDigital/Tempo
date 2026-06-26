@@ -1124,7 +1124,7 @@ const WorkTracker = (() => {
 
   async function _doPhoto(shiftId, photoKey) {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+    input.type = 'file'; input.accept = 'image/*';
     input.onchange = async () => {
       const file = input.files[0]; if (!file) return;
       const reader = new FileReader();
@@ -1233,7 +1233,7 @@ const WorkTracker = (() => {
 
   function _doPhotoThenHome(shiftId, photoKey) {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+    input.type = 'file'; input.accept = 'image/*';
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) { _go('home'); return; }
@@ -1390,7 +1390,7 @@ const WorkTracker = (() => {
 
   function _doPhotoThenCallback(shiftId, photoKey, callback) {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+    input.type = 'file'; input.accept = 'image/*';
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) { callback(); return; }
