@@ -189,6 +189,34 @@ const WTRules = (() => {
     return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
+  function estimateNet(grossPay, taxSettings) {
+    if (!taxSettings || !taxSettings.showEstimate || grossPay <= 0) return null;
+    const g = grossPay;
+    const federal  = g * ((taxSettings.federal        || 0) / 100);
+    const ss       = g * ((taxSettings.socialSecurity || 0) / 100);
+    const medicare = g * ((taxSettings.medicare       || 0) / 100);
+    const state    = g * ((taxSettings.state          || 0) / 100);
+    const local    = g * ((taxSettings.local          || 0) / 100);
+    const pfl      = g * ((taxSettings.pfl            || 0) / 100);
+    const other    = g * ((taxSettings.other          || 0) / 100);
+    const totalDeductions = federal + ss + medicare + state + local + pfl + other;
+    const lines = [
+      { label: `Federal ~${taxSettings.federal}%`,        amount: federal  },
+      { label: `Social Security 6.2%`,                    amount: ss       },
+      { label: `Medicare 1.45%`,                          amount: medicare },
+    ];
+    if (state    > 0) lines.push({ label: `State ~${taxSettings.state}%`,              amount: state  });
+    if (local    > 0) lines.push({ label: `Local/City ~${taxSettings.local}%`,         amount: local  });
+    if (pfl      > 0) lines.push({ label: `PFL/PFML ~${taxSettings.pfl}%`,             amount: pfl    });
+    if (other    > 0) lines.push({ label: `${taxSettings.otherLabel||'Other'} ~${taxSettings.other}%`, amount: other });
+    return {
+      gross: g,
+      lines,
+      totalDeductions,
+      net: g - totalDeductions
+    };
+  }
+
   function getPayDate(weekStart, settings) {
     if (!settings || settings.payPeriod === 'event') return 'Same day (event)';
     if (settings.payPeriod === 'custom' && settings.customPayDate) {
@@ -217,6 +245,7 @@ const WTRules = (() => {
 
   return {
     entryHours, shiftHours, shiftEarnings, weeklyPay,
-    dailySummary, fmtHours, fmtMoney, getPayDate, getRecentWeeks
+    dailySummary, fmtHours, fmtMoney, getPayDate, getRecentWeeks,
+    estimateNet
   };
 })();
