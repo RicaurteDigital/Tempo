@@ -523,8 +523,45 @@ const WorkTracker = (() => {
         <div class="wt-week-dots">${dots}</div>
         <div class="wt-week-paydate">Pay: ${WTRules.getPayDate(ws, settings)}</div>`;
       row.querySelectorAll('.wt-dot').forEach(dot => {
-        dot.onclick = () => _go('day', { date: dot.dataset.date });
+        dot.onclick = (e) => {
+          e.stopPropagation();
+          _go('day', { date: dot.dataset.date });
+        };
       });
+
+      // Click on week totals row → show daily accordion
+      const numsRow = row.querySelector('.wt-week-nums');
+      if (numsRow) {
+        numsRow.style.cursor = 'pointer';
+        let breakdownEl = null;
+        numsRow.onclick = () => {
+          if (breakdownEl && breakdownEl.parentNode) {
+            breakdownEl.remove(); breakdownEl = null; return;
+          }
+          breakdownEl = document.createElement('div');
+          breakdownEl.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid #2C2C2E;font-size:13px';
+          const days = [0,1,2,3,4,5,6].map(i => {
+            const d = new Date(ws); d.setDate(d.getDate() + i);
+            return d.toISOString().slice(0,10);
+          });
+          const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+          days.forEach((ds, i) => {
+            const dayShifts = shifts.filter(s => s.date === ds);
+            const dayPay = WTRules.weeklyPay(dayShifts);
+            const hasWork = dayShifts.length > 0;
+            const div = document.createElement('div');
+            div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1C1C1E;cursor:' + (hasWork ? 'pointer' : 'default');
+            div.innerHTML = `
+              <span style="color:${hasWork?'#fff':'#636366'}">${dayNames[i]} ${new Date(ds+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+              <span style="color:${hasWork?'#30D158':'#636366'};font-weight:700">${hasWork ? WTRules.fmtMoney(dayPay.total) : '$0.00'}</span>`;
+            if (hasWork) {
+              div.onclick = (e) => { e.stopPropagation(); _go('day', { date: ds }); };
+            }
+            breakdownEl.appendChild(div);
+          });
+          numsRow.after(breakdownEl);
+        };
+      }
       w.appendChild(row);
     });
 
@@ -549,7 +586,37 @@ const WorkTracker = (() => {
       sumCard.className = 'wt-summary';
       sumCard.innerHTML = `
         <div class="wt-sum-row"><span>Total hours</span><strong>${WTRules.fmtHours(summary.totalHrs)}</strong></div>
-        <div class="wt-sum-row"><span>Est. earnings</span><strong style="color:#30D158">${WTRules.fmtMoney(summary.totalEarnings)}</strong></div>`;
+        <div class="wt-sum-row" id="wt-earnings-row" style="cursor:pointer">
+          <span>Est. earnings</span>
+          <strong style="color:#30D158">${WTRules.fmtMoney(summary.totalEarnings)} <span id="wt-earn-chevron" style="font-size:11px;color:#636366">▼</span></strong>
+        </div>
+        <div id="wt-earn-breakdown" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #2C2C2E;font-size:13px;color:#98989D;line-height:1.8">
+          ${(() => {
+            const lines = [];
+            shifts.forEach(s => {
+              const loc = WTDb.getLocations().find(l => l.id === s.locationId);
+              const rate = loc ? loc.hourlyRate : 0;
+              const locSettings = ((WTDb.getSettings().locationSettings||{})[s.locationId]||{});
+              const paidBreaks = locSettings.paidBreaks || false;
+              const shiftPay = WTRules.weeklyPay([s]);
+              lines.push(`<div style="display:flex;justify-content:space-between"><span>${s.locationName||'Shift'} · ${WTRules.fmtHours(shiftPay.totalHours)}</span><span style="color:#fff">${WTRules.fmtMoney(shiftPay.total)}</span></div>`);
+              if (shiftPay.regularHours > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span>Regular ${WTRules.fmtHours(shiftPay.regularHours)} × $${rate}/hr</span><span>${WTRules.fmtMoney(shiftPay.regularPay)}</span></div>`);
+              if (shiftPay.overtimePay > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF9F0A">OT ${WTRules.fmtHours(shiftPay.overtimeHours)} × ${shiftPay.otMultiplier}×</span><span style="color:#FF9F0A">${WTRules.fmtMoney(shiftPay.overtimePay)}</span></div>`);
+              if (!paidBreaks) {
+                const breakMins = (s.entries||[]).reduce((a,e) => a + (e.breakMinutes||0), 0);
+                if (breakMins > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF453A">Breaks deducted ${WTRules.fmtHours(breakMins/60)}</span><span style="color:#FF453A">−${WTRules.fmtMoney((breakMins/60)*rate)}</span></div>`);
+              }
+            });
+            return lines.join('') || '<div>No breakdown available</div>';
+          })()}
+        </div>`;
+      sumCard.querySelector('#wt-earnings-row').onclick = () => {
+        const bd = sumCard.querySelector('#wt-earn-breakdown');
+        const ch = sumCard.querySelector('#wt-earn-chevron');
+        const open = bd.style.display !== 'none';
+        bd.style.display = open ? 'none' : 'block';
+        ch.textContent = open ? '▼' : '▲';
+      };
       w.appendChild(sumCard);
       shifts.forEach(s => w.appendChild(_ShiftCard(s)));
     } else {
