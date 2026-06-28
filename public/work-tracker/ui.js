@@ -1796,14 +1796,19 @@ const WorkTracker = (() => {
             </div>
             ${cashTotal > 0 && workers.length > 0 ? `
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
-              <div style="color:#636366;margin-bottom:4px">Cash split by points:</div>
+              <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
               ${result.payouts.map(p => {
-                const cashShare = result.totalPoints > 0
-                  ? Math.floor((p.points / result.totalPoints) * cashTotal)
-                  : 0;
-                return `<div style="display:flex;justify-content:space-between">
-                  <span style="color:#98989D">${p.name} (${p.points}pts)</span>
-                  <span style="color:#30D158;font-weight:700">$${cashShare}</span>
+                const exactCashShare = result.totalPoints > 0 ? (p.points / result.totalPoints) * cashTotal : 0;
+                const cashShare = exactCashShare >= 0 ? Math.floor(exactCashShare) : 0;
+                const diff = cashShare - exactCashShare;
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0">
+                  <span style="color:#98989D">${p.name} · exact: <span style="color:#FF9F0A">$${exactCashShare.toFixed(2)}</span></span>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;color:${diff>0?'#FF9F0A':diff<0?'#64D2FF':'#636366'}">
+                      ${diff<0?'↓ −$'+Math.abs(diff).toFixed(2):diff>0?'↑ +$'+diff.toFixed(2):''}
+                    </span>
+                    <span style="color:#30D158;font-weight:700">$${cashShare}</span>
+                  </div>
                 </div>`;
               }).join('')}
             </div>` : ''}
@@ -1827,7 +1832,7 @@ const WorkTracker = (() => {
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                   <div style="cursor:pointer" data-edit="${i}">
                     <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''} <span style="font-size:11px;color:#5E5CE6">edit</span></span>
-                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.points} pts · exact: $${p.exact.toFixed(2)}</div>
+                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.points} pts · exact: <span style="color:#FF9F0A">$${p.exact.toFixed(2)}</span></div>
                   </div>
                   <button data-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
                 </div>
@@ -1881,14 +1886,18 @@ const WorkTracker = (() => {
 
       // Recalc on blur (not on input — prevents re-render interrupting typing)
       const doRecalc = () => {
-        saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value.replace(',','.')) || 0;
-        saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value.replace(',','.')) || 0;
+        const ccVal = parseFloat(ov.querySelector('#wt-tp-cc').value.replace(',','.')) || 0;
+        const cashVal = parseFloat(ov.querySelector('#wt-tp-cash').value.replace(',','.')) || 0;
+        if (ccVal !== saved.creditCardTotal) delete saved.manualFee;
+        saved.creditCardTotal = ccVal;
+        saved.cashTotal = cashVal;
         saved.workers.forEach(w => delete w.manualAmount);
-        delete saved.manualFee;
         render();
       };
       ov.querySelector('#wt-tp-cc').addEventListener('blur', doRecalc);
       ov.querySelector('#wt-tp-cash').addEventListener('blur', doRecalc);
+      ov.querySelector('#wt-tp-cc').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
+      ov.querySelector('#wt-tp-cash').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
 
       // +/- buttons
       ov.querySelectorAll('[data-minus]').forEach(btn => {
@@ -1969,8 +1978,7 @@ const WorkTracker = (() => {
           const alreadyClaimed = saved.workers.some((w, i) => w.isMe && i !== editIndex);
           const isCurrentlyMe = typeof editIndex === 'number' && saved.workers[editIndex] && saved.workers[editIndex].isMe;
           return alreadyClaimed && !isCurrentlyMe
-            ? `<div style="font-size:13px;color:#636366;margin-top:10px;padding:8px 12px;background:rgba(28,28,28,0.8);border-radius:10px">⭐ Already set as ${saved.workers.find(w=>w.isMe).name}</div>
-               <input type="checkbox" id="wt-aw-isme" style="display:none">`
+            ? `<input type="checkbox" id="wt-aw-isme" style="display:none">`
             : `<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:#98989D;cursor:pointer">
                  <input type="checkbox" id="wt-aw-isme" style="width:18px;height:18px;accent-color:#5E5CE6" ${isCurrentlyMe?'checked':''}>
                  This is me ⭐
@@ -2011,11 +2019,13 @@ const WorkTracker = (() => {
 
     addOv.querySelector('#wt-aw-minus').onclick = () => {
       const i = addOv.querySelector('#wt-aw-pts');
-      i.value = Math.max(0.25, (parseFloat(i.value) || 1) - 0.25).toFixed(2);
+      const cur = parseFloat(i.value) || 1;
+      i.value = Math.max(0.25, Math.round((cur - 0.05) * 100) / 100).toFixed(2);
     };
     addOv.querySelector('#wt-aw-plus').onclick = () => {
       const i = addOv.querySelector('#wt-aw-pts');
-      i.value = ((parseFloat(i.value) || 1) + 0.25).toFixed(2);
+      const cur = parseFloat(i.value) || 1;
+      i.value = (Math.round((cur + 0.05) * 100) / 100).toFixed(2);
     };
 
     addOv.querySelector('#wt-aw-cancel').onclick = () => addOv.remove();
