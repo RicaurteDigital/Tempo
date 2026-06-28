@@ -134,3 +134,28 @@ const DEFAULT_TAX_PROFILES = {
   'DC': { label: 'Washington DC — ~8.5%',         federal:22, socialSecurity:6.2, medicare:1.45, state:8.5,  local:0,     pfl:0.26, otherLabel:'PFML',  other:0 },
   'CUSTOM': { label: 'Custom — edit manually',    federal:22, socialSecurity:6.2, medicare:1.45, state:0,    local:0,     pfl:0,    otherLabel:'',      other:0 }
 };
+
+// ── TIP POOL ─────────────────────────────────────────────
+const DEFAULT_TIP_POSITIONS = [
+  { id: 'server',      label: 'Server',       points: 1.0  },
+  { id: 'bartender',   label: 'Bartender',    points: 1.0  },
+  { id: 'runner',      label: 'Food Runner',  points: 0.75 },
+  { id: 'busboy',      label: 'Busboy',       points: 0.5  },
+  { id: 'barback',     label: 'Barback',      points: 0.5  },
+  { id: 'host',        label: 'Host',         points: 0.5  },
+  { id: 'custom',      label: 'Custom',       points: 1.0  }
+];
+
+const TIP_ROUNDING_OPTIONS = [
+  { value: 'down',    label: 'Always round down  (e.g. $37.6 → $37)' },
+  { value: 'up',      label: 'Always round up    (e.g. $37.1 → $38)' },
+  { value: 'nearest', label: 'Round to nearest   (e.g. $37.5 → $38)' },
+  { value: 'manual',  label: 'No rounding — show exact cents'         }
+];
+
+const DEFAULT_TIP_SETTINGS = {
+  positions: DEFAULT_TIP_POSITIONS,
+  processingFeePercent: 3.0,
+  roundingMode: 'down',
+  roundIndividual: true
+};
