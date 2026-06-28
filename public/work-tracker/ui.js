@@ -1839,16 +1839,15 @@ const WorkTracker = (() => {
         i.addEventListener('click', () => i.select && i.select());
       });
 
-      // Live recalc
+      // Recalc on blur (not on input — prevents re-render interrupting typing)
       const doRecalc = () => {
-        saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
-        saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
-        // Reset manual overrides when totals change
+        saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value.replace(',','.')) || 0;
+        saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value.replace(',','.')) || 0;
         saved.workers.forEach(w => delete w.manualAmount);
         render();
       };
-      ov.querySelector('#wt-tp-cc').addEventListener('input', doRecalc);
-      ov.querySelector('#wt-tp-cash').addEventListener('input', doRecalc);
+      ov.querySelector('#wt-tp-cc').addEventListener('blur', doRecalc);
+      ov.querySelector('#wt-tp-cash').addEventListener('blur', doRecalc);
 
       // +/- buttons
       ov.querySelectorAll('[data-minus]').forEach(btn => {
