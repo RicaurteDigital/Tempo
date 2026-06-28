@@ -1835,6 +1835,19 @@ const WorkTracker = (() => {
                   </div>
                 </div>`;
               }).join('')}
+            ${(() => {
+              if (!saved.cashAdjustments) return '';
+              const totalCashDistributed = result.payouts.reduce((sum, p, i) => {
+                return sum + (saved.cashAdjustments[i] !== undefined
+                  ? saved.cashAdjustments[i]
+                  : Math.floor(result.totalPoints > 0 ? (p.points / result.totalPoints) * cashTotal : 0));
+              }, 0);
+              const cashRemainder = cashTotal - totalCashDistributed;
+              if (cashRemainder === 0) return '<div style="font-size:12px;color:#30D158;margin-top:4px;font-weight:600">✓ Cash balanced</div>';
+              return `<div style="font-size:12px;color:${cashRemainder>0?'#FF9F0A':'#FF453A'};margin-top:4px;font-weight:600">
+                ${cashRemainder>0?`$${cashRemainder.toFixed(2)} cash unallocated`:`Over by $${Math.abs(cashRemainder).toFixed(2)}`}
+              </div>`;
+            })()}
             </div>` : ''}
             ${workers.length > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-top:4px">
@@ -2032,7 +2045,8 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">Name</label>
         <input id="wt-aw-name" class="wt-input" type="text" placeholder="e.g. Maria, John..." autocapitalize="words"
           value="${typeof editIndex === 'number' && saved.workers[editIndex] ? saved.workers[editIndex].name : ''}"
-          onclick="this.select()" onfocus="this.select()">
+          onclick="this.select()" onfocus="this.select()"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.wt-modal').querySelector('#wt-aw-add').click();}">
         ${(() => {
           const alreadyClaimed = saved.workers.some((w, i) => w.isMe && i !== editIndex);
           const isCurrentlyMe = typeof editIndex === 'number' && saved.workers[editIndex] && saved.workers[editIndex].isMe;
@@ -2103,6 +2117,9 @@ const WorkTracker = (() => {
         saved.workers[editIndex] = workerData;
       } else {
         saved.workers.push(workerData);
+        // Reset all manual overrides when pool composition changes
+        saved.workers.forEach(w => delete w.manualAmount);
+        delete saved.cashAdjustments;
       }
       addOv.remove();
       onSave();
