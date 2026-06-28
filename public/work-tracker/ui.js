@@ -853,9 +853,9 @@ const WorkTracker = (() => {
       <div class="wt-settings-title">Tax Estimate (2026)</div>
 
       <div style="font-size:11px;font-weight:700;color:#5E5CE6;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Federal — same in all states</div>
-      <div class="wt-setting-row"><label>Federal income tax %</label><input type="text" inputmode="decimal" id="wt-tax-fed" class="wt-input" style="width:80px;flex:none" value="${taxSettings.federal}" onclick="this.select()" onfocus="this.select()"></div>
-      <div class="wt-setting-row"><label>Social Security %</label><input type="text" inputmode="decimal" id="wt-tax-ss" class="wt-input" style="width:80px;flex:none" value="${taxSettings.socialSecurity}" onclick="this.select()" onfocus="this.select()"></div>
-      <div class="wt-setting-row"><label>Medicare %</label><input type="text" inputmode="decimal" id="wt-tax-med" class="wt-input" style="width:80px;flex:none" value="${taxSettings.medicare}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Federal income tax % <span style="font-size:11px;color:#636366;font-weight:400">(withholding rate)</span></label><input type="text" inputmode="decimal" id="wt-tax-fed" class="wt-input" style="width:80px;flex:none" value="${taxSettings.federal}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Social Security % <span style="font-size:11px;color:#636366;font-weight:400">(FICA — 6.2% fixed)</span></label><input type="text" inputmode="decimal" id="wt-tax-ss" class="wt-input" style="width:80px;flex:none" value="${taxSettings.socialSecurity}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Medicare % <span style="font-size:11px;color:#636366;font-weight:400">(FICA — 1.45% fixed)</span></label><input type="text" inputmode="decimal" id="wt-tax-med" class="wt-input" style="width:80px;flex:none" value="${taxSettings.medicare}" onclick="this.select()" onfocus="this.select()"></div>
 
       <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">State & Local — varies by state</div>
       <div class="wt-setting-row">
@@ -869,8 +869,8 @@ const WorkTracker = (() => {
       <div id="wt-tax-profile-note" style="font-size:12px;color:#636366;margin-bottom:8px;display:none"></div>
       <div class="wt-setting-row"><label>State %</label><input type="text" inputmode="decimal" id="wt-tax-state" class="wt-input" style="width:80px;flex:none" value="${taxSettings.state}" onclick="this.select()" onfocus="this.select()"></div>
       <div class="wt-setting-row"><label>Local/City %</label><input type="text" inputmode="decimal" id="wt-tax-local" class="wt-input" style="width:80px;flex:none" value="${taxSettings.local}" onclick="this.select()" onfocus="this.select()"></div>
-      <div class="wt-setting-row"><label>PFL/SDI %</label><input type="text" inputmode="decimal" id="wt-tax-pfl" class="wt-input" style="width:80px;flex:none" value="${taxSettings.pfl}" onclick="this.select()" onfocus="this.select()"></div>
-      <div class="wt-setting-row"><label>Other label</label><input type="text" id="wt-tax-other-label" class="wt-input" style="width:110px;flex:none" value="${taxSettings.otherLabel||''}" placeholder="e.g. SDI"></div>
+      <div class="wt-setting-row"><label>PFL/SDI % <span style="font-size:11px;color:#636366;font-weight:400">(Paid Family Leave / State Disability)</span></label><input type="text" inputmode="decimal" id="wt-tax-pfl" class="wt-input" style="width:80px;flex:none" value="${taxSettings.pfl}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Other label <span style="font-size:11px;color:#636366;font-weight:400">(optional extra deduction)</span></label><input type="text" id="wt-tax-other-label" class="wt-input" style="width:110px;flex:none" value="${taxSettings.otherLabel||''}" placeholder="e.g. SDI"></div>
       <div class="wt-setting-row"><label>Other %</label><input type="text" inputmode="decimal" id="wt-tax-other" class="wt-input" style="width:80px;flex:none" value="${taxSettings.other||0}" onclick="this.select()" onfocus="this.select()"></div>
 
       <div style="font-size:11px;font-weight:700;color:#636366;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Display</div>
