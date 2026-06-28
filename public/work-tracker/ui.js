@@ -139,6 +139,64 @@ const WorkTracker = (() => {
       </div>`;
     w.appendChild(stats);
 
+    // ── DAILY TIP BLOCK ──────────────────────────────────
+    const savedTips = WTDb.getTipsForShift('daily_' + today);
+    const tipSettings = WTDb.getTipSettings();
+    const tipBlock = document.createElement('div');
+    tipBlock.style.cssText = 'margin-bottom:14px';
+
+    if (savedTips && (savedTips.creditCardTotal > 0 || savedTips.cashTotal > 0)) {
+      const feePercent = tipSettings.processingFeePercent || 3;
+      const result = TipRules.calculatePayouts(
+        savedTips.creditCardTotal || 0,
+        savedTips.cashTotal || 0,
+        savedTips.workers || [],
+        feePercent
+      );
+      const me = result.payouts.find(p => p.isMe);
+
+      tipBlock.innerHTML = `
+        <div style="background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.2);border-radius:20px;padding:16px 18px;cursor:pointer" id="wt-tip-block-view">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px">Today's Tips</div>
+              <div style="font-size:28px;font-weight:800;color:#FF9F0A;font-variant-numeric:tabular-nums;letter-spacing:-1px;margin-top:2px">
+                ${TipRules.fmtMoney(result.totalNet)}
+              </div>
+              <div style="font-size:12px;color:#636366;margin-top:2px">
+                CC ${TipRules.fmtMoney(result.creditCard.gross)} − fee ${TipRules.fmtMoney(result.creditCard.fee)} + cash ${TipRules.fmtMoney(result.cash)}
+              </div>
+            </div>
+            ${me ? `<div style="text-align:right">
+              <div style="font-size:11px;color:#636366;font-weight:600">Your cut</div>
+              <div style="font-size:24px;font-weight:800;color:#30D158">$${me.amount}</div>
+              <div style="font-size:11px;color:#636366">${me.points}pts</div>
+            </div>` : ''}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${result.payouts.map(p => `
+              <div style="background:rgba(28,28,30,0.8);border-radius:10px;padding:6px 10px;font-size:12px">
+                <span style="color:${p.isMe?'#30D158':'#98989D'};font-weight:700">${p.name}</span>
+                <span style="color:#636366"> · </span>
+                <span style="color:#fff;font-weight:800">$${p.amount}</span>
+              </div>`).join('')}
+          </div>
+          ${result.remainder > 0 ? `
+            <div style="font-size:12px;color:#FF9F0A;margin-top:8px;font-weight:600">
+              ⚠ $${result.remainder.toFixed(2)} unallocated — tap to adjust
+            </div>` : `
+            <div style="font-size:12px;color:#30D158;margin-top:8px;font-weight:600">✓ Pool balanced</div>`}
+        </div>`;
+      tipBlock.querySelector('#wt-tip-block-view').onclick = () => _showTipPool(today);
+    } else {
+      tipBlock.innerHTML = `
+        <button id="wt-tip-new" style="width:100%;background:rgba(255,149,0,.08);border:1px dashed rgba(255,149,0,.3);border-radius:20px;padding:16px;color:#FF9F0A;font-size:15px;font-weight:700;cursor:pointer;text-align:center">
+          💰 Add Today's Tips
+        </button>`;
+      tipBlock.querySelector('#wt-tip-new').onclick = () => _showTipPool(today);
+    }
+    w.appendChild(tipBlock);
+
     const secHdr = document.createElement('div');
     secHdr.className = 'wt-sec-hdr';
     secHdr.innerHTML = `
@@ -1648,101 +1706,130 @@ const WorkTracker = (() => {
     input.click();
   }
 
-  function _showTipPool(shiftId) {
-    const shifts = WTDb.getShifts();
-    const shift = shifts.find(s => s.id === shiftId);
+  function _showTipPool(dayKey) {
     const tipSettings = WTDb.getTipSettings();
-    const saved = WTDb.getTipsForShift(shiftId) || {
-      creditCardTotal: 0, cashTotal: 0, workers: [], myPosition: ''
+    const feePercent = tipSettings.processingFeePercent || 3;
+    const saved = WTDb.getTipsForShift('daily_' + dayKey) || {
+      creditCardTotal: 0, cashTotal: 0, workers: []
     };
 
     const ov = document.createElement('div');
     ov.className = 'wt-overlay';
 
-    const renderModal = () => {
+    const render = () => {
       const workers = saved.workers || [];
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
-      const result = workers.length > 0
-        ? TipRules.calculatePayouts(ccTotal, cashTotal, workers, tipSettings)
-        : null;
+      const result = TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent);
 
       ov.innerHTML = `
-        <div class="wt-modal" style="max-height:90vh;overflow-y:auto">
+        <div class="wt-modal" style="max-height:92vh;overflow-y:auto">
           <div class="wt-modal-handle"></div>
-          <div class="wt-modal-title">💰 Tip Pool — ${shift ? shift.locationName||'Shift' : 'Shift'}</div>
-
-          <label class="wt-modal-label">Credit Card Tips (system total)</label>
-          <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
-            <span style="padding:0 14px;color:#98989D;font-size:16px">$</span>
-            <input id="wt-tp-cc" type="text" inputmode="decimal"
-              value="${ccTotal || ''}" placeholder="0.00"
-              style="flex:1;background:none;border:none;color:#fff;font-size:20px;font-weight:700;padding:14px 0;outline:none"
-              onclick="this.select()" onfocus="this.select()">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <div class="wt-modal-title" style="margin:0">💰 Tip Pool</div>
+            <div style="font-size:12px;color:#636366">${dayKey}</div>
           </div>
 
-          <label class="wt-modal-label">Cash Tips</label>
-          <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
-            <span style="padding:0 14px;color:#98989D;font-size:16px">$</span>
-            <input id="wt-tp-cash" type="text" inputmode="decimal"
-              value="${cashTotal || ''}" placeholder="0.00"
-              style="flex:1;background:none;border:none;color:#fff;font-size:20px;font-weight:700;padding:14px 0;outline:none"
-              onclick="this.select()" onfocus="this.select()">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div>
+              <label class="wt-modal-label">Credit Card Tips</label>
+              <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+                <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+                <input id="wt-tp-cc" type="text" inputmode="decimal"
+                  value="${ccTotal||''}" placeholder="0.00"
+                  style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
+                  onclick="this.select()" onfocus="this.select()">
+              </div>
+            </div>
+            <div>
+              <label class="wt-modal-label">Cash Tips</label>
+              <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+                <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+                <input id="wt-tp-cash" type="text" inputmode="decimal"
+                  value="${cashTotal||''}" placeholder="0.00"
+                  style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
+                  onclick="this.select()" onfocus="this.select()">
+              </div>
+            </div>
           </div>
 
-          ${result ? `
-          <div style="background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.2);border-radius:14px;padding:12px 14px;margin-top:12px">
-            <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Breakdown</div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#98989D;margin-bottom:4px">
-              <span>CC gross</span><span style="color:#fff">${TipRules.fmtMoney(result.creditCard.gross)}</span>
+          ${ccTotal > 0 || cashTotal > 0 ? `
+          <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="color:#98989D">CC ${TipRules.fmtMoney(result.creditCard.gross)} − fee ${feePercent}% (${TipRules.fmtMoney(result.creditCard.fee)})</span>
+              <span style="color:#fff;font-weight:700">${TipRules.fmtMoney(result.creditCard.net)}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#98989D;margin-bottom:4px">
-              <span>Processing fee (${result.creditCard.feePercent}%)</span>
-              <span style="color:#FF453A">−${TipRules.fmtMoney(result.creditCard.fee)}</span>
+            ${cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="color:#98989D">Cash</span>
+              <span style="color:#fff;font-weight:700">${TipRules.fmtMoney(result.cash)}</span>
+            </div>` : ''}
+            <div style="display:flex;justify-content:space-between;border-top:1px solid #38383A;padding-top:8px;margin-top:4px">
+              <span style="color:#FF9F0A;font-weight:700">Total to distribute</span>
+              <span style="color:#FF9F0A;font-size:16px;font-weight:800">${TipRules.fmtMoney(result.totalNet)}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#98989D;margin-bottom:4px">
-              <span>Cash</span><span style="color:#fff">${TipRules.fmtMoney(result.cash)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid #38383A;padding-top:8px;margin-top:4px">
-              <span>Total to distribute</span>
-              <span style="color:#FF9F0A">${TipRules.fmtMoney(result.totalNet)}</span>
-            </div>
-            <div style="font-size:12px;color:#636366;margin-top:4px">
-              ${result.totalPoints} pts total · $${result.perPoint.toFixed(2)}/pt · Rounding: ${result.roundingMode}
-            </div>
+            ${workers.length > 0 ? `
+            <div style="display:flex;justify-content:space-between;margin-top:4px">
+              <span style="color:#636366">${result.totalPoints} pts total</span>
+              <span style="color:#636366">$${result.perPoint.toFixed(2)}/pt</span>
+            </div>` : ''}
           </div>` : ''}
 
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;margin-bottom:8px">
-            <div style="font-size:13px;font-weight:700;color:#fff">Workers this shift</div>
-            <button id="wt-tp-add-worker" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:6px 12px;cursor:pointer">+ Add</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:14px;font-weight:700">Workers (${workers.length})</div>
+            <button id="wt-tp-add" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">+ Add</button>
           </div>
 
-          <div id="wt-tp-workers">
-            ${workers.length === 0
-              ? '<div style="color:#636366;font-size:13px;text-align:center;padding:16px 0">No workers added yet.<br>Add yourself first.</div>'
-              : workers.map((w, i) => `
-                <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #2C2C2E">
-                  <div style="flex:1">
-                    <div style="font-size:14px;font-weight:700;color:#fff">${w.name} ${w.isMe ? '⭐' : ''}</div>
-                    <div style="font-size:12px;color:#636366">${w.position} · ${w.points} pts</div>
+          <div id="wt-tp-workers-list">
+          ${workers.length === 0
+            ? '<div style="color:#636366;font-size:13px;text-align:center;padding:20px 0">No workers yet.<br>Add yourself first with ⭐</div>'
+            : result.payouts.map((p, i) => `
+              <div style="background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <div>
+                    <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''}</span>
+                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.points} pts · exact: $${p.exact.toFixed(2)}</div>
                   </div>
-                  ${result ? `<div style="text-align:right">
-                    <div style="font-size:16px;font-weight:800;color:${w.isMe?'#64D2FF':'#fff'}">${TipRules.fmtMoney(result.payouts[i]?.amount||0)}</div>
-                    <div style="font-size:11px;color:#636366">of ${TipRules.fmtMoney(result.totalNet)}</div>
-                  </div>` : ''}
                   <button data-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
-                </div>`).join('')
-            }
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div style="display:flex;align-items:center;gap:0;background:#1C1C1E;border-radius:12px;overflow:hidden;border:1px solid #38383A">
+                    <button data-minus="${i}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1"
+                      onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
+                      onpointerup="this.style.background='none'"
+                      onpointerleave="this.style.background='none'">−</button>
+                    <span style="width:60px;text-align:center;font-size:22px;font-weight:800;color:${p.isMe?'#30D158':'#fff'};font-variant-numeric:tabular-nums">$${p.amount}</span>
+                    <button data-plus="${i}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:20px;font-weight:200;cursor:pointer;line-height:1"
+                      onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
+                      onpointerup="this.style.background='none'"
+                      onpointerleave="this.style.background='none'">+</button>
+                  </div>
+                  <div style="text-align:right">
+                    ${p.amount > p.exact
+                      ? `<div style="font-size:11px;color:#FF9F0A">↑ +$${(p.amount-p.exact).toFixed(2)}</div>`
+                      : p.amount < p.exact
+                      ? `<div style="font-size:11px;color:#64D2FF">↓ −$${(p.exact-p.amount).toFixed(2)}</div>`
+                      : `<div style="font-size:11px;color:#636366">base</div>`}
+                  </div>
+                </div>
+              </div>`).join('')
+          }
           </div>
 
-          ${result && result.remainder !== 0 ? `
-            <div style="font-size:12px;color:#636366;margin-top:8px">
-              Rounding remainder: ${TipRules.fmtMoney(result.remainder)} (not distributed)
-            </div>` : ''}
+          ${workers.length > 0 ? `
+          <div style="background:${result.remainder===0?'rgba(48,209,88,.1)':result.remainder>0?'rgba(255,149,0,.1)':'rgba(255,69,58,.1)'};
+               border:1px solid ${result.remainder===0?'rgba(48,209,88,.3)':result.remainder>0?'rgba(255,149,0,.3)':'rgba(255,69,58,.3)'};
+               border-radius:12px;padding:12px 14px;margin-top:4px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:14px;font-weight:700;color:${result.remainder===0?'#30D158':result.remainder>0?'#FF9F0A':'#FF453A'}">
+              ${result.remainder===0 ? '✓ Pool balanced' : result.remainder>0 ? `$${result.remainder.toFixed(2)} unallocated` : `Over by $${Math.abs(result.remainder).toFixed(2)}`}
+            </span>
+            <span style="font-size:12px;color:#636366">${TipRules.fmtMoney(result.distributed)} / ${TipRules.fmtMoney(result.totalNet)}</span>
+          </div>` : ''}
 
-          <div class="wt-modal-actions" style="margin-top:20px">
+          <div class="wt-modal-actions" style="margin-top:16px">
             <button class="wt-btn wt-btn-secondary" id="wt-tp-cancel">Cancel</button>
-            <button class="wt-btn wt-btn-primary" id="wt-tp-save">Save</button>
+            <button class="wt-btn wt-btn-primary" id="wt-tp-save" ${result.remainder!==0&&workers.length>0?'style="background:#FF9F0A"':''}>
+              ${result.remainder===0||workers.length===0 ? 'Save' : `Save ($${result.remainder.toFixed(2)} unallocated)`}
+            </button>
           </div>
         </div>`;
 
@@ -1752,46 +1839,60 @@ const WorkTracker = (() => {
         i.addEventListener('click', () => i.select && i.select());
       });
 
-      // Live recalc on input change
-      const recalc = () => {
+      // Live recalc
+      const doRecalc = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
-        renderModal();
+        // Reset manual overrides when totals change
+        saved.workers.forEach(w => delete w.manualAmount);
+        render();
       };
-      ov.querySelector('#wt-tp-cc').addEventListener('input', recalc);
-      ov.querySelector('#wt-tp-cash').addEventListener('input', recalc);
+      ov.querySelector('#wt-tp-cc').addEventListener('input', doRecalc);
+      ov.querySelector('#wt-tp-cash').addEventListener('input', doRecalc);
+
+      // +/- buttons
+      ov.querySelectorAll('[data-minus]').forEach(btn => {
+        btn.onclick = () => {
+          const i = parseInt(btn.dataset.minus);
+          const cur = result.payouts[i].amount;
+          saved.workers[i].manualAmount = Math.max(0, cur - 1);
+          render();
+        };
+      });
+      ov.querySelectorAll('[data-plus]').forEach(btn => {
+        btn.onclick = () => {
+          const i = parseInt(btn.dataset.plus);
+          const cur = result.payouts[i].amount;
+          saved.workers[i].manualAmount = cur + 1;
+          render();
+        };
+      });
 
       // Delete worker
       ov.querySelectorAll('[data-del]').forEach(btn => {
         btn.onclick = () => {
           saved.workers.splice(parseInt(btn.dataset.del), 1);
-          renderModal();
+          render();
         };
       });
 
-      // Add worker
-      ov.querySelector('#wt-tp-add-worker').onclick = () => _showAddWorker(saved, tipSettings, renderModal);
-
-      // Cancel
+      ov.querySelector('#wt-tp-add').onclick = () => _showAddWorker(saved, tipSettings, render);
       ov.querySelector('#wt-tp-cancel').onclick = () => ov.remove();
-
-      // Save
       ov.querySelector('#wt-tp-save').onclick = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
-        // Save my payout for display on shift card
-        const result = saved.workers.length > 0
-          ? TipRules.calculatePayouts(saved.creditCardTotal, saved.cashTotal, saved.workers, tipSettings)
-          : null;
-        const me = result ? result.payouts.find((p, i) => saved.workers[i].isMe) : null;
+        const finalResult = TipRules.calculatePayouts(
+          saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent
+        );
+        const me = finalResult.payouts.find((p, i) => saved.workers[i] && saved.workers[i].isMe);
         saved.myPayout = me ? me.amount : 0;
-        WTDb.saveTipsForShift(shiftId, saved);
+        WTDb.saveTipsForShift('daily_' + dayKey, saved);
         ov.remove();
-        _go(_view === 'day' ? 'day' : 'home', { date: shift ? shift.date : null });
+        _go('home');
       };
     };
 
-    renderModal();
+    render();
     document.body.appendChild(ov);
   }
 
