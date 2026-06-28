@@ -607,7 +607,17 @@ const WorkTracker = (() => {
                 if (breakMins > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF453A">Breaks deducted ${WTRules.fmtHours(breakMins/60)}</span><span style="color:#FF453A">−${WTRules.fmtMoney((breakMins/60)*rate)}</span></div>`);
               }
             });
-            return lines.join('') || '<div>No breakdown available</div>';
+            const taxSettings = WTDb.getTaxSettings();
+            const netData = WTRules.estimateNet(summary.totalEarnings, taxSettings);
+            if (netData) {
+              lines.push(`<div style="margin-top:12px;padding-top:10px;border-top:1px solid #38383A;font-size:11px;font-weight:700;color:#636366;text-transform:uppercase;letter-spacing:.5px">Est. Net Pay</div>`);
+              netData.lines.forEach(l => {
+                lines.push(`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#98989D">${l.label}</span><span style="color:#FF453A">−${WTRules.fmtMoney(l.amount)}</span></div>`);
+              });
+              lines.push(`<div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid #2C2C2E;margin-top:6px"><span style="color:#fff;font-weight:700">Est. Net</span><span style="color:#64D2FF;font-weight:800">${WTRules.fmtMoney(netData.net)}</span></div>`);
+              lines.push(`<div style="font-size:11px;color:#636366;margin-top:6px;line-height:1.5">Estimate only. Configure rates in Settings → Tax Estimate. Does not account for filing status, dependents, or multi-state situations.</div>`);
+            }
+            return lines.join('') || '<div style="color:#636366;font-size:13px">No breakdown available</div>';
           })()}
         </div>`;
       sumCard.querySelector('#wt-earnings-row').onclick = () => {
@@ -836,6 +846,69 @@ const WorkTracker = (() => {
         <input type="file" id="wt-import-file" accept=".json" style="display:none">
         <p class="wt-note">Photos auto-download to Camera Roll when captured. Export JSON regularly.</p>
       </div>`;
+    const taxSettings = WTDb.getTaxSettings();
+    const taxBlock = document.createElement('div');
+    taxBlock.className = 'wt-settings-block';
+    taxBlock.innerHTML = `
+      <div class="wt-settings-title">Tax Estimate (2026)</div>
+      <div class="wt-setting-row">
+        <label>State / Profile</label>
+        <select class="wt-select-sm" id="wt-tax-profile" style="max-width:200px">
+          ${Object.entries(DEFAULT_TAX_PROFILES).map(([k,v]) =>
+            `<option value="${k}" ${taxSettings.profile===k?'selected':''}>${v.label}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div class="wt-setting-row"><label>Federal %</label><input type="text" inputmode="decimal" id="wt-tax-fed" class="wt-input" style="width:80px;flex:none" value="${taxSettings.federal}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Social Security %</label><input type="text" inputmode="decimal" id="wt-tax-ss" class="wt-input" style="width:80px;flex:none" value="${taxSettings.socialSecurity}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Medicare %</label><input type="text" inputmode="decimal" id="wt-tax-med" class="wt-input" style="width:80px;flex:none" value="${taxSettings.medicare}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>State %</label><input type="text" inputmode="decimal" id="wt-tax-state" class="wt-input" style="width:80px;flex:none" value="${taxSettings.state}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Local/City %</label><input type="text" inputmode="decimal" id="wt-tax-local" class="wt-input" style="width:80px;flex:none" value="${taxSettings.local}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>PFL/SDI %</label><input type="text" inputmode="decimal" id="wt-tax-pfl" class="wt-input" style="width:80px;flex:none" value="${taxSettings.pfl}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Other label</label><input type="text" id="wt-tax-other-label" class="wt-input" style="width:110px;flex:none" value="${taxSettings.otherLabel||''}" placeholder="e.g. SDI"></div>
+      <div class="wt-setting-row"><label>Other %</label><input type="text" inputmode="decimal" id="wt-tax-other" class="wt-input" style="width:80px;flex:none" value="${taxSettings.other||0}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row">
+        <label>Show net estimate</label>
+        <input type="checkbox" id="wt-tax-show" style="width:18px;height:18px;accent-color:#5E5CE6" ${taxSettings.showEstimate?'checked':''}>
+      </div>
+      <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Estimate only — not tax advice. Rates are user-editable. Does not account for filing status, dependents, or multi-state situations.</div>
+      <button class="wt-btn wt-btn-primary" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>`;
+    w.appendChild(taxBlock);
+
+    taxBlock.querySelector('#wt-tax-profile').onchange = function() {
+      const p = DEFAULT_TAX_PROFILES[this.value];
+      if (!p) return;
+      taxBlock.querySelector('#wt-tax-fed').value        = p.federal;
+      taxBlock.querySelector('#wt-tax-ss').value         = p.socialSecurity;
+      taxBlock.querySelector('#wt-tax-med').value        = p.medicare;
+      taxBlock.querySelector('#wt-tax-state').value      = p.state;
+      taxBlock.querySelector('#wt-tax-local').value      = p.local;
+      taxBlock.querySelector('#wt-tax-pfl').value        = p.pfl;
+      taxBlock.querySelector('#wt-tax-other-label').value = p.otherLabel||'';
+      taxBlock.querySelector('#wt-tax-other').value      = p.other||0;
+    };
+
+    taxBlock.querySelector('#wt-tax-save').onclick = () => {
+      WTDb.saveTaxSettings({
+        profile:        taxBlock.querySelector('#wt-tax-profile').value,
+        federal:        parseFloat(taxBlock.querySelector('#wt-tax-fed').value)         || 0,
+        socialSecurity: parseFloat(taxBlock.querySelector('#wt-tax-ss').value)          || 0,
+        medicare:       parseFloat(taxBlock.querySelector('#wt-tax-med').value)         || 0,
+        state:          parseFloat(taxBlock.querySelector('#wt-tax-state').value)       || 0,
+        local:          parseFloat(taxBlock.querySelector('#wt-tax-local').value)       || 0,
+        pfl:            parseFloat(taxBlock.querySelector('#wt-tax-pfl').value)         || 0,
+        otherLabel:     taxBlock.querySelector('#wt-tax-other-label').value.trim(),
+        other:          parseFloat(taxBlock.querySelector('#wt-tax-other').value)       || 0,
+        showEstimate:   taxBlock.querySelector('#wt-tax-show').checked
+      });
+      alert('Tax settings saved.');
+    };
+
+    taxBlock.querySelectorAll('input').forEach(i => {
+      i.addEventListener('focus', () => i.select && i.select());
+      i.addEventListener('click', () => i.select && i.select());
+    });
+
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
     w.querySelectorAll('.wt-loc-del').forEach(b => { b.onclick = () => { WTDb.deleteLocation(b.dataset.lid); _go('settings'); }; });
