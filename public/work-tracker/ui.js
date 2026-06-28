@@ -1717,6 +1717,12 @@ const WorkTracker = (() => {
     ov.className = 'wt-overlay';
 
     const render = () => {
+      // Preserve input values before re-render
+      const ccInput = ov.querySelector('#wt-tp-cc');
+      const cashInput = ov.querySelector('#wt-tp-cash');
+      if (ccInput) saved.creditCardTotal = parseFloat(ccInput.value.replace(',','.')) || saved.creditCardTotal || 0;
+      if (cashInput) saved.cashTotal = parseFloat(cashInput.value.replace(',','.')) || saved.cashTotal || 0;
+
       const workers = saved.workers || [];
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
