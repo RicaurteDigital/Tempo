@@ -1756,7 +1756,14 @@ const WorkTracker = (() => {
           ${ccTotal > 0 || cashTotal > 0 ? `
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-              <span style="color:#98989D">CC fee ${feePercent}% = <span style="color:#FF453A">$${(result.creditCard.gross * feePercent / 100).toFixed(2)} exact</span></span>
+              <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+                <span style="color:#98989D">CC fee ${feePercent}% = <span style="color:#FF453A">$${result.creditCard.exactFee.toFixed(2)} exact</span></span>
+                ${result.creditCard.fee > result.creditCard.exactFee
+                  ? `<span style="font-size:11px;color:#FF9F0A">↑ +$${(result.creditCard.fee - result.creditCard.exactFee).toFixed(2)}</span>`
+                  : result.creditCard.fee < result.creditCard.exactFee
+                  ? `<span style="font-size:11px;color:#64D2FF">↓ −$${(result.creditCard.exactFee - result.creditCard.fee).toFixed(2)}</span>`
+                  : `<span style="font-size:11px;color:#636366">exact</span>`}
+              </div>
               <div style="display:flex;align-items:center;gap:0;background:#1C1C1E;border-radius:10px;overflow:hidden;border:1px solid #38383A">
                 <button id="wt-tp-fee-minus" style="width:32px;height:32px;background:none;border:none;color:#98989D;font-size:18px;cursor:pointer;line-height:1"
                   onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
@@ -1774,13 +1781,26 @@ const WorkTracker = (() => {
               <span style="color:#fff;font-weight:700">${TipRules.fmtMoney(result.creditCard.net)}</span>
             </div>
             ${cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span style="color:#98989D">Cash</span>
-              <span style="color:#fff;font-weight:700">${TipRules.fmtMoney(result.cash)}</span>
+              <span style="color:#98989D">Cash (distributed separately by points)</span>
+              <span style="color:#30D158;font-weight:700">${TipRules.fmtMoney(result.cash)}</span>
             </div>` : ''}
             <div style="display:flex;justify-content:space-between;border-top:1px solid #38383A;padding-top:8px;margin-top:4px">
               <span style="color:#FF9F0A;font-weight:700">Total to distribute</span>
               <span style="color:#FF9F0A;font-size:16px;font-weight:800">${TipRules.fmtMoney(result.totalNet)}</span>
             </div>
+            ${cashTotal > 0 && workers.length > 0 ? `
+            <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
+              <div style="color:#636366;margin-bottom:4px">Cash split by points:</div>
+              ${result.payouts.map(p => {
+                const cashShare = result.totalPoints > 0
+                  ? Math.floor((p.points / result.totalPoints) * cashTotal)
+                  : 0;
+                return `<div style="display:flex;justify-content:space-between">
+                  <span style="color:#98989D">${p.name} (${p.points}pts)</span>
+                  <span style="color:#30D158;font-weight:700">$${cashShare}</span>
+                </div>`;
+              }).join('')}
+            </div>` : ''}
             ${workers.length > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-top:4px">
               <span style="color:#636366">${result.totalPoints} pts total</span>
@@ -1939,10 +1959,17 @@ const WorkTracker = (() => {
         <input id="wt-aw-name" class="wt-input" type="text" placeholder="e.g. Maria, John..." autocapitalize="words"
           value="${typeof editIndex === 'number' && saved.workers[editIndex] ? saved.workers[editIndex].name : ''}"
           onclick="this.select()" onfocus="this.select()">
-        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:#98989D;cursor:pointer">
-          <input type="checkbox" id="wt-aw-isme" style="width:18px;height:18px;accent-color:#5E5CE6">
-          This is me ⭐
-        </label>
+        ${(() => {
+          const alreadyClaimed = saved.workers.some((w, i) => w.isMe && i !== editIndex);
+          const isCurrentlyMe = typeof editIndex === 'number' && saved.workers[editIndex] && saved.workers[editIndex].isMe;
+          return alreadyClaimed && !isCurrentlyMe
+            ? `<div style="font-size:13px;color:#636366;margin-top:10px;padding:8px 12px;background:rgba(28,28,28,0.8);border-radius:10px">⭐ Already set as ${saved.workers.find(w=>w.isMe).name}</div>
+               <input type="checkbox" id="wt-aw-isme" style="display:none">`
+            : `<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:#98989D;cursor:pointer">
+                 <input type="checkbox" id="wt-aw-isme" style="width:18px;height:18px;accent-color:#5E5CE6" ${isCurrentlyMe?'checked':''}>
+                 This is me ⭐
+               </label>`;
+        })()}
         <label class="wt-modal-label">Position</label>
         <select class="wt-input" id="wt-aw-pos">
           ${positions.map(p => `<option value="${p.id}" data-points="${p.points}">${p.label} (${p.points} pts)</option>`).join('')}
