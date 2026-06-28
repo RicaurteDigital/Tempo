@@ -1763,7 +1763,7 @@ const WorkTracker = (() => {
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
               <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-                <span style="color:#98989D">CC fee ${feePercent}% = <span style="color:#FF453A">$${result.creditCard.exactFee.toFixed(2)} exact</span></span>
+                <span style="color:#98989D">CC fee ${feePercent}% = <span style="color:#FF453A">$${(result.creditCard.exactFee||0).toFixed(2)} exact</span></span>
                 ${result.creditCard.fee > result.creditCard.exactFee
                   ? `<span style="font-size:11px;color:#FF9F0A">↑ +$${(result.creditCard.fee - result.creditCard.exactFee).toFixed(2)}</span>`
                   : result.creditCard.fee < result.creditCard.exactFee

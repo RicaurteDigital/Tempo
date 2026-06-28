@@ -5,13 +5,14 @@ const TipRules = (() => {
 
   // ── PROCESSING FEE ───────────────────────────────────
   function applyProcessingFee(creditCardTotal, feePercent, manualFee) {
-    const exactFee = creditCardTotal * (feePercent / 100);
+    const gross = parseFloat(creditCardTotal) || 0;
+    const exactFee = gross * ((parseFloat(feePercent) || 0) / 100);
     const fee = manualFee !== undefined ? manualFee : Math.floor(exactFee);
     return {
-      gross: creditCardTotal,
+      gross,
       exactFee,
       fee,
-      net: creditCardTotal - fee
+      net: gross - fee
     };
   }
 
