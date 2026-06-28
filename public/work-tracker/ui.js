@@ -851,6 +851,13 @@ const WorkTracker = (() => {
     taxBlock.className = 'wt-settings-block';
     taxBlock.innerHTML = `
       <div class="wt-settings-title">Tax Estimate (2026)</div>
+
+      <div style="font-size:11px;font-weight:700;color:#5E5CE6;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Federal — same in all states</div>
+      <div class="wt-setting-row"><label>Federal income tax %</label><input type="text" inputmode="decimal" id="wt-tax-fed" class="wt-input" style="width:80px;flex:none" value="${taxSettings.federal}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Social Security %</label><input type="text" inputmode="decimal" id="wt-tax-ss" class="wt-input" style="width:80px;flex:none" value="${taxSettings.socialSecurity}" onclick="this.select()" onfocus="this.select()"></div>
+      <div class="wt-setting-row"><label>Medicare %</label><input type="text" inputmode="decimal" id="wt-tax-med" class="wt-input" style="width:80px;flex:none" value="${taxSettings.medicare}" onclick="this.select()" onfocus="this.select()"></div>
+
+      <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">State & Local — varies by state</div>
       <div class="wt-setting-row">
         <label>State / Profile</label>
         <select class="wt-select-sm" id="wt-tax-profile" style="max-width:200px">
@@ -859,33 +866,43 @@ const WorkTracker = (() => {
           ).join('')}
         </select>
       </div>
-      <div class="wt-setting-row"><label>Federal %</label><input type="text" inputmode="decimal" id="wt-tax-fed" class="wt-input" style="width:80px;flex:none" value="${taxSettings.federal}" onclick="this.select()" onfocus="this.select()"></div>
-      <div class="wt-setting-row"><label>Social Security %</label><input type="text" inputmode="decimal" id="wt-tax-ss" class="wt-input" style="width:80px;flex:none" value="${taxSettings.socialSecurity}" onclick="this.select()" onfocus="this.select()"></div>
-      <div class="wt-setting-row"><label>Medicare %</label><input type="text" inputmode="decimal" id="wt-tax-med" class="wt-input" style="width:80px;flex:none" value="${taxSettings.medicare}" onclick="this.select()" onfocus="this.select()"></div>
+      <div id="wt-tax-profile-note" style="font-size:12px;color:#636366;margin-bottom:8px;display:none"></div>
       <div class="wt-setting-row"><label>State %</label><input type="text" inputmode="decimal" id="wt-tax-state" class="wt-input" style="width:80px;flex:none" value="${taxSettings.state}" onclick="this.select()" onfocus="this.select()"></div>
       <div class="wt-setting-row"><label>Local/City %</label><input type="text" inputmode="decimal" id="wt-tax-local" class="wt-input" style="width:80px;flex:none" value="${taxSettings.local}" onclick="this.select()" onfocus="this.select()"></div>
       <div class="wt-setting-row"><label>PFL/SDI %</label><input type="text" inputmode="decimal" id="wt-tax-pfl" class="wt-input" style="width:80px;flex:none" value="${taxSettings.pfl}" onclick="this.select()" onfocus="this.select()"></div>
       <div class="wt-setting-row"><label>Other label</label><input type="text" id="wt-tax-other-label" class="wt-input" style="width:110px;flex:none" value="${taxSettings.otherLabel||''}" placeholder="e.g. SDI"></div>
       <div class="wt-setting-row"><label>Other %</label><input type="text" inputmode="decimal" id="wt-tax-other" class="wt-input" style="width:80px;flex:none" value="${taxSettings.other||0}" onclick="this.select()" onfocus="this.select()"></div>
+
+      <div style="font-size:11px;font-weight:700;color:#636366;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Display</div>
       <div class="wt-setting-row">
-        <label>Show net estimate</label>
+        <label>Show net estimate in breakdown</label>
         <input type="checkbox" id="wt-tax-show" style="width:18px;height:18px;accent-color:#5E5CE6" ${taxSettings.showEstimate?'checked':''}>
       </div>
-      <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Estimate only — not tax advice. Rates are user-editable. Does not account for filing status, dependents, or multi-state situations.</div>
+      <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Estimate only — not tax advice. All rates are editable. Does not account for filing status, dependents, or multi-state situations. Update rates each year as laws change.</div>
       <button class="wt-btn wt-btn-primary" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>`;
     w.appendChild(taxBlock);
 
     taxBlock.querySelector('#wt-tax-profile').onchange = function() {
       const p = DEFAULT_TAX_PROFILES[this.value];
       if (!p) return;
-      taxBlock.querySelector('#wt-tax-fed').value        = p.federal;
-      taxBlock.querySelector('#wt-tax-ss').value         = p.socialSecurity;
-      taxBlock.querySelector('#wt-tax-med').value        = p.medicare;
-      taxBlock.querySelector('#wt-tax-state').value      = p.state;
-      taxBlock.querySelector('#wt-tax-local').value      = p.local;
-      taxBlock.querySelector('#wt-tax-pfl').value        = p.pfl;
+      // Federal rates don't auto-fill — user keeps their own federal rate
+      // Only state/local rates update automatically
+      taxBlock.querySelector('#wt-tax-state').value       = p.state;
+      taxBlock.querySelector('#wt-tax-local').value       = p.local;
+      taxBlock.querySelector('#wt-tax-pfl').value         = p.pfl;
       taxBlock.querySelector('#wt-tax-other-label').value = p.otherLabel||'';
-      taxBlock.querySelector('#wt-tax-other').value      = p.other||0;
+      taxBlock.querySelector('#wt-tax-other').value       = p.other||0;
+      // Show note for NYC
+      const note = taxBlock.querySelector('#wt-tax-profile-note');
+      if (this.value === 'NY_NYC') {
+        note.textContent = '📍 NYC workers pay state tax (6.85%) + city tax (3.876%). Select this if your workplace is in any of the 5 boroughs.';
+        note.style.display = 'block';
+      } else if (this.value === 'NY') {
+        note.textContent = '📍 Upstate/Outside NYC: You only pay the state tax rate (6.85%).';
+        note.style.display = 'block';
+      } else {
+        note.style.display = 'none';
+      }
     };
 
     taxBlock.querySelector('#wt-tax-save').onclick = () => {
