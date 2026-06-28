@@ -1772,13 +1772,15 @@ const WorkTracker = (() => {
           ${ccTotal > 0 || cashTotal > 0 ? `
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-              <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+              <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px">
                 <span style="color:#98989D">CC fee ${feePercent}% = <span style="color:#FF453A">$${(result.creditCard.exactFee||0).toFixed(2)} exact</span></span>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
                 ${result.creditCard.fee > result.creditCard.exactFee
                   ? `<span style="font-size:11px;color:#FF9F0A">↑ +$${(result.creditCard.fee - result.creditCard.exactFee).toFixed(2)}</span>`
                   : result.creditCard.fee < result.creditCard.exactFee
                   ? `<span style="font-size:11px;color:#64D2FF">↓ −$${(result.creditCard.exactFee - result.creditCard.fee).toFixed(2)}</span>`
                   : `<span style="font-size:11px;color:#636366">exact</span>`}
+                </div>
               </div>
               <div style="display:flex;align-items:center;gap:0;background:#1C1C1E;border-radius:10px;overflow:hidden;border:1px solid #38383A">
                 <button id="wt-tp-fee-minus" style="width:32px;height:32px;background:none;border:none;color:#98989D;font-size:18px;cursor:pointer;line-height:1"
@@ -1807,17 +1809,29 @@ const WorkTracker = (() => {
             ${cashTotal > 0 && workers.length > 0 ? `
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
               <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
-              ${result.payouts.map(p => {
+              ${result.payouts.map((p, i) => {
                 const exactCashShare = result.totalPoints > 0 ? (p.points / result.totalPoints) * cashTotal : 0;
-                const cashShare = exactCashShare >= 0 ? Math.floor(exactCashShare) : 0;
+                const cashShare = saved.cashAdjustments && saved.cashAdjustments[i] !== undefined
+                  ? saved.cashAdjustments[i]
+                  : Math.floor(exactCashShare);
                 const diff = cashShare - exactCashShare;
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0">
-                  <span style="color:#98989D">${p.name} · exact: <span style="color:#FF9F0A">$${exactCashShare.toFixed(2)}</span></span>
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+                  <span style="color:#98989D">${p.name} · <span style="color:#FF9F0A">$${exactCashShare.toFixed(2)}</span></span>
                   <div style="display:flex;align-items:center;gap:6px">
                     <span style="font-size:11px;color:${diff>0?'#FF9F0A':diff<0?'#64D2FF':'#636366'}">
                       ${diff<0?'↓ −$'+Math.abs(diff).toFixed(2):diff>0?'↑ +$'+diff.toFixed(2):''}
                     </span>
-                    <span style="color:#30D158;font-weight:700">$${cashShare}</span>
+                    <div style="display:flex;align-items:center;background:#1C1C1E;border-radius:8px;overflow:hidden;border:1px solid #38383A">
+                      <button data-cash-minus="${i}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:16px;cursor:pointer;line-height:1"
+                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
+                        onpointerup="this.style.background='none'"
+                        onpointerleave="this.style.background='none'">−</button>
+                      <span style="color:#30D158;font-weight:700;min-width:32px;text-align:center;font-size:14px">$${cashShare}</span>
+                      <button data-cash-plus="${i}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:14px;cursor:pointer;line-height:1"
+                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
+                        onpointerup="this.style.background='none'"
+                        onpointerleave="this.style.background='none'">+</button>
+                    </div>
                   </div>
                 </div>`;
               }).join('')}
@@ -1937,6 +1951,41 @@ const WorkTracker = (() => {
 
       ov.querySelectorAll('[data-edit]').forEach(el => {
         el.onclick = () => _showAddWorker(saved, tipSettings, render, parseInt(el.dataset.edit));
+      });
+
+      // Cash per-person adjustment buttons
+      if (!saved.cashAdjustments) saved.cashAdjustments = {};
+      ov.querySelectorAll('[data-cash-minus]').forEach(btn => {
+        btn.onclick = () => {
+          const i = parseInt(btn.dataset.cashMinus);
+          const result2 = TipRules.calculatePayouts(
+            saved.creditCardTotal||0, saved.cashTotal||0, saved.workers||[], feePercent, saved.manualFee
+          );
+          const exactCashShare = result2.totalPoints > 0
+            ? (result2.payouts[i].points / result2.totalPoints) * (saved.cashTotal||0)
+            : 0;
+          const cur = saved.cashAdjustments[i] !== undefined
+            ? saved.cashAdjustments[i]
+            : Math.floor(exactCashShare);
+          saved.cashAdjustments[i] = Math.max(0, cur - 1);
+          render();
+        };
+      });
+      ov.querySelectorAll('[data-cash-plus]').forEach(btn => {
+        btn.onclick = () => {
+          const i = parseInt(btn.dataset.cashPlus);
+          const result2 = TipRules.calculatePayouts(
+            saved.creditCardTotal||0, saved.cashTotal||0, saved.workers||[], feePercent, saved.manualFee
+          );
+          const exactCashShare = result2.totalPoints > 0
+            ? (result2.payouts[i].points / result2.totalPoints) * (saved.cashTotal||0)
+            : 0;
+          const cur = saved.cashAdjustments[i] !== undefined
+            ? saved.cashAdjustments[i]
+            : Math.floor(exactCashShare);
+          saved.cashAdjustments[i] = cur + 1;
+          render();
+        };
       });
 
       // Fee manual adjustment
