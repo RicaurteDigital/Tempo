@@ -4,10 +4,12 @@
 const TipRules = (() => {
 
   // ── PROCESSING FEE ───────────────────────────────────
-  function applyProcessingFee(creditCardTotal, feePercent) {
-    const fee = Math.floor(creditCardTotal * (feePercent / 100));
+  function applyProcessingFee(creditCardTotal, feePercent, manualFee) {
+    const exactFee = creditCardTotal * (feePercent / 100);
+    const fee = manualFee !== undefined ? manualFee : Math.floor(exactFee);
     return {
       gross: creditCardTotal,
+      exactFee,
       fee,
       net: creditCardTotal - fee
     };
@@ -30,8 +32,8 @@ const TipRules = (() => {
   }
 
   // ── CALCULATE WITH MANUAL ADJUSTMENTS ────────────────
-  function calculatePayouts(creditCardTotal, cashTotal, workers, feePercent) {
-    const ccBreakdown = applyProcessingFee(creditCardTotal, feePercent);
+  function calculatePayouts(creditCardTotal, cashTotal, workers, feePercent, manualFee) {
+    const ccBreakdown = applyProcessingFee(creditCardTotal, feePercent, manualFee);
     const totalNet = ccBreakdown.net + cashTotal;
     const pts = totalPoints(workers);
     const perPoint = pts > 0 ? totalNet / pts : 0;

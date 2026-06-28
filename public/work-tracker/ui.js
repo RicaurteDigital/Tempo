@@ -1720,7 +1720,7 @@ const WorkTracker = (() => {
       const workers = saved.workers || [];
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
-      const result = TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent);
+      const result = TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
 
       ov.innerHTML = `
         <div class="wt-modal" style="max-height:92vh;overflow-y:auto">
@@ -1755,8 +1755,22 @@ const WorkTracker = (() => {
 
           ${ccTotal > 0 || cashTotal > 0 ? `
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="color:#98989D">CC fee ${feePercent}% = <span style="color:#FF453A">$${(result.creditCard.gross * feePercent / 100).toFixed(2)} exact</span></span>
+              <div style="display:flex;align-items:center;gap:0;background:#1C1C1E;border-radius:10px;overflow:hidden;border:1px solid #38383A">
+                <button id="wt-tp-fee-minus" style="width:32px;height:32px;background:none;border:none;color:#98989D;font-size:18px;cursor:pointer;line-height:1"
+                  onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
+                  onpointerup="this.style.background='none'"
+                  onpointerleave="this.style.background='none'">−</button>
+                <span style="color:#fff;font-weight:700;font-size:14px;padding:0 4px;min-width:44px;text-align:center">$${result.creditCard.fee}</span>
+                <button id="wt-tp-fee-plus" style="width:32px;height:32px;background:none;border:none;color:#98989D;font-size:16px;cursor:pointer;line-height:1"
+                  onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
+                  onpointerup="this.style.background='none'"
+                  onpointerleave="this.style.background='none'">+</button>
+              </div>
+            </div>
             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span style="color:#98989D">CC ${TipRules.fmtMoney(result.creditCard.gross)} − fee ${feePercent}% (${TipRules.fmtMoney(result.creditCard.fee)})</span>
+              <span style="color:#98989D">CC net after fee</span>
               <span style="color:#fff;font-weight:700">${TipRules.fmtMoney(result.creditCard.net)}</span>
             </div>
             ${cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -1844,6 +1858,7 @@ const WorkTracker = (() => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value.replace(',','.')) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value.replace(',','.')) || 0;
         saved.workers.forEach(w => delete w.manualAmount);
+        delete saved.manualFee;
         render();
       };
       ov.querySelector('#wt-tp-cc').addEventListener('blur', doRecalc);
@@ -1874,6 +1889,18 @@ const WorkTracker = (() => {
           render();
         };
       });
+
+      // Fee manual adjustment
+      const feeMinusBtn = ov.querySelector('#wt-tp-fee-minus');
+      const feePlusBtn = ov.querySelector('#wt-tp-fee-plus');
+      if (feeMinusBtn) feeMinusBtn.onclick = () => {
+        saved.manualFee = Math.max(0, (saved.manualFee !== undefined ? saved.manualFee : result.creditCard.fee) - 1);
+        render();
+      };
+      if (feePlusBtn) feePlusBtn.onclick = () => {
+        saved.manualFee = (saved.manualFee !== undefined ? saved.manualFee : result.creditCard.fee) + 1;
+        render();
+      };
 
       ov.querySelector('#wt-tp-add').onclick = () => _showAddWorker(saved, tipSettings, render);
       ov.querySelector('#wt-tp-cancel').onclick = () => ov.remove();
