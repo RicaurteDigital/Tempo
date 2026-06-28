@@ -59,6 +59,35 @@ const WTDb = (() => {
     });
   }
 
+  function getTipSettings() {
+    try {
+      const raw = localStorage.getItem('wt_tip_settings');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return JSON.parse(JSON.stringify(DEFAULT_TIP_SETTINGS));
+  }
+
+  function saveTipSettings(s) {
+    localStorage.setItem('wt_tip_settings', JSON.stringify(s));
+    return s;
+  }
+
+  function getTipsForShift(shiftId) {
+    try {
+      const raw = localStorage.getItem('wt_tips_' + shiftId);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function saveTipsForShift(shiftId, tipsData) {
+    localStorage.setItem('wt_tips_' + shiftId, JSON.stringify(tipsData));
+    return tipsData;
+  }
+
+  function deleteTipsForShift(shiftId) {
+    localStorage.removeItem('wt_tips_' + shiftId);
+  }
+
   function getTaxSettings() {
     try {
       const raw = localStorage.getItem('wt_tax_settings');
@@ -172,6 +201,8 @@ const WTDb = (() => {
     getSettings, saveSettings,
     savePhoto, getPhoto,
     exportData, importData,
-    getTaxSettings, saveTaxSettings
+    getTaxSettings, saveTaxSettings,
+    getTipSettings, saveTipSettings,
+    getTipsForShift, saveTipsForShift, deleteTipsForShift
   };
 })();
