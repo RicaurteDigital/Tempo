@@ -398,17 +398,23 @@ const WorkTracker = (() => {
       };
       collapseWrap.appendChild(toggleBtn);
       collapseWrap.appendChild(olderDiv);
-      entriesDiv.appendChild(collapseWrap);
+              entriesDiv.appendChild(collapseWrap);
     }
 
     body.appendChild(entriesDiv);
 
     const footer = document.createElement('div');
     footer.className = 'wt-shift-footer';
+    const tipsData = WTDb.getTipsForShift(shift.id);
+    const hasTips = tipsData && (tipsData.creditCardTotal > 0 || tipsData.cashTotal > 0);
     footer.innerHTML = `
       <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
+      <button class="wt-tips-btn" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'rgba(28,28,30,0.8)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'#98989D'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
+        💰 ${hasTips ? TipRules.fmtMoney(tipsData.myPayout||0) + ' tips' : 'Tips'}
+      </button>
       <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
     footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
+    footer.querySelector('.wt-tips-btn').onclick = () => _showTipPool(shift.id);
     footer.querySelector('.wt-del-shift').onclick = () => {
       if (!confirm('Delete this shift and ALL its proof photos? This cannot be undone.')) return;
       if (!confirm('Are you sure? This is permanent.')) return;
@@ -846,6 +852,129 @@ const WorkTracker = (() => {
         <input type="file" id="wt-import-file" accept=".json" style="display:none">
         <p class="wt-note">Photos auto-download to Camera Roll when captured. Export JSON regularly.</p>
       </div>`;
+    // ── TIP POOL SETTINGS ────────────────────────────────
+    const tipSettings = WTDb.getTipSettings();
+    const tipBlock = document.createElement('div');
+    tipBlock.className = 'wt-settings-block';
+    const tipPositions = tipSettings.positions || DEFAULT_TIP_POSITIONS;
+    tipBlock.innerHTML = `
+      <div class="wt-settings-title">Tip Pool Settings</div>
+
+      <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Processing Fee</div>
+      <div class="wt-setting-row">
+        <label>Credit card fee % <span style="font-size:11px;color:#636366;font-weight:400">(deducted from CC tips before split)</span></label>
+        <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:12px;overflow:hidden;border:1px solid #38383A;width:140px;flex-shrink:0">
+          <button id="wt-tip-fee-minus" style="width:40px;height:40px;background:none;border:none;color:#98989D;font-size:22px;cursor:pointer"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
+            onpointerup="this.style.background='none'"
+            onpointerleave="this.style.background='none'">−</button>
+          <input id="wt-tip-fee" type="text" inputmode="decimal" value="${tipSettings.processingFeePercent||3}"
+            style="flex:1;background:none;border:none;color:#fff;font-size:16px;font-weight:700;text-align:center;padding:0;outline:none"
+            onclick="this.select()" onfocus="this.select()">
+          <button id="wt-tip-fee-plus" style="width:40px;height:40px;background:none;border:none;color:#98989D;font-size:20px;cursor:pointer"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
+            onpointerup="this.style.background='none'"
+            onpointerleave="this.style.background='none'">+</button>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">Rounding</div>
+      <div class="wt-setting-row">
+        <label>Rounding mode</label>
+        <select class="wt-select-sm" id="wt-tip-rounding">
+          ${TIP_ROUNDING_OPTIONS.map(o =>
+            `<option value="${o.value}" ${tipSettings.roundingMode===o.value?'selected':''}>${o.label}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div class="wt-setting-row">
+        <label>Round each person individually</label>
+        <input type="checkbox" id="wt-tip-round-ind" style="width:18px;height:18px;accent-color:#5E5CE6" ${tipSettings.roundIndividual!==false?'checked':''}>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">Positions & Points</div>
+      <div id="wt-tip-positions-list">
+        ${tipPositions.map((p, i) => `
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #2C2C2E">
+            <input type="text" value="${p.label}" data-pos-label="${i}" class="wt-input" style="flex:1;padding:8px 10px"
+              onclick="this.select()" onfocus="this.select()">
+            <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:10px;overflow:hidden;border:1px solid #38383A">
+              <button data-pos-minus="${i}" style="width:36px;height:36px;background:none;border:none;color:#98989D;font-size:20px;cursor:pointer"
+                onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
+                onpointerup="this.style.background='none'"
+                onpointerleave="this.style.background='none'">−</button>
+              <input type="text" inputmode="decimal" value="${p.points}" data-pos-pts="${i}"
+                style="width:48px;background:none;border:none;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:0;outline:none"
+                onclick="this.select()" onfocus="this.select()">
+              <button data-pos-plus="${i}" style="width:36px;height:36px;background:none;border:none;color:#98989D;font-size:18px;cursor:pointer"
+                onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
+                onpointerup="this.style.background='none'"
+                onpointerleave="this.style.background='none'">+</button>
+            </div>
+            <button data-pos-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px">✕</button>
+          </div>`).join('')}
+      </div>
+      <button class="wt-btn wt-btn-secondary" style="margin-top:10px;width:100%" id="wt-tip-add-pos">+ Add Position</button>
+      <button class="wt-btn wt-btn-primary" style="margin-top:10px;width:100%" id="wt-tip-save">Save Tip Settings</button>`;
+    w.appendChild(tipBlock);
+
+    // Fee stepper
+    tipBlock.querySelector('#wt-tip-fee-minus').onclick = () => {
+      const i = tipBlock.querySelector('#wt-tip-fee');
+      i.value = Math.max(0, (parseFloat(i.value)||3) - 0.25).toFixed(2);
+    };
+    tipBlock.querySelector('#wt-tip-fee-plus').onclick = () => {
+      const i = tipBlock.querySelector('#wt-tip-fee');
+      i.value = ((parseFloat(i.value)||3) + 0.25).toFixed(2);
+    };
+
+    // Position steppers
+    tipBlock.querySelectorAll('[data-pos-minus]').forEach(btn => {
+      btn.onclick = () => {
+        const i = tipBlock.querySelector(`[data-pos-pts="${btn.dataset.posMinus}"]`);
+        i.value = Math.max(0.25, (parseFloat(i.value)||1) - 0.25).toFixed(2);
+      };
+    });
+    tipBlock.querySelectorAll('[data-pos-plus]').forEach(btn => {
+      btn.onclick = () => {
+        const i = tipBlock.querySelector(`[data-pos-pts="${btn.dataset.posPlus}"]`);
+        i.value = ((parseFloat(i.value)||1) + 0.25).toFixed(2);
+      };
+    });
+    tipBlock.querySelectorAll('[data-pos-del]').forEach(btn => {
+      btn.onclick = () => {
+        tipSettings.positions.splice(parseInt(btn.dataset.posDel), 1);
+        WTDb.saveTipSettings(tipSettings);
+        _go('settings');
+      };
+    });
+
+    tipBlock.querySelector('#wt-tip-add-pos').onclick = () => {
+      tipSettings.positions.push({ id: 'custom_' + Date.now(), label: 'New Position', points: 1.0 });
+      WTDb.saveTipSettings(tipSettings);
+      _go('settings');
+    };
+
+    tipBlock.querySelector('#wt-tip-save').onclick = () => {
+      const labels = tipBlock.querySelectorAll('[data-pos-label]');
+      const pts    = tipBlock.querySelectorAll('[data-pos-pts]');
+      tipSettings.positions = Array.from(labels).map((l, i) => ({
+        id: tipSettings.positions[i]?.id || 'pos_' + i,
+        label: l.value.trim() || 'Position',
+        points: parseFloat(pts[i].value) || 1
+      }));
+      tipSettings.processingFeePercent = parseFloat(tipBlock.querySelector('#wt-tip-fee').value) || 3;
+      tipSettings.roundingMode         = tipBlock.querySelector('#wt-tip-rounding').value;
+      tipSettings.roundIndividual      = tipBlock.querySelector('#wt-tip-round-ind').checked;
+      WTDb.saveTipSettings(tipSettings);
+      alert('Tip settings saved.');
+    };
+
+    tipBlock.querySelectorAll('input').forEach(i => {
+      i.addEventListener('focus', () => i.select && i.select());
+      i.addEventListener('click', () => i.select && i.select());
+    });
+
     const taxSettings = WTDb.getTaxSettings();
     const taxBlock = document.createElement('div');
     taxBlock.className = 'wt-settings-block';
@@ -1517,6 +1646,228 @@ const WorkTracker = (() => {
       reader.readAsDataURL(file);
     };
     input.click();
+  }
+
+  function _showTipPool(shiftId) {
+    const shifts = WTDb.getShifts();
+    const shift = shifts.find(s => s.id === shiftId);
+    const tipSettings = WTDb.getTipSettings();
+    const saved = WTDb.getTipsForShift(shiftId) || {
+      creditCardTotal: 0, cashTotal: 0, workers: [], myPosition: ''
+    };
+
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+
+    const renderModal = () => {
+      const workers = saved.workers || [];
+      const ccTotal = parseFloat(saved.creditCardTotal) || 0;
+      const cashTotal = parseFloat(saved.cashTotal) || 0;
+      const result = workers.length > 0
+        ? TipRules.calculatePayouts(ccTotal, cashTotal, workers, tipSettings)
+        : null;
+
+      ov.innerHTML = `
+        <div class="wt-modal" style="max-height:90vh;overflow-y:auto">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title">💰 Tip Pool — ${shift ? shift.locationName||'Shift' : 'Shift'}</div>
+
+          <label class="wt-modal-label">Credit Card Tips (system total)</label>
+          <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+            <span style="padding:0 14px;color:#98989D;font-size:16px">$</span>
+            <input id="wt-tp-cc" type="text" inputmode="decimal"
+              value="${ccTotal || ''}" placeholder="0.00"
+              style="flex:1;background:none;border:none;color:#fff;font-size:20px;font-weight:700;padding:14px 0;outline:none"
+              onclick="this.select()" onfocus="this.select()">
+          </div>
+
+          <label class="wt-modal-label">Cash Tips</label>
+          <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+            <span style="padding:0 14px;color:#98989D;font-size:16px">$</span>
+            <input id="wt-tp-cash" type="text" inputmode="decimal"
+              value="${cashTotal || ''}" placeholder="0.00"
+              style="flex:1;background:none;border:none;color:#fff;font-size:20px;font-weight:700;padding:14px 0;outline:none"
+              onclick="this.select()" onfocus="this.select()">
+          </div>
+
+          ${result ? `
+          <div style="background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.2);border-radius:14px;padding:12px 14px;margin-top:12px">
+            <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Breakdown</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#98989D;margin-bottom:4px">
+              <span>CC gross</span><span style="color:#fff">${TipRules.fmtMoney(result.creditCard.gross)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#98989D;margin-bottom:4px">
+              <span>Processing fee (${result.creditCard.feePercent}%)</span>
+              <span style="color:#FF453A">−${TipRules.fmtMoney(result.creditCard.fee)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#98989D;margin-bottom:4px">
+              <span>Cash</span><span style="color:#fff">${TipRules.fmtMoney(result.cash)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid #38383A;padding-top:8px;margin-top:4px">
+              <span>Total to distribute</span>
+              <span style="color:#FF9F0A">${TipRules.fmtMoney(result.totalNet)}</span>
+            </div>
+            <div style="font-size:12px;color:#636366;margin-top:4px">
+              ${result.totalPoints} pts total · $${result.perPoint.toFixed(2)}/pt · Rounding: ${result.roundingMode}
+            </div>
+          </div>` : ''}
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;margin-bottom:8px">
+            <div style="font-size:13px;font-weight:700;color:#fff">Workers this shift</div>
+            <button id="wt-tp-add-worker" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:6px 12px;cursor:pointer">+ Add</button>
+          </div>
+
+          <div id="wt-tp-workers">
+            ${workers.length === 0
+              ? '<div style="color:#636366;font-size:13px;text-align:center;padding:16px 0">No workers added yet.<br>Add yourself first.</div>'
+              : workers.map((w, i) => `
+                <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #2C2C2E">
+                  <div style="flex:1">
+                    <div style="font-size:14px;font-weight:700;color:#fff">${w.name} ${w.isMe ? '⭐' : ''}</div>
+                    <div style="font-size:12px;color:#636366">${w.position} · ${w.points} pts</div>
+                  </div>
+                  ${result ? `<div style="text-align:right">
+                    <div style="font-size:16px;font-weight:800;color:${w.isMe?'#64D2FF':'#fff'}">${TipRules.fmtMoney(result.payouts[i]?.amount||0)}</div>
+                    <div style="font-size:11px;color:#636366">of ${TipRules.fmtMoney(result.totalNet)}</div>
+                  </div>` : ''}
+                  <button data-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
+                </div>`).join('')
+            }
+          </div>
+
+          ${result && result.remainder !== 0 ? `
+            <div style="font-size:12px;color:#636366;margin-top:8px">
+              Rounding remainder: ${TipRules.fmtMoney(result.remainder)} (not distributed)
+            </div>` : ''}
+
+          <div class="wt-modal-actions" style="margin-top:20px">
+            <button class="wt-btn wt-btn-secondary" id="wt-tp-cancel">Cancel</button>
+            <button class="wt-btn wt-btn-primary" id="wt-tp-save">Save</button>
+          </div>
+        </div>`;
+
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      ov.querySelectorAll('input').forEach(i => {
+        i.addEventListener('focus', () => i.select && i.select());
+        i.addEventListener('click', () => i.select && i.select());
+      });
+
+      // Live recalc on input change
+      const recalc = () => {
+        saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
+        saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
+        renderModal();
+      };
+      ov.querySelector('#wt-tp-cc').addEventListener('input', recalc);
+      ov.querySelector('#wt-tp-cash').addEventListener('input', recalc);
+
+      // Delete worker
+      ov.querySelectorAll('[data-del]').forEach(btn => {
+        btn.onclick = () => {
+          saved.workers.splice(parseInt(btn.dataset.del), 1);
+          renderModal();
+        };
+      });
+
+      // Add worker
+      ov.querySelector('#wt-tp-add-worker').onclick = () => _showAddWorker(saved, tipSettings, renderModal);
+
+      // Cancel
+      ov.querySelector('#wt-tp-cancel').onclick = () => ov.remove();
+
+      // Save
+      ov.querySelector('#wt-tp-save').onclick = () => {
+        saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
+        saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
+        // Save my payout for display on shift card
+        const result = saved.workers.length > 0
+          ? TipRules.calculatePayouts(saved.creditCardTotal, saved.cashTotal, saved.workers, tipSettings)
+          : null;
+        const me = result ? result.payouts.find((p, i) => saved.workers[i].isMe) : null;
+        saved.myPayout = me ? me.amount : 0;
+        WTDb.saveTipsForShift(shiftId, saved);
+        ov.remove();
+        _go(_view === 'day' ? 'day' : 'home', { date: shift ? shift.date : null });
+      };
+    };
+
+    renderModal();
+    document.body.appendChild(ov);
+  }
+
+  function _showAddWorker(saved, tipSettings, onSave) {
+    const positions = tipSettings.positions || DEFAULT_TIP_POSITIONS;
+    const addOv = document.createElement('div');
+    addOv.className = 'wt-overlay';
+    addOv.style.zIndex = '500';
+    addOv.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">Add Worker</div>
+        <label class="wt-modal-label">Name</label>
+        <input id="wt-aw-name" class="wt-input" type="text" placeholder="e.g. Maria, John..." autocapitalize="words"
+          onclick="this.select()" onfocus="this.select()">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:#98989D;cursor:pointer">
+          <input type="checkbox" id="wt-aw-isme" style="width:18px;height:18px;accent-color:#5E5CE6">
+          This is me ⭐
+        </label>
+        <label class="wt-modal-label">Position</label>
+        <select class="wt-input" id="wt-aw-pos">
+          ${positions.map(p => `<option value="${p.id}" data-points="${p.points}">${p.label} (${p.points} pts)</option>`).join('')}
+        </select>
+        <label class="wt-modal-label">Points</label>
+        <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+          <button id="wt-aw-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
+            onpointerup="this.style.background='none'"
+            onpointerleave="this.style.background='none'">−</button>
+          <input id="wt-aw-pts" type="text" inputmode="decimal" value="${positions[0].points}"
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;padding:0;outline:none"
+            onclick="this.select()" onfocus="this.select()">
+          <button id="wt-aw-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
+            onpointerup="this.style.background='none'"
+            onpointerleave="this.style.background='none'">+</button>
+        </div>
+        <div class="wt-modal-actions" style="margin-top:20px">
+          <button class="wt-btn wt-btn-secondary" id="wt-aw-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-aw-add">Add Worker</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(addOv);
+    addOv.addEventListener('click', e => { if (e.target === addOv) addOv.remove(); });
+
+    // Auto-fill points when position changes
+    addOv.querySelector('#wt-aw-pos').onchange = function() {
+      const opt = this.options[this.selectedIndex];
+      addOv.querySelector('#wt-aw-pts').value = opt.dataset.points;
+    };
+
+    addOv.querySelector('#wt-aw-minus').onclick = () => {
+      const i = addOv.querySelector('#wt-aw-pts');
+      i.value = Math.max(0.25, (parseFloat(i.value) || 1) - 0.25).toFixed(2);
+    };
+    addOv.querySelector('#wt-aw-plus').onclick = () => {
+      const i = addOv.querySelector('#wt-aw-pts');
+      i.value = ((parseFloat(i.value) || 1) + 0.25).toFixed(2);
+    };
+
+    addOv.querySelector('#wt-aw-cancel').onclick = () => addOv.remove();
+    addOv.querySelector('#wt-aw-add').onclick = () => {
+      const name = addOv.querySelector('#wt-aw-name').value.trim();
+      if (!name) { alert('Enter a name.'); return; }
+      const posEl = addOv.querySelector('#wt-aw-pos');
+      const posLabel = posEl.options[posEl.selectedIndex].text.split(' (')[0];
+      saved.workers.push({
+        name,
+        isMe: addOv.querySelector('#wt-aw-isme').checked,
+        position: posLabel,
+        points: parseFloat(addOv.querySelector('#wt-aw-pts').value) || 1
+      });
+      addOv.remove();
+      onSave();
+    };
   }
 
   function _showEditLocation(locId) {
