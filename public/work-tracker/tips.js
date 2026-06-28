@@ -3,108 +3,94 @@
 
 const TipRules = (() => {
 
-  // ── ROUNDING ─────────────────────────────────────────
-  function roundAmount(amount, mode) {
-    switch (mode) {
-      case 'down':    return Math.floor(amount);
-      case 'up':      return Math.ceil(amount);
-      case 'nearest': return Math.round(amount);
-      case 'manual':  return parseFloat(amount.toFixed(2));
-      default:        return Math.floor(amount);
-    }
-  }
-
   // ── PROCESSING FEE ───────────────────────────────────
-  function applyProcessingFee(creditCardTotal, feePercent, roundingMode) {
-    const fee = creditCardTotal * (feePercent / 100);
-    const roundedFee = roundAmount(fee, roundingMode);
+  function applyProcessingFee(creditCardTotal, feePercent) {
+    const fee = Math.floor(creditCardTotal * (feePercent / 100));
     return {
       gross: creditCardTotal,
-      fee: roundedFee,
-      net: creditCardTotal - roundedFee
+      fee,
+      net: creditCardTotal - fee
     };
   }
 
-  // ── TOTAL TIPS TO DISTRIBUTE ─────────────────────────
-  function totalToDistribute(creditCardNet, cashTotal) {
-    return creditCardNet + cashTotal;
-  }
-
-  // ── POINT TOTAL ──────────────────────────────────────
+  // ── TOTAL POINTS ─────────────────────────────────────
   function totalPoints(workers) {
     return workers.reduce((sum, w) => sum + (parseFloat(w.points) || 0), 0);
   }
 
-  // ── VALUE PER POINT ──────────────────────────────────
-  function valuePerPoint(totalTips, workers) {
+  // ── BASE PAYOUTS (exact, no rounding) ────────────────
+  function basePayouts(totalNet, workers) {
     const pts = totalPoints(workers);
-    if (pts === 0) return 0;
-    return totalTips / pts;
+    if (pts === 0) return workers.map(w => ({ ...w, exact: 0, amount: 0 }));
+    const perPoint = totalNet / pts;
+    return workers.map(w => {
+      const exact = (parseFloat(w.points) || 0) * perPoint;
+      return { ...w, exact, amount: Math.floor(exact) };
+    });
   }
 
-  // ── INDIVIDUAL PAYOUT ────────────────────────────────
-  function calculatePayouts(creditCardTotal, cashTotal, workers, settings) {
-    const feePercent   = settings.processingFeePercent || 3;
-    const roundingMode = settings.roundingMode || 'down';
-    const roundInd     = settings.roundIndividual !== false;
-
-    const ccBreakdown  = applyProcessingFee(creditCardTotal, feePercent, roundingMode);
-    const total        = totalToDistribute(ccBreakdown.net, cashTotal);
-    const pts          = totalPoints(workers);
-    const perPoint     = pts > 0 ? total / pts : 0;
+  // ── CALCULATE WITH MANUAL ADJUSTMENTS ────────────────
+  function calculatePayouts(creditCardTotal, cashTotal, workers, feePercent) {
+    const ccBreakdown = applyProcessingFee(creditCardTotal, feePercent);
+    const totalNet = ccBreakdown.net + cashTotal;
+    const pts = totalPoints(workers);
+    const perPoint = pts > 0 ? totalNet / pts : 0;
 
     const payouts = workers.map(w => {
-      const raw    = (parseFloat(w.points) || 0) * perPoint;
-      const amount = roundInd ? roundAmount(raw, roundingMode) : parseFloat(raw.toFixed(2));
+      const exact = (parseFloat(w.points) || 0) * perPoint;
+      // Use manual override if set, otherwise floor
+      const amount = typeof w.manualAmount === 'number'
+        ? w.manualAmount
+        : Math.floor(exact);
       return {
-        name:     w.name,
-        position: w.position,
-        points:   parseFloat(w.points) || 0,
-        raw,
+        name:         w.name,
+        isMe:         w.isMe || false,
+        position:     w.position,
+        points:       parseFloat(w.points) || 0,
+        exact,
         amount
       };
     });
 
-    // Rounding difference — leftover cents after rounding
-    const distributed  = payouts.reduce((s, p) => s + p.amount, 0);
-    const remainder    = parseFloat((total - distributed).toFixed(2));
+    const distributed = payouts.reduce((s, p) => s + p.amount, 0);
+    const remainder = parseFloat((totalNet - distributed).toFixed(2));
 
     return {
       creditCard: {
-        gross:   creditCardTotal,
-        fee:     ccBreakdown.fee,
+        gross:     creditCardTotal,
+        fee:       ccBreakdown.fee,
         feePercent,
-        net:     ccBreakdown.net
+        net:       ccBreakdown.net
       },
       cash:        cashTotal,
       totalGross:  creditCardTotal + cashTotal,
-      totalNet:    total,
+      totalNet,
       totalPoints: pts,
-      perPoint:    parseFloat(perPoint.toFixed(4)),
+      perPoint,
       payouts,
-      remainder,
-      roundingMode
+      distributed,
+      remainder
     };
   }
 
-  // ── FORMAT HELPERS ───────────────────────────────────
+  // ── FORMAT ────────────────────────────────────────────
   function fmtMoney(n) {
     if (isNaN(n) || n === null) return '$0.00';
-    return '$' + Math.abs(n).toFixed(2);
+    const abs = Math.abs(n);
+    return (n < 0 ? '−$' : '$') + abs.toFixed(2);
   }
 
-  function fmtPoints(p) {
-    return parseFloat(p).toFixed(2) + ' pts';
+  function fmtMoneyInt(n) {
+    if (isNaN(n) || n === null) return '$0';
+    return '$' + Math.round(n);
   }
 
   return {
-    roundAmount,
     applyProcessingFee,
-    totalToDistribute,
     totalPoints,
-    valuePerPoint,
+    basePayouts,
     calculatePayouts,
     fmtMoney,
-    fmtPoints
+    fmtMoneyInt
   };
 })();
