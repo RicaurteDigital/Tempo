@@ -1720,13 +1720,23 @@ const WorkTracker = (() => {
       // Preserve input values before re-render
       const ccInput = ov.querySelector('#wt-tp-cc');
       const cashInput = ov.querySelector('#wt-tp-cash');
-      if (ccInput) saved.creditCardTotal = parseFloat(ccInput.value.replace(',','.')) || saved.creditCardTotal || 0;
-      if (cashInput) saved.cashTotal = parseFloat(cashInput.value.replace(',','.')) || saved.cashTotal || 0;
+      if (ccInput && ccInput.value) {
+        const parsed = parseFloat(ccInput.value.replace(',','.'));
+        if (!isNaN(parsed)) saved.creditCardTotal = parsed;
+      }
+      if (cashInput && cashInput.value) {
+        const parsed = parseFloat(cashInput.value.replace(',','.'));
+        if (!isNaN(parsed)) saved.cashTotal = parsed;
+      }
 
       const workers = saved.workers || [];
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
       const result = TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
+      // Ensure exactFee is always calculated from current ccTotal
+      if (result.creditCard) {
+        result.creditCard.exactFee = ccTotal * (feePercent / 100);
+      }
 
       ov.innerHTML = `
         <div class="wt-modal" style="max-height:92vh;overflow-y:auto">
