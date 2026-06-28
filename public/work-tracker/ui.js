@@ -1799,8 +1799,8 @@ const WorkTracker = (() => {
             : result.payouts.map((p, i) => `
               <div style="background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                  <div>
-                    <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''}</span>
+                  <div style="cursor:pointer" data-edit="${i}">
+                    <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''} <span style="font-size:11px;color:#5E5CE6">edit</span></span>
                     <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.points} pts · exact: $${p.exact.toFixed(2)}</div>
                   </div>
                   <button data-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
@@ -1890,6 +1890,10 @@ const WorkTracker = (() => {
         };
       });
 
+      ov.querySelectorAll('[data-edit]').forEach(el => {
+        el.onclick = () => _showAddWorker(saved, tipSettings, render, parseInt(el.dataset.edit));
+      });
+
       // Fee manual adjustment
       const feeMinusBtn = ov.querySelector('#wt-tp-fee-minus');
       const feePlusBtn = ov.querySelector('#wt-tp-fee-plus');
@@ -1922,7 +1926,7 @@ const WorkTracker = (() => {
     document.body.appendChild(ov);
   }
 
-  function _showAddWorker(saved, tipSettings, onSave) {
+  function _showAddWorker(saved, tipSettings, onSave, editIndex) {
     const positions = tipSettings.positions || DEFAULT_TIP_POSITIONS;
     const addOv = document.createElement('div');
     addOv.className = 'wt-overlay';
@@ -1930,9 +1934,10 @@ const WorkTracker = (() => {
     addOv.innerHTML = `
       <div class="wt-modal">
         <div class="wt-modal-handle"></div>
-        <div class="wt-modal-title">Add Worker</div>
+        <div class="wt-modal-title">${typeof editIndex === 'number' ? 'Edit Worker' : 'Add Worker'}</div>
         <label class="wt-modal-label">Name</label>
         <input id="wt-aw-name" class="wt-input" type="text" placeholder="e.g. Maria, John..." autocapitalize="words"
+          value="${typeof editIndex === 'number' && saved.workers[editIndex] ? saved.workers[editIndex].name : ''}"
           onclick="this.select()" onfocus="this.select()">
         <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:#98989D;cursor:pointer">
           <input type="checkbox" id="wt-aw-isme" style="width:18px;height:18px;accent-color:#5E5CE6">
@@ -1958,7 +1963,7 @@ const WorkTracker = (() => {
         </div>
         <div class="wt-modal-actions" style="margin-top:20px">
           <button class="wt-btn wt-btn-secondary" id="wt-aw-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-aw-add">Add Worker</button>
+          <button class="wt-btn wt-btn-primary" id="wt-aw-add">${typeof editIndex === 'number' ? 'Save Changes' : 'Add Worker'}</button>
         </div>
       </div>`;
 
@@ -1986,12 +1991,17 @@ const WorkTracker = (() => {
       if (!name) { alert('Enter a name.'); return; }
       const posEl = addOv.querySelector('#wt-aw-pos');
       const posLabel = posEl.options[posEl.selectedIndex].text.split(' (')[0];
-      saved.workers.push({
+      const workerData = {
         name,
         isMe: addOv.querySelector('#wt-aw-isme').checked,
         position: posLabel,
         points: parseFloat(addOv.querySelector('#wt-aw-pts').value) || 1
-      });
+      };
+      if (typeof editIndex === 'number') {
+        saved.workers[editIndex] = workerData;
+      } else {
+        saved.workers.push(workerData);
+      }
       addOv.remove();
       onSave();
     };
