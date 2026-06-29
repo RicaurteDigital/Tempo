@@ -649,26 +649,46 @@ const WorkTracker = (() => {
                   feePercent,
                   dayTips.manualFee
                 );
-                const me = dayTips.workers && dayTips.workers.find(w => w.isMe);
-                const myPayout = me ? tipResult.payouts.find((p,i) => dayTips.workers[i] && dayTips.workers[i].isMe) : null;
+                const meIdx = dayTips.workers ? dayTips.workers.findIndex(w => w.isMe) : -1;
+                const myPayout = meIdx >= 0 ? tipResult.payouts[meIdx] : null;
+                const myCashShare = meIdx >= 0 && tipResult.totalPoints > 0
+                  ? Math.floor((tipResult.payouts[meIdx].points / tipResult.totalPoints) * (dayTips.cashTotal||0))
+                  : 0;
+                const ccPoolTotal = tipResult.creditCard.net;
+                const grandTotal = dayPay.total + ccPoolTotal;
                 tipHtml = `
                   <div style="border-top:1px solid #2C2C2E;margin-top:8px;padding-top:8px">
-                    <div style="color:#FF9F0A;font-weight:700;margin-bottom:4px">💰 Tips</div>
-                    <div style="display:flex;justify-content:space-between;color:#98989D;margin-bottom:2px">
+                    <div style="color:#FF9F0A;font-weight:700;margin-bottom:6px">💰 Tips</div>
+                    <div style="display:flex;justify-content:space-between;color:#98989D;margin-bottom:2px;font-size:12px">
                       <span>CC ${WTRules.fmtMoney(dayTips.creditCardTotal)} − fee ${WTRules.fmtMoney(tipResult.creditCard.fee)}</span>
-                      <span style="color:#fff">${WTRules.fmtMoney(tipResult.creditCard.net)}</span>
+                      <span style="color:#fff;font-weight:700">${WTRules.fmtMoney(tipResult.creditCard.net)}</span>
                     </div>
-                    ${dayTips.cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;color:#98989D;margin-bottom:2px">
-                      <span>Cash</span><span style="color:#30D158">${WTRules.fmtMoney(dayTips.cashTotal)}</span>
+                    ${dayTips.cashTotal > 0 ? `
+                    <div style="display:flex;justify-content:space-between;color:#98989D;margin-bottom:2px;font-size:12px">
+                      <span>Cash (separate — not from system)</span>
+                      <span style="color:#30D158">${WTRules.fmtMoney(dayTips.cashTotal)}</span>
                     </div>` : ''}
-                    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #2C2C2E;padding-top:4px;margin-top:4px">
-                      <span style="color:#FF9F0A">Pool total</span>
-                      <span style="color:#FF9F0A">${WTRules.fmtMoney(tipResult.totalNet)}</span>
+                    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #2C2C2E;padding-top:6px;margin-top:4px">
+                      <span style="color:#FF9F0A">CC pool total</span>
+                      <span style="color:#FF9F0A">${WTRules.fmtMoney(ccPoolTotal)}</span>
                     </div>
-                    ${myPayout ? `<div style="display:flex;justify-content:space-between;margin-top:4px">
-                      <span style="color:#64D2FF">⭐ Your cut</span>
-                      <span style="color:#64D2FF;font-weight:800;font-size:15px">$${myPayout.amount}</span>
+                    ${myPayout ? `
+                    <div style="background:rgba(100,210,255,.06);border-radius:10px;padding:8px 10px;margin-top:8px">
+                      <div style="font-size:11px;color:#636366;margin-bottom:4px">⭐ Your cut</div>
+                      <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+                        <span style="font-size:13px;color:#98989D">CC tips</span>
+                        <span style="color:#64D2FF;font-weight:700">$${myPayout.amount}</span>
+                      </div>
+                      ${myCashShare > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:2px">
+                        <span style="font-size:13px;color:#98989D">Cash tips</span>
+                        <span style="color:#30D158;font-weight:700">$${myCashShare}</span>
+                      </div>` : ''}
                     </div>` : ''}
+                    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #2C2C2E;padding-top:6px;margin-top:8px">
+                      <span style="color:#fff">Hours + CC tips</span>
+                      <span style="color:#30D158;font-size:15px;font-weight:800">${WTRules.fmtMoney(grandTotal)}</span>
+                    </div>
+                    <div style="font-size:11px;color:#636366;margin-top:2px">Cash not included — paid separately</div>
                   </div>`;
               }
 
