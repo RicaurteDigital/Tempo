@@ -4,27 +4,51 @@ const WORK_PROFILES = {
   restaurant: {
     label: 'Restaurant',
     shifts: ['Breakfast', 'Lunch', 'Dinner', 'Brunch', 'Event', 'Double'],
-    suggestedRate: 16.50
+    suggestedRate: 16.50,
+    hasTips: true,
+    tipPositions: [
+      { id: 'server',    label: 'Server',      points: 1.0  },
+      { id: 'bartender', label: 'Bartender',   points: 1.0  },
+      { id: 'runner',    label: 'Food Runner', points: 0.75 },
+      { id: 'busboy',    label: 'Busboy',      points: 0.5  },
+      { id: 'barback',   label: 'Barback',     points: 0.5  },
+      { id: 'host',      label: 'Host',        points: 0.5  }
+    ]
   },
   office: {
     label: 'Office / Corporate',
     shifts: ['Morning', 'Afternoon', 'Full Day', 'Overtime', 'Remote', 'Meeting'],
-    suggestedRate: 25.00
+    suggestedRate: 25.00,
+    hasTips: false,
+    tipPositions: []
   },
   freelance: {
     label: 'Freelance / Events',
     shifts: ['Half Day', 'Full Day', 'Evening', 'Weekend', 'Event', 'Consultation'],
-    suggestedRate: 35.00
+    suggestedRate: 35.00,
+    hasTips: true,
+    tipPositions: [
+      { id: 'lead',      label: 'Lead',        points: 1.0  },
+      { id: 'assistant', label: 'Assistant',   points: 0.75 },
+      { id: 'staff',     label: 'Staff',       points: 0.5  }
+    ]
   },
   construction: {
     label: 'Construction / Field',
     shifts: ['Day Shift', 'Night Shift', 'Weekend', 'Overtime', 'On-Call'],
-    suggestedRate: 22.00
+    suggestedRate: 22.00,
+    hasTips: false,
+    tipPositions: []
   },
   custom: {
     label: 'Custom',
     shifts: [],
-    suggestedRate: 0
+    suggestedRate: 0,
+    hasTips: true,
+    tipPositions: [
+      { id: 'custom1', label: 'Position 1', points: 1.0 },
+      { id: 'custom2', label: 'Position 2', points: 0.5 }
+    ]
   }
 };
 

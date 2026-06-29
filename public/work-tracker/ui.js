@@ -151,6 +151,7 @@ const WorkTracker = (() => {
     const tipBlock = document.createElement('div');
     tipBlock.style.cssText = 'margin-bottom:14px';
 
+    const homeProfile = WORK_PROFILES[settings.workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
     // Aggregate tips from ALL shifts today
     const shiftsWithTips = todayShifts.filter(s => {
       const t = WTDb.getTipsForShift(s.id);
@@ -217,7 +218,7 @@ const WorkTracker = (() => {
           ${shiftTipRows}
           ${hasAnyRemainder ? `<div style="font-size:12px;color:#FF9F0A;margin-top:8px;font-weight:600">⚠ $${totalUnallocated.toFixed(2)} unallocated across shifts</div>` : ''}
         </div>`;
-    } else {
+    } else if (homeProfile.hasTips) {
       tipBlock.innerHTML = `
         <button id="wt-tip-new" style="width:100%;background:rgba(255,149,0,.08);border:1px dashed rgba(255,149,0,.3);border-radius:20px;padding:16px;color:#FF9F0A;font-size:15px;font-weight:700;cursor:pointer;text-align:center">
           💰 Add Today's Tips
@@ -500,14 +501,18 @@ const WorkTracker = (() => {
     footer.className = 'wt-shift-footer';
     const tipsData = WTDb.getTipsForShift(shift.id);
     const hasTips = tipsData && (tipsData.creditCardTotal > 0 || tipsData.cashTotal > 0);
+    const cardProfile = WORK_PROFILES[WTDb.getSettings().workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
     footer.innerHTML = `
       <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
-      <button class="wt-tips-btn" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'rgba(28,28,30,0.8)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'#98989D'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
+      ${cardProfile.hasTips ? `<button class="wt-tips-btn" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'rgba(28,28,30,0.8)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'#98989D'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">` : ''}
         💰 ${hasTips ? TipRules.fmtMoney(tipsData.myPayout||0) + ' tips' : 'Tips'}
-      </button>
+      ${cardProfile.hasTips ? `</button>` : ''}
       <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
     footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
-    footer.querySelector('.wt-tips-btn').onclick = () => _showTipPool(shift.id);
+    if (cardProfile.hasTips) {
+      const tipsBtn = footer.querySelector('.wt-tips-btn');
+      if (tipsBtn) tipsBtn.onclick = () => _showTipPool(shift.id);
+    }
     footer.querySelector('.wt-del-shift').onclick = () => {
       if (!confirm('Delete this shift and ALL its proof photos? This cannot be undone.')) return;
       if (!confirm('Are you sure? This is permanent.')) return;
@@ -1048,10 +1053,18 @@ const WorkTracker = (() => {
         <p class="wt-note">Photos auto-download to Camera Roll when captured. Export JSON regularly.</p>
       </div>`;
     // ── TIP POOL SETTINGS ────────────────────────────────
+    const currentProfile = WORK_PROFILES[settings.workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
+    if (!currentProfile.hasTips) {
+      // Skip tip pool settings for profiles without tips
+    } else {
     const tipSettings = WTDb.getTipSettings();
     const tipBlock = document.createElement('div');
     tipBlock.className = 'wt-settings-block';
-    const tipPositions = tipSettings.positions || DEFAULT_TIP_POSITIONS;
+    const tipPositions = tipSettings.positions && tipSettings.positions.length > 0
+      ? tipSettings.positions
+      : (currentProfile.tipPositions && currentProfile.tipPositions.length > 0
+        ? currentProfile.tipPositions
+        : DEFAULT_TIP_POSITIONS);
     tipBlock.innerHTML = `
       <div class="wt-settings-title">Tip Pool Settings</div>
 
@@ -1169,6 +1182,7 @@ const WorkTracker = (() => {
       i.addEventListener('focus', () => i.select && i.select());
       i.addEventListener('click', () => i.select && i.select());
     });
+    } // end hasTips check
 
     const taxSettings = WTDb.getTaxSettings();
     const taxBlock = document.createElement('div');
