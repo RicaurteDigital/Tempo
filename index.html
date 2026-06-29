@@ -319,6 +319,7 @@ function _renderSimple() {
   // Live timer update for active bucket
   if (S.current) {
     const updateSimpleTimer = () => {
+      if (!S.current) { clearInterval(window._simpleTimerInterval); return; }
       const el = document.getElementById('simple-timer-' + S.current.b);
       if (!el) return;
       const elapsed = Date.now() - S.current.start;
