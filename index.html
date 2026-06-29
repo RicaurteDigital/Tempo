@@ -126,9 +126,18 @@
 
 <!-- TABS -->
 <div id="mainTabBar" style="display:flex;gap:8px;margin-bottom:16px">
-  <button id="tabTempo" onclick="switchTab('tempo')" style="flex:1;padding:10px;border:none;border-radius:14px;font-size:14px;font-weight:700;background:#5E5CE6;color:#fff">⏱ Tempo</button>
-  <button id="tabStudy" onclick="switchTab('study')" style="flex:1;padding:10px;border:none;border-radius:14px;font-size:14px;font-weight:700;background:var(--card2);color:var(--txt)">📚 Estudio</button>
-  <button id="tabWork" onclick="switchTab('work')" style="flex:1;padding:10px;border:none;border-radius:14px;font-size:14px;font-weight:700;background:var(--card2);color:var(--txt)">💼 Trabajo</button>
+  <button id="tabTempo" onclick="switchTab('tempo')" style="flex:1;padding:10px 6px;border:none;border-radius:14px;font-size:12px;font-weight:700;background:#5E5CE6;color:#fff;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l2.5 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Tempo
+  </button>
+  <button id="tabStudy" onclick="switchTab('study')" style="flex:1;padding:10px 6px;border:none;border-radius:14px;font-size:12px;font-weight:700;background:var(--card2);color:var(--txt);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 2L2 6l8 4 8-4-8-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M2 6v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 8.5v4.5c0 1.1 1.8 2 4 2s4-.9 4-2V8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Estudio
+  </button>
+  <button id="tabWork" onclick="switchTab('work')" style="flex:1;padding:10px 6px;border:none;border-radius:14px;font-size:12px;font-weight:700;background:var(--card2);color:var(--txt);display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="7" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 7V5a1 1 0 011-1h4a1 1 0 011 1v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 11h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Trabajo
+  </button>
 </div>
 <div id="wt-root" class="hide"></div>
 <div id="st-root" class="hide"></div>
@@ -347,18 +356,18 @@ function _renderSimple() {
       </div>`;
   }).join('');
 
-  // Listeners para botones del bucket activo (post-render, evita conflicto de propagación)
+  // Asignar handlers directamente (evita acumulación de listeners en re-renders)
   if (S.current) {
     const pauseBtn = document.getElementById('simple-pause-' + S.current.b);
     const endBtn = document.getElementById('simple-end-' + S.current.b);
-    if (pauseBtn) pauseBtn.addEventListener('click', e => {
+    if (pauseBtn) pauseBtn.onclick = e => {
       e.stopPropagation();
       if (S.current && S.current.pausedAt) resumeActivity(); else pauseActivity();
-    });
-    if (endBtn) endBtn.addEventListener('click', e => {
+    };
+    if (endBtn) endBtn.onclick = e => {
       e.stopPropagation();
       endCurrent();
-    });
+    };
   }
 
   // Actualizar visual del botón pause según estado
@@ -602,13 +611,13 @@ function switchTab(tab) {
   const isStudy = tab === 'study';
 
   $('tabTempo').style.background = isTempo ? '#5E5CE6' : 'var(--card2)';
-  $('tabTempo').style.color = isTempo ? '#fff' : 'var(--txt)';
+  $('tabTempo').style.color = isTempo ? '#fff' : 'var(--muted)';
 
   $('tabStudy').style.background = isStudy ? '#5E5CE6' : 'var(--card2)';
-  $('tabStudy').style.color = isStudy ? '#fff' : 'var(--txt)';
+  $('tabStudy').style.color = isStudy ? '#fff' : 'var(--muted)';
 
   $('tabWork').style.background = isWork ? '#64D2FF' : 'var(--card2)';
-  $('tabWork').style.color = isWork ? '#000' : 'var(--txt)';
+  $('tabWork').style.color = isWork ? '#000' : 'var(--muted)';
 
   $('vLive').classList.toggle('hide', !isTempo);
   $('vPicker').classList.toggle('hide', !isTempo);
