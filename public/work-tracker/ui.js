@@ -614,12 +614,97 @@ const WorkTracker = (() => {
             const dayPay = WTRules.weeklyPay(dayShifts);
             const hasWork = dayShifts.length > 0;
             const div = document.createElement('div');
-            div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1C1C1E;cursor:' + (hasWork ? 'pointer' : 'default');
-            div.innerHTML = `
+            div.style.cssText = 'border-bottom:1px solid #1C1C1E';
+            const dayRow = document.createElement('div');
+            dayRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;cursor:' + (hasWork ? 'pointer' : 'default');
+            dayRow.innerHTML = `
               <span style="color:${hasWork?'#fff':'#636366'}">${dayNames[i]} ${new Date(ds+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
-              <span style="color:${hasWork?'#30D158':'#636366'};font-weight:700">${hasWork ? WTRules.fmtMoney(dayPay.total) : '$0.00'}</span>`;
+              <div style="display:flex;align-items:center;gap:8px">
+                ${hasWork ? `<span style="font-size:12px;color:#636366">${WTRules.fmtHours(dayPay.totalHours)}</span>` : ''}
+                <span style="color:${hasWork?'#30D158':'#636366'};font-weight:700">${hasWork ? WTRules.fmtMoney(dayPay.total) : '$0.00'}</span>
+                ${hasWork ? '<span style="font-size:10px;color:#636366">▼</span>' : ''}
+              </div>`;
+            div.appendChild(dayRow);
+
             if (hasWork) {
-              div.onclick = (e) => { e.stopPropagation(); _go('day', { date: ds }); };
+              const detailEl = document.createElement('div');
+              detailEl.style.cssText = 'display:none;background:rgba(28,28,30,0.6);border-radius:12px;padding:10px 12px;margin-bottom:6px;font-size:13px';
+              
+              // Tips data for this day
+              const dayTips = WTDb.getTipsForShift('daily_' + ds);
+              const tipSettings = WTDb.getTipSettings();
+              const feePercent = tipSettings.processingFeePercent || 3;
+              let tipHtml = '';
+              if (dayTips && (dayTips.creditCardTotal > 0 || dayTips.cashTotal > 0)) {
+                const tipResult = TipRules.calculatePayouts(
+                  dayTips.creditCardTotal || 0,
+                  dayTips.cashTotal || 0,
+                  dayTips.workers || [],
+                  feePercent,
+                  dayTips.manualFee
+                );
+                const me = dayTips.workers && dayTips.workers.find(w => w.isMe);
+                const myPayout = me ? tipResult.payouts.find((p,i) => dayTips.workers[i] && dayTips.workers[i].isMe) : null;
+                tipHtml = `
+                  <div style="border-top:1px solid #2C2C2E;margin-top:8px;padding-top:8px">
+                    <div style="color:#FF9F0A;font-weight:700;margin-bottom:4px">💰 Tips</div>
+                    <div style="display:flex;justify-content:space-between;color:#98989D;margin-bottom:2px">
+                      <span>CC ${WTRules.fmtMoney(dayTips.creditCardTotal)} − fee ${WTRules.fmtMoney(tipResult.creditCard.fee)}</span>
+                      <span style="color:#fff">${WTRules.fmtMoney(tipResult.creditCard.net)}</span>
+                    </div>
+                    ${dayTips.cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;color:#98989D;margin-bottom:2px">
+                      <span>Cash</span><span style="color:#30D158">${WTRules.fmtMoney(dayTips.cashTotal)}</span>
+                    </div>` : ''}
+                    <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #2C2C2E;padding-top:4px;margin-top:4px">
+                      <span style="color:#FF9F0A">Pool total</span>
+                      <span style="color:#FF9F0A">${WTRules.fmtMoney(tipResult.totalNet)}</span>
+                    </div>
+                    ${myPayout ? `<div style="display:flex;justify-content:space-between;margin-top:4px">
+                      <span style="color:#64D2FF">⭐ Your cut</span>
+                      <span style="color:#64D2FF;font-weight:800;font-size:15px">$${myPayout.amount}</span>
+                    </div>` : ''}
+                  </div>`;
+              }
+
+              // Tax estimate
+              const taxSettings = WTDb.getTaxSettings();
+              const netData = taxSettings.showEstimate ? WTRules.estimateNet(dayPay.total, taxSettings) : null;
+
+              detailEl.innerHTML = `
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                  <span style="color:#636366">Hours</span>
+                  <span style="color:#fff;font-weight:700">${WTRules.fmtHours(dayPay.totalHours)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                  <span style="color:#636366">Gross pay</span>
+                  <span style="color:#30D158;font-weight:700">${WTRules.fmtMoney(dayPay.total)}</span>
+                </div>
+                ${netData ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                  <span style="color:#636366">Est. net (after tax)</span>
+                  <span style="color:#64D2FF;font-weight:700">${WTRules.fmtMoney(netData.net)}</span>
+                </div>` : ''}
+                ${tipHtml}
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button data-go-day="${ds}" style="flex:1;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px;cursor:pointer">
+                    View full day →
+                  </button>
+                </div>`;
+
+              div.appendChild(detailEl);
+
+              let open = false;
+              dayRow.onclick = (e) => {
+                e.stopPropagation();
+                open = !open;
+                detailEl.style.display = open ? 'block' : 'none';
+                const chev = dayRow.querySelector('span:last-child');
+                if (chev) chev.textContent = open ? '▲' : '▼';
+              };
+
+              detailEl.querySelector('[data-go-day]').onclick = (e) => {
+                e.stopPropagation();
+                _go('day', { date: ds });
+              };
             }
             breakdownEl.appendChild(div);
           });
