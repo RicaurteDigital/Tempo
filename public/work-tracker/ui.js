@@ -1053,8 +1053,8 @@ const WorkTracker = (() => {
         <p class="wt-note">Photos auto-download to Camera Roll when captured. Export JSON regularly.</p>
       </div>`;
     // ── TIP POOL SETTINGS ────────────────────────────────
-    const currentProfile = WORK_PROFILES[settings.workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
-    if (!currentProfile.hasTips) {
+    const currentProfileObj = WORK_PROFILES[settings.workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
+    if (!currentProfileObj.hasTips) {
       // Skip tip pool settings for profiles without tips
     } else {
     const tipSettings = WTDb.getTipSettings();
@@ -1062,8 +1062,8 @@ const WorkTracker = (() => {
     tipBlock.className = 'wt-settings-block';
     const tipPositions = tipSettings.positions && tipSettings.positions.length > 0
       ? tipSettings.positions
-      : (currentProfile.tipPositions && currentProfile.tipPositions.length > 0
-        ? currentProfile.tipPositions
+      : (currentProfileObj.tipPositions && currentProfileObj.tipPositions.length > 0
+        ? currentProfileObj.tipPositions
         : DEFAULT_TIP_POSITIONS);
     tipBlock.innerHTML = `
       <div class="wt-settings-title">Tip Pool Settings</div>
