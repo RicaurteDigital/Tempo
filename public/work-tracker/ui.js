@@ -182,7 +182,7 @@ const WorkTracker = (() => {
           <div style="border-top:1px solid rgba(255,149,0,.15);margin-top:8px;padding-top:8px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <div>
-                <div style="font-size:13px;font-weight:700;color:#fff">${s.locationName||'Shift'}</div>
+                <div style="font-size:13px;font-weight:700;color:#fff">${s.locationName||'Shift'} · <span style="color:#98989D;font-size:12px;font-weight:500">${s.shiftType||''}</span></div>
                 <div style="font-size:11px;color:#636366">CC ${TipRules.fmtMoney(result.creditCard.gross)} − fee ${TipRules.fmtMoney(result.creditCard.fee)}</div>
               </div>
               ${myPayout ? `<div style="text-align:right">
@@ -692,7 +692,7 @@ const WorkTracker = (() => {
                   totalMyCash += myCash;
                   return `
                     <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #2C2C2E">
-                      <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:4px">${s.locationName||'Shift'}</div>
+                      <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:4px">${s.locationName||'Shift'} · <span style="color:#98989D;font-weight:500">${s.shiftType||''}</span></div>
                       <div style="display:flex;justify-content:space-between;color:#98989D;font-size:12px;margin-bottom:2px">
                         <span>CC ${WTRules.fmtMoney(t.creditCardTotal)} − fee ${WTRules.fmtMoney(tipResult.creditCard.fee)}</span>
                         <span style="color:#fff">${WTRules.fmtMoney(tipResult.creditCard.net)}</span>
