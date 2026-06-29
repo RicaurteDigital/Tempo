@@ -64,7 +64,8 @@ const WorkTracker = (() => {
     const pay = WTRules.weeklyPay(weekShifts);
     const settings = WTDb.getSettings();
     const run = _running();
-    const locs = WTDb.getLocations();
+    const allLocs = WTDb.getLocations();
+    const locs = allLocs.filter(l => (l.workProfile || 'restaurant') === (settings.workProfile || 'restaurant'));
     const onBreak = _breakStart !== null;
 
     const w = document.createElement('div');
@@ -932,8 +933,10 @@ const WorkTracker = (() => {
   }
 
   function _Settings() {
-    const locs = WTDb.getLocations();
     const settings = WTDb.getSettings();
+    const allLocs = WTDb.getLocations();
+    // Tag existing locations without a profile as 'restaurant' for backward compatibility
+    const locs = allLocs.filter(l => (l.workProfile || 'restaurant') === (settings.workProfile || 'restaurant'));
     const w = document.createElement('div');
     w.className = 'wt-screen';
     w.innerHTML = `
@@ -1296,6 +1299,7 @@ const WorkTracker = (() => {
 
       const loc = {
         id: generateId(), name, hourlyRate: rate, color,
+        workProfile: settings.workProfile || 'restaurant',
         overtimeRules: { calculateBy: calcBy, levels }
       };
       WTDb.saveLocation(loc);
@@ -1398,10 +1402,10 @@ const WorkTracker = (() => {
   }
 
   function _showAddShift(dateStr) {
-    const locs = WTDb.getLocations();
-    if (!locs.length) { alert('Add a location in Settings first.'); _go('settings'); return; }
-
     const settings = WTDb.getSettings();
+    const allLocs = WTDb.getLocations();
+    const locs = allLocs.filter(l => (l.workProfile || 'restaurant') === (settings.workProfile || 'restaurant'));
+    if (!locs.length) { alert('Add a location in Settings first.'); _go('settings'); return; }
     const profile = settings.workProfile || 'restaurant';
     const suggested = _suggestShiftType(profile);
     const profileShifts = (WORK_PROFILES[profile]||WORK_PROFILES.restaurant).shifts;
