@@ -686,9 +686,14 @@ const WorkTracker = (() => {
                     </div>` : ''}
                     <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #2C2C2E;padding-top:6px;margin-top:8px">
                       <span style="color:#fff">Hours + CC tips</span>
-                      <span style="color:#30D158;font-size:15px;font-weight:800">${WTRules.fmtMoney(grandTotal)}</span>
+                      <span style="color:#30D158;font-size:15px;font-weight:800">${WTRules.fmtMoney(dayPay.total + (myPayout ? myPayout.amount : 0))}</span>
                     </div>
-                    <div style="font-size:11px;color:#636366;margin-top:2px">Cash not included — paid separately</div>
+                    ${myCashShare > 0 ? `
+                    <div style="display:flex;justify-content:space-between;margin-top:4px">
+                      <span style="font-size:12px;color:#636366">+ Cash tips</span>
+                      <span style="font-size:13px;color:#636366;font-weight:600">${WTRules.fmtMoney(dayPay.total + (myPayout ? myPayout.amount : 0) + myCashShare)}</span>
+                    </div>` : ''}
+                    <div style="font-size:11px;color:#636366;margin-top:2px">Cash not included in Hours + CC total</div>
                   </div>`;
               }
 
