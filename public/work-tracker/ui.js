@@ -942,6 +942,34 @@ const WorkTracker = (() => {
         <div style="font-size:18px;font-weight:800">Settings</div>
         <div style="width:36px"></div>
       </div>
+      <div class="wt-settings-block" id="wt-profile-block">
+        <div class="wt-settings-title">Work Profile & Pay Rules</div>
+        <div class="wt-setting-row">
+          <label>Work Profile</label>
+          <select class="wt-select-sm" id="wt-work-profile-top">
+            ${Object.entries(WORK_PROFILES).map(([key, p]) =>
+              `<option value="${key}" ${settings.workProfile===key?'selected':''}>${p.label}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <p class="wt-note" id="wt-profile-note-top" style="margin-bottom:8px">
+          ${(() => {
+            const p = WORK_PROFILES[settings.workProfile] || WORK_PROFILES.restaurant;
+            return p.shifts.length > 0
+              ? `Shifts: ${p.shifts.slice(0,3).join(', ')}… · Suggested rate: $${p.suggestedRate}/hr`
+              : 'Define your own shift names.';
+          })()}
+        </p>
+        <div class="wt-setting-row">
+          <label>Pay Period</label>
+          <select class="wt-select-sm" id="wt-pay-period-top">
+            <option value="weekly" ${settings.payPeriod==='weekly'?'selected':''}>Weekly (Fri)</option>
+            <option value="event" ${settings.payPeriod==='event'?'selected':''}>Per Event</option>
+            <option value="biweekly" ${settings.payPeriod==='biweekly'?'selected':''}>Bi-Weekly</option>
+          </select>
+        </div>
+        <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-save-profile-top">Save Profile & Pay Period</button>
+      </div>
       <div class="wt-settings-block">
         <div class="wt-settings-title">Work Locations</div>
         <div id="wt-loc-list">
@@ -1015,37 +1043,7 @@ const WorkTracker = (() => {
 
         <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-add-loc">Add Location</button>
       </div>
-      <div class="wt-settings-block">
-        <div class="wt-settings-title">Work Profile & Pay Rules</div>
-        <div class="wt-setting-row">
-          <label>Work Profile</label>
-          <select class="wt-select-sm" id="wt-work-profile">
-            ${Object.entries(WORK_PROFILES).map(([key, p]) =>
-              `<option value="${key}" ${settings.workProfile===key?'selected':''}>${p.label}</option>`
-            ).join('')}
-          </select>
-        </div>
-        <p class="wt-note" id="wt-profile-note" style="margin-bottom:8px">
-          ${(() => {
-            const p = WORK_PROFILES[settings.workProfile] || WORK_PROFILES.restaurant;
-            return p.shifts.length > 0
-              ? `Shifts: ${p.shifts.slice(0,3).join(', ')}… · Suggested rate: $${p.suggestedRate}/hr`
-              : 'Define your own shift names when adding a location.';
-          })()}
-        </p>
-        <div class="wt-setting-row">
-          <label>Pay Period</label>
-          <select class="wt-select-sm" id="wt-pay-period">
-            <option value="weekly" ${settings.payPeriod==='weekly'?'selected':''}>Weekly (Fri)</option>
-            <option value="event" ${settings.payPeriod==='event'?'selected':''}>Per Event</option>
-            <option value="biweekly" ${settings.payPeriod==='biweekly'?'selected':''}>Bi-Weekly</option>
-          </select>
-        </div>
-        <p class="wt-note" id="wt-labor-note">
-          Overtime kicks in after ${settings.overtimeThreshold||40}h/week at ${settings.overtimeMultiplier||1.5}× rate.
-          Update these values in this section when your local laws change.
-        </p>
-      </div>
+
       <div class="wt-settings-block">
         <div class="wt-settings-title">Data & Backup</div>
         <button class="wt-btn wt-btn-secondary" id="wt-import-btn" style="margin-bottom:10px">📥 Import Backup JSON</button>
@@ -1266,6 +1264,27 @@ const WorkTracker = (() => {
 
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
+    // Top profile & pay period save
+    const saveProfileTop = w.querySelector('#wt-save-profile-top');
+    if (saveProfileTop) {
+      saveProfileTop.onclick = () => {
+        const newProfile = w.querySelector('#wt-work-profile-top').value;
+        const newPayPeriod = w.querySelector('#wt-pay-period-top').value;
+        const s = WTDb.getSettings();
+        s.workProfile = newProfile;
+        s.payPeriod = newPayPeriod;
+        WTDb.saveSettings(s);
+        _go('settings');
+      };
+      // Update note on profile change
+      w.querySelector('#wt-work-profile-top').onchange = function() {
+        const p = WORK_PROFILES[this.value] || WORK_PROFILES.restaurant;
+        const note = w.querySelector('#wt-profile-note-top');
+        if (note) note.textContent = p.shifts.length > 0
+          ? `Shifts: ${p.shifts.slice(0,3).join(', ')}… · Suggested rate: $${p.suggestedRate}/hr`
+          : 'Define your own shift names.';
+      };
+    }
     w.querySelectorAll('.wt-loc-del').forEach(b => { b.onclick = () => { WTDb.deleteLocation(b.dataset.lid); _go('settings'); }; });
     w.querySelectorAll('[data-edit-loc]').forEach(row => {
       row.onclick = (e) => {
@@ -1316,37 +1335,7 @@ const WorkTracker = (() => {
       btn.textContent = visible ? '+ Add Level 2 (double time)' : '− Remove Level 2';
     });
 
-    // Work profile change — suggest rate only if field is empty
-    w.querySelector('#wt-work-profile')?.addEventListener('change', function() {
-      const s = WTDb.getSettings();
-      s.workProfile = this.value;
-      WTDb.saveSettings(s);
-      const p = WORK_PROFILES[this.value] || WORK_PROFILES.restaurant;
-      const note = document.getElementById('wt-profile-note');
-      if (note) note.textContent = p.shifts.length > 0
-        ? `Shifts: ${p.shifts.slice(0,3).join(', ')}…`
-        : 'Define your own shift names.';
-      // Only suggest rate if field is empty
-      const rateInput = w.querySelector('#wt-loc-rate');
-      if (rateInput && (!rateInput.value || rateInput.value === '0')) {
-        rateInput.value = p.suggestedRate > 0 ? p.suggestedRate : '';
-      }
-    });
-    w.querySelector('#wt-pay-period').onchange = function() {
-      const s = WTDb.getSettings(); s.payPeriod = this.value; WTDb.saveSettings(s);
-    };
-    w.querySelector('#wt-work-profile')?.addEventListener('change', function() {
-      const s = WTDb.getSettings();
-      s.workProfile = this.value;
-      WTDb.saveSettings(s);
-      const p = WORK_PROFILES[this.value] || WORK_PROFILES.restaurant;
-      const note = document.getElementById('wt-profile-note');
-      if (note) note.textContent = p.shifts.length > 0
-        ? `Shifts: ${p.shifts.slice(0,3).join(', ')}… · Suggested rate: $${p.suggestedRate}/hr`
-        : 'Define your own shift names when adding a location.';
-      const rateInput = document.getElementById('wt-loc-rate');
-      if (rateInput && p.suggestedRate > 0) rateInput.value = p.suggestedRate;
-    });
+
     w.querySelector('#wt-import-btn').onclick = () => w.querySelector('#wt-import-file').click();
     w.querySelector('#wt-import-file').onchange = function() {
       const file = this.files[0]; if (!file) return;
