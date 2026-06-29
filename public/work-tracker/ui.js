@@ -23,7 +23,13 @@ const WorkTracker = (() => {
     ({ home: _Home, week: _Week, day: _Day, preview: _Preview, settings: _Settings }[view] || _Home)();
   }
 
-  function _today() { return new Date().toISOString().slice(0, 10); }
+  function _today() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
 
   function _fmtTime(iso) {
     if (!iso) return '--:--';
@@ -571,7 +577,7 @@ const WorkTracker = (() => {
       row.className = 'wt-week' + (isCur ? ' wt-week-cur' : '');
       const dots = [0,1,2,3,4,5,6].map(i => {
         const d = new Date(ws); d.setDate(d.getDate() + i);
-        const ds = d.toISOString().slice(0,10);
+        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const has = shifts.some(s => s.date === ds);
         const isT = ds === _today();
         return `<div class="wt-dot ${has?'wt-dot-on':''} ${isT?'wt-dot-today':''}" data-date="${ds}">${['M','T','W','T','F','S','S'][i]}${has?'<span class="wt-dot-pip"></span>':''}</div>`;
@@ -606,7 +612,7 @@ const WorkTracker = (() => {
           breakdownEl.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid #2C2C2E;font-size:13px';
           const days = [0,1,2,3,4,5,6].map(i => {
             const d = new Date(ws); d.setDate(d.getDate() + i);
-            return d.toISOString().slice(0,10);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
           });
           const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
           days.forEach((ds, i) => {
@@ -1737,7 +1743,8 @@ const WorkTracker = (() => {
         ctx.fillText('Tempo · ' + photoLabel + ' proof', pad, H + lineH * 3.9);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-        const date = firstIn ? new Date(firstIn).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+        const d2 = firstIn ? new Date(firstIn) : new Date();
+        const date = `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}`;
         const filename = `Tempo_${locName.replace(/\s+/g,'_')}_${photoLabel.replace(/\s+/g,'_')}_${date}.jpg`;
 
         // On iOS Safari, link.download doesn't save to Camera Roll — open full screen so user can long-press save
