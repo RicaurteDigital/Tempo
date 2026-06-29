@@ -2315,6 +2315,12 @@ const WorkTracker = (() => {
       <div class="wt-modal" style="max-height:85vh;overflow-y:auto">
         <div class="wt-modal-handle"></div>
         <div class="wt-modal-title">Edit Location</div>
+        <label class="wt-modal-label">Work Profile</label>
+        <select class="wt-input" id="wt-el-profile">
+          ${Object.entries(WORK_PROFILES).map(([k,v]) =>
+            `<option value="${k}" ${(loc.workProfile||'restaurant')===k?'selected':''}>${v.label}</option>`
+          ).join('')}
+        </select>
         <label class="wt-modal-label">Name</label>
         <input id="wt-el-name" class="wt-input" type="text" value="${loc.name}" autocapitalize="words">
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
@@ -2425,6 +2431,7 @@ const WorkTracker = (() => {
         if (ot2After > 0) levels.push({ after: ot2After, per: ot2Per, multiplier: ot2Mult });
       }
       loc.name = name; loc.hourlyRate = rate; loc.color = color;
+      loc.workProfile = ov.querySelector('#wt-el-profile').value;
       loc.overtimeRules = { calculateBy: calcBy, levels };
       WTDb.saveLocation(loc);
       const s = WTDb.getSettings();
