@@ -180,9 +180,10 @@ const WTRules = (() => {
   function fmtHours(h) {
     const hrs = Math.floor(h);
     const mins = Math.round((h - hrs) * 60);
-    if (hrs === 0) return `${mins}m`;
-    if (mins === 0) return `${hrs}h`;
-    return `${hrs}h ${mins}m`;
+    const decimal = h.toFixed(2);
+    if (hrs === 0) return `${mins}m (0.${String(Math.round(h*100)).padStart(2,'0')} hrs)`;
+    if (mins === 0) return `${hrs}h (${decimal} hrs)`;
+    return `${hrs}h ${mins}m (${decimal} hrs)`;
   }
 
   function fmtMoney(n) {
