@@ -259,12 +259,26 @@ const CIRC = 2*Math.PI*104;
 $('ringFg').style.strokeDasharray = CIRC;
 
 function startActivity(id){
-  S.current = {b:id, start:Date.now()}; S.nudgeDismissedAt = 0; save(); render();
+  S.current = {b:id, start:Date.now(), pausedMs:0, pausedAt:null}; S.nudgeDismissedAt = 0; save(); render();
+}
+function pauseActivity(){
+  if(!S.current || S.current.pausedAt) return;
+  S.current.pausedAt = Date.now(); save();
+  if(simpleMode) _renderSimple(); else render();
+}
+function resumeActivity(){
+  if(!S.current || !S.current.pausedAt) return;
+  S.current.pausedMs = (S.current.pausedMs||0) + (Date.now() - S.current.pausedAt);
+  S.current.pausedAt = null; save();
+  if(simpleMode) _renderSimple(); else render();
 }
 function endActivity(){
   if(!S.current) return null;
-  const ev = {b:S.current.b, start:S.current.start, end:Date.now()};
-  if (ev.end - ev.start >= 30000) S.events.push(ev);
+  const now = Date.now();
+  const pausedMs = (S.current.pausedMs||0) + (S.current.pausedAt ? now - S.current.pausedAt : 0);
+  const ev = {b:S.current.b, start:S.current.start, end:now, pausedMs};
+  const activeMs = ev.end - ev.start - pausedMs;
+  if (activeMs >= 30000) S.events.push(ev);
   S.current = null; save();
   return ev;
 }
@@ -315,13 +329,20 @@ function _renderSimple() {
           <div style="font-size:11px;color:${isActive ? b.hex+'cc' : '#48484a'};margin-top:2px;font-variant-numeric:tabular-nums">${timeStr}</div>
         </div>
         ${isActive
-          ? `<div style="display:flex;align-items:center;gap:10px">
-              <div id="simple-timer-${b.id}" style="font-size:16px;font-weight:700;color:${b.hex};font-variant-numeric:tabular-nums;min-width:48px;text-align:right">00:00</div>
+          ? (() => {
+              const isPaused = !!(S.current && S.current.pausedAt);
+              return `<div style="display:flex;align-items:center;gap:8px">
+              <div id="simple-timer-${b.id}" style="font-size:15px;font-weight:700;color:${isPaused ? '#636366' : b.hex};font-variant-numeric:tabular-nums;min-width:44px;text-align:right;opacity:${isPaused ? '0.5' : '1'}">${isPaused ? '⏸' : '00:00'}</div>
+              <button onclick="event.stopPropagation();${isPaused ? 'resumeActivity()' : 'pauseActivity()'}"
+                style="width:36px;height:36px;border-radius:50%;background:${isPaused ? 'rgba(48,209,88,.15)' : 'rgba(255,159,10,.15)'};border:1.5px solid ${isPaused ? 'rgba(48,209,88,.5)' : 'rgba(255,159,10,.5)'};color:${isPaused ? '#30D158' : '#FF9F0A'};font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
+                ${isPaused ? '▶' : '⏸'}
+              </button>
               <button onclick="event.stopPropagation();endCurrent()"
-                style="width:36px;height:36px;border-radius:50%;background:rgba(255,69,58,.15);border:1.5px solid rgba(255,69,58,.4);color:#FF453A;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
+                style="width:36px;height:36px;border-radius:50%;background:rgba(255,69,58,.15);border:1.5px solid rgba(255,69,58,.4);color:#FF453A;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
                 ■
               </button>
-            </div>`
+            </div>`;
+            })()
           : `<div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center">
               <svg width="10" height="12" viewBox="0 0 10 12" fill="${b.hex}" xmlns="http://www.w3.org/2000/svg"><path d="M0 0l10 6-10 6V0z"/></svg>
             </div>`
@@ -333,9 +354,11 @@ function _renderSimple() {
   if (S.current) {
     const updateSimpleTimer = () => {
       if (!S.current) { clearInterval(window._simpleTimerInterval); return; }
+      if (S.current.pausedAt) return; // pausado, no actualizar
       const el = document.getElementById('simple-timer-' + S.current.b);
       if (!el) return;
-      const elapsed = Date.now() - S.current.start;
+      const pausedMs = S.current.pausedMs || 0;
+      const elapsed = Date.now() - S.current.start - pausedMs;
       const s = Math.floor(elapsed / 1000);
       const m = Math.floor(s / 60);
       const h = Math.floor(m / 60);
@@ -350,7 +373,13 @@ function _renderSimple() {
 }
 
 function startBucket(bucketId) {
-  if (S.current && S.current.b === bucketId) return;
+  // Si es el bucket activo: toggle pause/resume
+  if (S.current && S.current.b === bucketId) {
+    if (S.current.pausedAt) resumeActivity(); else pauseActivity();
+    return;
+  }
+  // Si hay otro activo, terminarlo antes
+  if (S.current) { lastEnded = endActivity(); }
   // Countdown modal tipo Apple Watch
   const hex = (BUCKETS.find(b => b.id === bucketId) || {}).hex || '#fff';
   const name = bucketName(bucketId);
@@ -473,7 +502,7 @@ function renderPicker(){
     const dur = (lastEnded.end-lastEnded.start)/1000, exp = avgFor(b.id);
     const diff = dur-exp;
     $('doneCard').innerHTML = `<div class="done">
-      <div class="ic" style="background:${b.hex}22;color:${b.hex}">${b.icon}</div>
+      <div class="ic" style="background:${b.hex}22;color:${b.hex}"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:${b.hex}">${(BUCKET_ICONS[b.id]||'').replace(/^<svg[^>]*>/,'').replace('</svg>','')}</svg></div>
       <div class="tx"><b>${bucketName(b.id)} registrado</b>
       <span>${diff>=0?'+':'−'}${fmtH(Math.abs(diff))} vs esperado</span></div>
       <div class="d" style="color:${b.hex}">${fmtH(dur)}</div></div>`;
@@ -483,7 +512,7 @@ function renderPicker(){
   $('bGrid').innerHTML = list.map(b => `
     <button class="bcard" onclick="startActivity('${b.id}')">
       <div class="edge" style="background:${b.hex}"></div>
-      <div class="ic" style="background:${b.hex}22">${b.icon}</div>
+      <div class="ic" style="background:${b.hex}22;color:${b.hex}"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:${b.hex}">${(BUCKET_ICONS[b.id]||'').replace(/^<svg[^>]*>/,'').replace('</svg>','')}</svg></div>
       <div class="n">${bucketName(b.id)}</div>
       <div class="e">~${fmtH(avgFor(b.id))} por sesión</div>
     </button>`).join('');
