@@ -723,9 +723,7 @@ const WorkTracker = (() => {
                   </div>`;
               }
 
-              // Tax estimate
-              const taxSettings = WTDb.getTaxSettings();
-              const netData = taxSettings.showEstimate ? WTRules.estimateNet(dayPay.total, taxSettings) : null;
+
 
               detailEl.innerHTML = `
                 <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -736,10 +734,7 @@ const WorkTracker = (() => {
                   <span style="color:#636366">Gross pay</span>
                   <span style="color:#30D158;font-weight:700">${WTRules.fmtMoney(dayPay.total)}</span>
                 </div>
-                ${netData ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                  <span style="color:#636366">Est. net (after tax)</span>
-                  <span style="color:#64D2FF;font-weight:700">${WTRules.fmtMoney(netData.net)}</span>
-                </div>` : ''}
+
                 ${tipHtml}
                 <div style="display:flex;gap:8px;margin-top:10px">
                   <button data-go-day="${ds}" style="flex:1;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px;cursor:pointer">
