@@ -156,8 +156,18 @@
 
 <section id="vPicker" class="picker">
   <div id="doneCard"></div>
-  <div class="ph"><h2 id="pTitle">¿Con qué empezamos?</h2><p>Un toque y el cronómetro arranca. Siempre hay una actividad corriendo — incluso descansar cuenta.</p></div>
-  <div class="bgrid" id="bGrid"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 2px 12px">
+    <div class="ph" style="margin:0"><h2 id="pTitle">¿Con qué empezamos?</h2></div>
+    <button id="toggleModeBtn" style="background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:20px;color:#98989D;font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer">
+      Avanzado
+    </button>
+  </div>
+  <div id="vSimple" class="hide">
+    <div id="bucketList" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div id="vAdvanced">
+    <div class="bgrid" id="bGrid"></div>
+  </div>
 </section>
 
 <div class="nudge" id="nudge">
@@ -255,6 +265,107 @@ $('endBtn').onclick = () => { hideNudge(); lastEnded = endActivity(); render(); 
 $('nYes').onclick  = () => { hideNudge(); lastEnded = endActivity(); render(); };
 $('nNo').onclick   = () => { S.nudgeDismissedAt = Date.now(); save(); hideNudge(); };
 function hideNudge(){ $('nudge').classList.remove('show'); }
+
+// ── VIEW MODE TOGGLE ──────────────────────────────────
+let simpleMode = localStorage.getItem('tempo_simple_mode') === 'true';
+
+function _renderSimple() {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0,10);
+  const todayEvents = (S.events || []).filter(e => new Date(e.start).toISOString().slice(0,10) === todayStr);
+  
+  const list = document.getElementById('bucketList');
+  if (!list) return;
+  
+  list.innerHTML = BUCKETS.map(b => {
+    const name = bucketName(b.id);
+    const totalMs = todayEvents
+      .filter(e => e.b === b.id && e.end)
+      .reduce((sum, e) => sum + (e.end - e.start), 0);
+    const totalMins = Math.floor(totalMs / 60000);
+    const hrs = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    const decimal = (totalMins / 60).toFixed(2);
+    const timeStr = hrs > 0
+      ? `${hrs}h ${mins}m (${decimal}h)`
+      : `${mins}m (${decimal}h)`;
+    const isActive = S.current && S.current.b === b.id;
+    return `
+      <div style="display:flex;align-items:center;gap:14px;background:rgba(28,28,30,0.6);
+        backdrop-filter:blur(16px);border:1px solid ${isActive ? b.hex : 'rgba(255,255,255,0.08)'};
+        border-radius:18px;padding:14px 16px;cursor:pointer;transition:all .1s"
+        onclick="startBucket('${b.id}')">
+        <div style="width:42px;height:42px;border-radius:50%;background:${b.hex}20;
+          display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">
+          ${b.emoji}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700;color:#fff">${name}</div>
+          <div style="font-size:12px;color:#636366;margin-top:2px;font-variant-numeric:tabular-nums">${timeStr}</div>
+        </div>
+        ${isActive
+          ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              <div id="simple-timer-${b.id}" style="font-size:18px;font-weight:800;color:${b.hex};font-variant-numeric:tabular-nums">00:00</div>
+              <button onclick="event.stopPropagation();endCurrent()" 
+                style="background:rgba(255,69,58,.15);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer">
+                Parar
+              </button>
+            </div>`
+          : `<div style="color:#636366;font-size:20px">▶</div>`
+        }
+      </div>`;
+  }).join('');
+
+  // Live timer update for active bucket
+  if (S.current) {
+    const updateSimpleTimer = () => {
+      const el = document.getElementById('simple-timer-' + S.current.b);
+      if (!el) return;
+      const elapsed = Date.now() - S.current.start;
+      const s = Math.floor(elapsed / 1000);
+      const m = Math.floor(s / 60);
+      const h = Math.floor(m / 60);
+      el.textContent = h > 0
+        ? `${h}:${String(m%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
+        : `${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    };
+    updateSimpleTimer();
+    clearInterval(window._simpleTimerInterval);
+    window._simpleTimerInterval = setInterval(updateSimpleTimer, 1000);
+  }
+}
+
+function startBucket(bucketId) {
+  startActivity(bucketId);
+  if (simpleMode) _renderSimple();
+}
+
+function endCurrent() {
+  hideNudge(); lastEnded = endActivity();
+  if (simpleMode) _renderSimple();
+  else render();
+}
+
+function _applyMode() {
+  const simple = document.getElementById('vSimple');
+  const advanced = document.getElementById('vAdvanced');
+  const btn = document.getElementById('toggleModeBtn');
+  if (!simple || !advanced || !btn) return;
+  
+  if (simpleMode) {
+    simple.classList.remove('hide');
+    advanced.classList.add('hide');
+    btn.textContent = 'Avanzado';
+    btn.style.color = '#5E5CE6';
+    _renderSimple();
+  } else {
+    simple.classList.add('hide');
+    advanced.classList.remove('hide');
+    btn.textContent = 'Simple';
+    btn.style.color = '#98989D';
+    render();
+  }
+}
 
 function render(){
   $('hDate').textContent = new Date().toLocaleDateString('es', {weekday:'long', day:'numeric', month:'short'});
@@ -408,14 +519,22 @@ function switchTab(tab) {
   else if (isStudy) { StudyTracker.mount($('st-root')); }
 }
 
+document.getElementById('toggleModeBtn').onclick = () => {
+  simpleMode = !simpleMode;
+  localStorage.setItem('tempo_simple_mode', simpleMode);
+  _applyMode();
+};
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 render();
+_applyMode();
 </script>
 
 <link rel="stylesheet" href="work-tracker/styles.css">
 <script src="work-tracker/types.js"></script>
 <script src="work-tracker/db.js"></script>
 <script src="work-tracker/rules.js"></script>
+<script src="work-tracker/tips.js"></script>
 <script src="work-tracker/ui.js"></script>
 <link rel="stylesheet" href="study-tracker/styles.css">
 <script src="study-tracker/types.js"></script>
