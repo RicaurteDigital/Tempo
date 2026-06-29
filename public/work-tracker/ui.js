@@ -59,12 +59,12 @@ const WorkTracker = (() => {
   function _Home() {
     const today = _today();
     const ws = getWeekStart(new Date());
-    const weekShifts = WTDb.getShiftsForWeek(ws);
-    const todayShifts = WTDb.getShiftsForDate(today);
-    const pay = WTRules.weeklyPay(weekShifts);
     const settings = WTDb.getSettings();
-    const run = _running();
     const currentProfile = settings.workProfile || 'restaurant';
+    const weekShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === currentProfile);
+    const todayShifts = WTDb.getShiftsForDate(today).filter(s => (s.workProfile || 'restaurant') === currentProfile);
+    const pay = WTRules.weeklyPay(weekShifts);
+    const run = _running();
     const locs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
     const onBreak = _breakStart !== null;
 
@@ -605,7 +605,8 @@ const WorkTracker = (() => {
       </div>`;
 
     weeks.forEach(ws => {
-      const shifts = WTDb.getShiftsForWeek(ws);
+      const activeProf = (WTDb.getSettings().workProfile || 'restaurant');
+      const shifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === activeProf);
       const pay = WTRules.weeklyPay(shifts);
       const isCur = ws.getTime() === curMs;
       const row = document.createElement('div');
@@ -778,7 +779,8 @@ const WorkTracker = (() => {
 
   function _Day() {
     const dateStr = _date || _today();
-    const shifts = WTDb.getShiftsForDate(dateStr);
+    const activeProf2 = (WTDb.getSettings().workProfile || 'restaurant');
+    const shifts = WTDb.getShiftsForDate(dateStr).filter(s => (s.workProfile || 'restaurant') === activeProf2);
     const summary = WTRules.dailySummary(shifts);
     const w = document.createElement('div');
     w.className = 'wt-screen';
@@ -1481,6 +1483,7 @@ const WorkTracker = (() => {
         id: shiftId, date: dateStr,
         locationId: locId, locationName: loc.name,
         hourlyRate: rate, shiftType,
+        workProfile: WTDb.getSettings().workProfile || 'restaurant',
         entries: [{ id: entryId, clockIn: clockInTime, clockOut: null, breakMinutes: 0 }]
       });
       ov.remove();
