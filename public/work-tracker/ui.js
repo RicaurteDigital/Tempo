@@ -1928,6 +1928,7 @@ const WorkTracker = (() => {
                   onclick="this.select()" onfocus="this.select()">
               </div>
               <button id="wt-tp-reverse-cc" type="button" style="background:none;border:none;color:#5E5CE6;font-size:11px;padding:4px 0 0;cursor:pointer;text-align:left">I know my amount instead</button>
+              <button id="wt-tp-split" type="button" style="background:none;border:none;color:#FF9F0A;font-size:11px;padding:2px 0 0;cursor:pointer;text-align:left">${saved.ccBreakdown && saved.ccBreakdown.length > 1 ? `✓ Split (${saved.ccBreakdown.length} amounts)` : '+ Split into multiple amounts'}</button>
             </div>
             <div>
               <label class="wt-modal-label">Cash Tips</label>
@@ -2110,6 +2111,8 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-cc').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
       ov.querySelector('#wt-tp-cash').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
 
+      const __splitBtn = ov.querySelector('#wt-tp-split');
+      if (__splitBtn) __splitBtn.onclick = () => _showSplitAmounts(saved, feePercent, () => { delete saved.manualFee; render(); });
       const __reverseCC = ov.querySelector('#wt-tp-reverse-cc');
       if (__reverseCC) __reverseCC.onclick = () => _showReverseAmount('cc', feePercent, workers, (reconstructedGross) => {
         ov.querySelector('#wt-tp-cc').value = reconstructedGross.toFixed(2);
@@ -2218,6 +2221,89 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
+  }
+
+  function _showSplitAmounts(saved, feePercent, onSave) {
+    let amounts = (saved.ccBreakdown && saved.ccBreakdown.length > 0)
+      ? saved.ccBreakdown.map(a => ({ ...a }))
+      : [{ amount: saved.creditCardTotal || 0, feeExempt: false }];
+
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    document.body.appendChild(ov);
+
+    function paint() {
+      const breakdown = TipRules.applyProcessingFeeMulti(amounts, feePercent);
+      ov.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title">Split CC Amounts</div>
+          <div style="color:#636366;font-size:12px;margin-bottom:14px">Add each amount and mark which ones are exempt from the processing fee.</div>
+          <div id="wt-sa-list">
+            ${amounts.map((a, i) => `
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:12px;overflow:hidden;border:1px solid #38383A;flex:1">
+                  <span style="padding:0 8px;color:#98989D;font-size:14px">$</span>
+                  <input data-sa-amount="${i}" type="text" inputmode="decimal" value="${a.amount||''}" placeholder="0.00"
+                    style="flex:1;background:none;border:none;color:#fff;font-size:16px;font-weight:700;padding:10px 0;outline:none;width:0"
+                    onclick="this.select()" onfocus="this.select()">
+                </div>
+                <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#98989D;cursor:pointer;flex-shrink:0">
+                  <input data-sa-exempt="${i}" type="checkbox" ${a.feeExempt?'checked':''} style="width:16px;height:16px;cursor:pointer">
+                  No fee
+                </label>
+                ${amounts.length > 1 ? `<button data-sa-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px">✕</button>` : ''}
+              </div>`).join('')}
+          </div>
+          <button id="wt-sa-add" type="button" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;margin-bottom:14px">+ Add amount</button>
+          <div style="background:rgba(28,28,30,0.8);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:13px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#98989D">Total gross</span><span style="color:#fff;font-weight:700">$${breakdown.gross.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#98989D">Fee-applicable</span><span style="color:#fff">$${breakdown.feeApplicableGross.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#98989D">Fee (${feePercent}%)</span><span style="color:#FF453A">$${breakdown.fee.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid #38383A;padding-top:6px;margin-top:4px"><span style="color:#FF9F0A;font-weight:700">Net</span><span style="color:#FF9F0A;font-weight:800">$${breakdown.net.toFixed(2)}</span></div>
+          </div>
+          <div class="wt-modal-actions">
+            <button class="wt-btn wt-btn-secondary" id="wt-sa-cancel">Cancel</button>
+            <button class="wt-btn wt-btn-primary" id="wt-sa-save">Use This</button>
+          </div>
+        </div>`;
+
+      ov.querySelectorAll('[data-sa-amount]').forEach(inp => {
+        inp.addEventListener('blur', () => {
+          const i = parseInt(inp.dataset.saAmount);
+          amounts[i].amount = parseFloat(inp.value.replace(',','.')) || 0;
+          paint();
+        });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+      });
+      ov.querySelectorAll('[data-sa-exempt]').forEach(chk => {
+        chk.onchange = () => {
+          amounts[parseInt(chk.dataset.saExempt)].feeExempt = chk.checked;
+          paint();
+        };
+      });
+      ov.querySelectorAll('[data-sa-del]').forEach(btn => {
+        btn.onclick = () => {
+          amounts.splice(parseInt(btn.dataset.saDel), 1);
+          paint();
+        };
+      });
+      ov.querySelector('#wt-sa-add').onclick = () => {
+        amounts.push({ amount: 0, feeExempt: false });
+        paint();
+      };
+      ov.querySelector('#wt-sa-cancel').onclick = () => ov.remove();
+      ov.querySelector('#wt-sa-save').onclick = () => {
+        const final = TipRules.applyProcessingFeeMulti(amounts, feePercent);
+        saved.creditCardTotal = final.gross;
+        saved.manualFee = final.fee;
+        saved.ccBreakdown = amounts.map(a => ({ ...a }));
+        ov.remove();
+        onSave();
+      };
+    }
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    paint();
   }
 
   function _showReverseAmount(type, feePercent, workers, onResolve) {
