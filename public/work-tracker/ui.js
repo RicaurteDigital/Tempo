@@ -2314,6 +2314,16 @@ const WorkTracker = (() => {
       };
       ov.querySelector('#wt-sa-cancel').onclick = () => ov.remove();
       ov.querySelector('#wt-sa-save').onclick = () => {
+        const hasManualAdjustments = (saved.workers || []).some(w => typeof w.manualAmount === 'number');
+        if (hasManualAdjustments) {
+          const resetThem = confirm(
+            'You have manual amount adjustments on some workers.\n\n' +
+            'Press OK to reset everyone to the new automatic split, or Cancel to keep your manual adjustments (the pool total will update, but individual amounts stay as you set them).'
+          );
+          if (resetThem) {
+            saved.workers.forEach(w => delete w.manualAmount);
+          }
+        }
         const final = TipRules.applyProcessingFeeMulti(amounts, feePercent);
         saved.creditCardTotal = final.gross;
         saved.manualFee = final.fee;
