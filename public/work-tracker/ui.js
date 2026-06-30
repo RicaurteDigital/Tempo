@@ -1875,6 +1875,9 @@ const WorkTracker = (() => {
   }
 
   function _showTipPool(dayKey) {
+    const __shifts = WTDb.getShifts();
+    const __shift = __shifts.find(s => s.id === dayKey);
+    const locationId = __shift ? __shift.locationId : null;
     const tipSettings = WTDb.getTipSettings();
     const feePercent = tipSettings.processingFeePercent || 3;
     const saved = WTDb.getTipsForShift(dayKey) || {
@@ -2024,8 +2027,9 @@ const WorkTracker = (() => {
             </div>` : ''}
           </div>` : ''}
 
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div style="font-size:14px;font-weight:700">Workers (${workers.length})</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
+            <div style="font-size:14px;font-weight:700;flex:1">Workers (${workers.length})</div>
+            ${locationId ? `<button id="wt-tp-roster" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:7px 12px;cursor:pointer">👥 Roster</button>` : ''}
             <button id="wt-tp-add" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">+ Add</button>
           </div>
 
@@ -2182,6 +2186,8 @@ const WorkTracker = (() => {
       };
 
       ov.querySelector('#wt-tp-add').onclick = () => _showAddWorker(saved, tipSettings, render);
+      const __rosterBtn = ov.querySelector('#wt-tp-roster');
+      if (__rosterBtn) __rosterBtn.onclick = () => _showRosterPicker(locationId, saved, render);
       ov.querySelector('#wt-tp-cancel').onclick = () => ov.remove();
       ov.querySelector('#wt-tp-save').onclick = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
@@ -2199,6 +2205,53 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
+  }
+
+  function _showRosterPicker(locationId, saved, onSave) {
+    const roster = WTDb.getRoster(locationId);
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    document.body.appendChild(ov);
+
+    ov.innerHTML = `
+      <div class="wt-modal" style="max-height:80vh;overflow-y:auto">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">👥 From Roster</div>
+        ${roster.length === 0
+          ? '<div style="color:#636366;font-size:13px;text-align:center;padding:24px 0">No saved coworkers yet for this location.<br>Add workers normally and they will appear here next time.</div>'
+          : roster.map((m, i) => {
+              const already = TipRules.isAlreadyInWorkers(m.name, saved.workers || []);
+              return `
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px;${already?'opacity:0.4':''}">
+                <div>
+                  <div style="font-size:15px;font-weight:700;color:${m.isMe?'#64D2FF':'#fff'}">${m.name} ${m.isMe?'⭐':''}</div>
+                  <div style="font-size:12px;color:#636366;margin-top:2px">${m.position || ''} · ${m.points || 1} pts</div>
+                </div>
+                <button data-roster-add="${i}" ${already?'disabled':''} style="background:${already?'rgba(255,255,255,0.05)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#636366':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:${already?'default':'pointer'}">
+                  ${already ? 'Added' : '+ Add'}
+                </button>
+              </div>`;
+            }).join('')
+        }
+        <div class="wt-modal-actions" style="margin-top:12px">
+          <button class="wt-btn wt-btn-secondary" id="wt-roster-close">Close</button>
+        </div>
+      </div>`;
+
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#wt-roster-close').onclick = () => ov.remove();
+
+    ov.querySelectorAll('[data-roster-add]').forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.dataset.rosterAdd);
+        const member = roster[i];
+        if (!member || TipRules.isAlreadyInWorkers(member.name, saved.workers || [])) return;
+        if (!saved.workers) saved.workers = [];
+        saved.workers.push(TipRules.rosterMemberToWorker(member));
+        ov.remove();
+        onSave();
+      };
+    });
   }
 
   function _showAddWorker(saved, tipSettings, onSave, editIndex) {
