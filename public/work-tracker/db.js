@@ -175,6 +175,41 @@ const WTDb = (() => {
     });
   }
 
+  // ── ROSTER (NEW — ADDITIVE, scoped per work location) ──
+  // Storage shape: { [locationId]: [{ name, position, points, isMe }, ...] }
+  const ROSTER_KEY = 'wt_worker_roster_v1';
+
+  function getRoster(locationId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(ROSTER_KEY)) || {};
+      return all[locationId] || [];
+    } catch { return []; }
+  }
+
+  function saveRosterMember(locationId, member) {
+    try {
+      const all = JSON.parse(localStorage.getItem(ROSTER_KEY)) || {};
+      if (!all[locationId]) all[locationId] = [];
+      const idx = all[locationId].findIndex(m =>
+        (m.name || '').trim().toLowerCase() === (member.name || '').trim().toLowerCase()
+      );
+      if (idx >= 0) all[locationId][idx] = member; else all[locationId].push(member);
+      localStorage.setItem(ROSTER_KEY, JSON.stringify(all));
+    } catch {}
+    return member;
+  }
+
+  function deleteRosterMember(locationId, name) {
+    try {
+      const all = JSON.parse(localStorage.getItem(ROSTER_KEY)) || {};
+      if (!all[locationId]) return;
+      all[locationId] = all[locationId].filter(m =>
+        (m.name || '').trim().toLowerCase() !== (name || '').trim().toLowerCase()
+      );
+      localStorage.setItem(ROSTER_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
   function exportData() {
     return JSON.stringify({
       version: WT_VERSION,
@@ -203,6 +238,7 @@ const WTDb = (() => {
     exportData, importData,
     getTaxSettings, saveTaxSettings,
     getTipSettings, saveTipSettings,
-    getTipsForShift, saveTipsForShift, deleteTipsForShift
+    getTipsForShift, saveTipsForShift, deleteTipsForShift,
+    getRoster, saveRosterMember, deleteRosterMember
   };
 })();
