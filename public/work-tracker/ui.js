@@ -1888,7 +1888,6 @@ const WorkTracker = (() => {
     ov.className = 'wt-overlay';
 
     const render = () => {
-      console.log('RENDER START — manualFee:', saved.manualFee, 'ccBreakdown:', saved.ccBreakdown);
       // Preserve input values before re-render
       const ccInput = ov.querySelector('#wt-tp-cc');
       const cashInput = ov.querySelector('#wt-tp-cash');
