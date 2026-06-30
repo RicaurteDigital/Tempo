@@ -2234,7 +2234,7 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">My amount</label>
         <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:14px">
           <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
-          <input id="wt-rv-amount" type="text" inputmode="decimal" placeholder="0.00"
+          <input id="wt-rv-amount" type="text" inputmode="decimal" placeholder="ej: 511.64 (con centavos si los sabes)"
             style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
             onclick="this.select()" onfocus="this.select()">
         </div>
