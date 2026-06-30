@@ -281,6 +281,8 @@ function resumeActivity(){
   S.current.pausedAt = null; save();
   if(simpleMode) _renderSimple(); else render();
 }
+window.pauseActivity = pauseActivity;
+window.resumeActivity = resumeActivity;
 function endActivity(){
   if(!S.current) return null;
   const now = Date.now();
@@ -344,7 +346,7 @@ function _renderSimple() {
               const pauseIcon = `<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="4" width="3.5" height="12" rx="1"/><rect x="11.5" y="4" width="3.5" height="12" rx="1"/></svg>`;
               return `<div style="display:flex;align-items:center;gap:8px">
               <div id="simple-timer-${b.id}" style="font-size:15px;font-weight:700;color:${isPaused ? '#636366' : b.hex};font-variant-numeric:tabular-nums;min-width:44px;text-align:right;opacity:${isPaused ? '0.5' : '1'}">${isPaused ? '⏸' : '00:00'}</div>
-              <button type="button" onclick="event.stopPropagation();window.togglePause();"
+              <button type="button" onclick="event.stopPropagation();${isPaused ? 'window.resumeActivity()' : 'window.pauseActivity()'};"
                 style="width:36px;height:36px;border-radius:50%;background:rgba(255,159,10,.15);border:1.5px solid rgba(255,159,10,.5);color:#FF9F0A;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
                 ${isPaused ? resumeIcon : pauseIcon}
               </button>
