@@ -2279,8 +2279,8 @@ const WorkTracker = (() => {
       const result = TipRules.reverseFromKnownAmount(amount, points, workers, feePercent, type);
       if (!result) { preview.textContent = ''; return; }
       preview.innerHTML = type === 'cc'
-        ? \`Reconstructed CC total (before fee): <span style="color:#FF9F0A;font-weight:700">$\${result.reconstructedGross.toFixed(2)}</span>\`
-        : \`Reconstructed cash total: <span style="color:#FF9F0A;font-weight:700">$\${result.reconstructedGross.toFixed(2)}</span>\`;
+        ? `Reconstructed CC total (before fee): <span style="color:#FF9F0A;font-weight:700">$${result.reconstructedGross.toFixed(2)}</span>`
+        : `Reconstructed cash total: <span style="color:#FF9F0A;font-weight:700">$${result.reconstructedGross.toFixed(2)}</span>`;
     }
     ov.querySelector('#wt-rv-amount').addEventListener('input', updatePreview);
     ov.querySelector('#wt-rv-points').addEventListener('input', updatePreview);
