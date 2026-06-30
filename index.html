@@ -362,6 +362,7 @@ function _renderSimple() {
   }).join('');
 
   window.togglePause = function() {
+    console.log('togglePause CLICKED', S.current);
     if (!S.current) return;
     if (S.current.pausedAt) resumeActivity(); else pauseActivity();
   };
