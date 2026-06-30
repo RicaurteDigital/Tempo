@@ -1927,6 +1927,7 @@ const WorkTracker = (() => {
                   style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
                   onclick="this.select()" onfocus="this.select()">
               </div>
+              <button id="wt-tp-reverse-cc" type="button" style="background:none;border:none;color:#5E5CE6;font-size:11px;padding:4px 0 0;cursor:pointer;text-align:left">I know my amount instead</button>
             </div>
             <div>
               <label class="wt-modal-label">Cash Tips</label>
@@ -1937,6 +1938,7 @@ const WorkTracker = (() => {
                   style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
                   onclick="this.select()" onfocus="this.select()">
               </div>
+              <button id="wt-tp-reverse-cash" type="button" style="background:none;border:none;color:#5E5CE6;font-size:11px;padding:4px 0 0;cursor:pointer;text-align:left">I know my amount instead</button>
             </div>
           </div>
 
@@ -2108,6 +2110,17 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-cc').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
       ov.querySelector('#wt-tp-cash').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
 
+      const __reverseCC = ov.querySelector('#wt-tp-reverse-cc');
+      if (__reverseCC) __reverseCC.onclick = () => _showReverseAmount('cc', feePercent, workers, (reconstructedGross) => {
+        ov.querySelector('#wt-tp-cc').value = reconstructedGross.toFixed(2);
+        doRecalc();
+      });
+      const __reverseCash = ov.querySelector('#wt-tp-reverse-cash');
+      if (__reverseCash) __reverseCash.onclick = () => _showReverseAmount('cash', feePercent, workers, (reconstructedGross) => {
+        ov.querySelector('#wt-tp-cash').value = reconstructedGross.toFixed(2);
+        doRecalc();
+      });
+
       // +/- buttons
       ov.querySelectorAll('[data-minus]').forEach(btn => {
         btn.onclick = () => {
@@ -2205,6 +2218,82 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
+  }
+
+  function _showReverseAmount(type, feePercent, workers, onResolve) {
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    document.body.appendChild(ov);
+    const label = type === 'cc' ? 'Credit Card' : 'Cash';
+
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">My ${label} Amount</div>
+        <div style="color:#636366;font-size:12px;margin-bottom:14px">Enter what you actually received and your points — we'll work out the total pool.</div>
+        <label class="wt-modal-label">My amount</label>
+        <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:14px">
+          <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+          <input id="wt-rv-amount" type="text" inputmode="decimal" placeholder="0.00"
+            style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
+            onclick="this.select()" onfocus="this.select()">
+        </div>
+        <label class="wt-modal-label">My points</label>
+        <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:6px">
+          <button id="wt-rv-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">−</button>
+          <input id="wt-rv-points" type="text" inputmode="decimal" value="1"
+            style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;padding:0;outline:none"
+            onclick="this.select()" onfocus="this.select()">
+          <button id="wt-rv-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer"
+            onpointerdown="this.style.background='rgba(255,255,255,0.12)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">+</button>
+        </div>
+        <div id="wt-rv-preview" style="color:#636366;font-size:12px;margin-bottom:10px;min-height:16px"></div>
+        <div class="wt-modal-actions">
+          <button class="wt-btn wt-btn-secondary" id="wt-rv-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-rv-apply">Use This</button>
+        </div>
+      </div>`;
+
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#wt-rv-cancel').onclick = () => ov.remove();
+
+    ov.querySelector('#wt-rv-minus').onclick = () => {
+      const i = ov.querySelector('#wt-rv-points');
+      const cur = parseFloat(i.value) || 1;
+      i.value = Math.max(0.25, Math.round((cur - 0.05) * 100) / 100).toFixed(2);
+      updatePreview();
+    };
+    ov.querySelector('#wt-rv-plus').onclick = () => {
+      const i = ov.querySelector('#wt-rv-points');
+      const cur = parseFloat(i.value) || 1;
+      i.value = (Math.round((cur + 0.05) * 100) / 100).toFixed(2);
+      updatePreview();
+    };
+
+    function updatePreview() {
+      const amount = parseFloat(ov.querySelector('#wt-rv-amount').value) || 0;
+      const points = parseFloat(ov.querySelector('#wt-rv-points').value) || 0;
+      const preview = ov.querySelector('#wt-rv-preview');
+      if (amount <= 0 || points <= 0) { preview.textContent = ''; return; }
+      const result = TipRules.reverseFromKnownAmount(amount, points, workers, feePercent, type);
+      if (!result) { preview.textContent = ''; return; }
+      preview.innerHTML = type === 'cc'
+        ? \`Reconstructed CC total (before fee): <span style="color:#FF9F0A;font-weight:700">$\${result.reconstructedGross.toFixed(2)}</span>\`
+        : \`Reconstructed cash total: <span style="color:#FF9F0A;font-weight:700">$\${result.reconstructedGross.toFixed(2)}</span>\`;
+    }
+    ov.querySelector('#wt-rv-amount').addEventListener('input', updatePreview);
+    ov.querySelector('#wt-rv-points').addEventListener('input', updatePreview);
+
+    ov.querySelector('#wt-rv-apply').onclick = () => {
+      const amount = parseFloat(ov.querySelector('#wt-rv-amount').value) || 0;
+      const points = parseFloat(ov.querySelector('#wt-rv-points').value) || 0;
+      if (amount <= 0 || points <= 0) { alert('Enter your amount and points.'); return; }
+      const result = TipRules.reverseFromKnownAmount(amount, points, workers, feePercent, type);
+      if (!result) { alert('Could not calculate — check points.'); return; }
+      ov.remove();
+      onResolve(result.reconstructedGross);
+    };
   }
 
   function _showRosterPicker(locationId, saved, onSave) {
