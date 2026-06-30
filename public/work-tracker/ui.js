@@ -2135,7 +2135,7 @@ const WorkTracker = (() => {
       });
 
       ov.querySelectorAll('[data-edit]').forEach(el => {
-        el.onclick = () => _showAddWorker(saved, tipSettings, render, parseInt(el.dataset.edit));
+        el.onclick = () => _showAddWorker(saved, tipSettings, render, parseInt(el.dataset.edit), locationId);
       });
 
       // Cash per-person adjustment buttons
@@ -2185,7 +2185,7 @@ const WorkTracker = (() => {
         render();
       };
 
-      ov.querySelector('#wt-tp-add').onclick = () => _showAddWorker(saved, tipSettings, render);
+      ov.querySelector('#wt-tp-add').onclick = () => _showAddWorker(saved, tipSettings, render, undefined, locationId);
       const __rosterBtn = ov.querySelector('#wt-tp-roster');
       if (__rosterBtn) __rosterBtn.onclick = () => _showRosterPicker(locationId, saved, render);
       ov.querySelector('#wt-tp-cancel').onclick = () => ov.remove();
@@ -2254,7 +2254,7 @@ const WorkTracker = (() => {
     });
   }
 
-  function _showAddWorker(saved, tipSettings, onSave, editIndex) {
+  function _showAddWorker(saved, tipSettings, onSave, editIndex, locationId) {
     const positions = tipSettings.positions || DEFAULT_TIP_POSITIONS;
     const addOv = document.createElement('div');
     addOv.className = 'wt-overlay';
@@ -2341,6 +2341,14 @@ const WorkTracker = (() => {
         // Reset all manual overrides when pool composition changes
         saved.workers.forEach(w => delete w.manualAmount);
         delete saved.cashAdjustments;
+      }
+      if (locationId) {
+        WTDb.saveRosterMember(locationId, {
+          name: workerData.name,
+          position: workerData.position,
+          points: workerData.points,
+          isMe: workerData.isMe
+        });
       }
       addOv.remove();
       onSave();
