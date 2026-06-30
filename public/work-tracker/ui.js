@@ -1904,9 +1904,16 @@ const WorkTracker = (() => {
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
       const result = TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
-      // Ensure exactFee is always calculated from current ccTotal
+      const hasSplit = saved.ccBreakdown && saved.ccBreakdown.length > 1;
+      // Ensure exactFee is always calculated correctly:
+      // if split, only fee-applicable amounts count toward the exact fee.
       if (result.creditCard) {
-        result.creditCard.exactFee = ccTotal * (feePercent / 100);
+        if (hasSplit) {
+          const splitCalc = TipRules.applyProcessingFeeMulti(saved.ccBreakdown, feePercent);
+          result.creditCard.exactFee = splitCalc.exactFee;
+        } else {
+          result.creditCard.exactFee = ccTotal * (feePercent / 100);
+        }
       }
 
       ov.innerHTML = `
@@ -1945,6 +1952,13 @@ const WorkTracker = (() => {
 
           ${ccTotal > 0 || cashTotal > 0 ? `
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
+            ${hasSplit ? `
+            <div style="background:rgba(255,159,10,.06);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px">
+              ${saved.ccBreakdown.map(a => `
+                <div style="display:flex;justify-content:space-between;padding:2px 0">
+                  <span style="color:#98989D">$${(parseFloat(a.amount)||0).toFixed(2)} ${a.feeExempt ? '<span style="color:#30D158">· no fee</span>' : `<span style="color:#FF9F0A">· ${feePercent}% fee</span>`}</span>
+                </div>`).join('')}
+            </div>` : ''}
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
               <div style="display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px">
                 <span style="color:#98989D">CC fee ${feePercent}% = <span style="color:#FF453A">$${(result.creditCard.exactFee||0).toFixed(2)} exact</span></span>
@@ -2100,7 +2114,12 @@ const WorkTracker = (() => {
       const doRecalc = () => {
         const ccVal = parseFloat(ov.querySelector('#wt-tp-cc').value.replace(',','.')) || 0;
         const cashVal = parseFloat(ov.querySelector('#wt-tp-cash').value.replace(',','.')) || 0;
-        if (ccVal !== saved.creditCardTotal) delete saved.manualFee;
+        // Don't wipe manualFee if it matches the gross from an active split —
+        // a split's fee is intentional, not a stale leftover from a prior manual edit.
+        const splitMatchesCC = saved.ccBreakdown && saved.ccBreakdown.length > 1
+          && Math.abs(TipRules.applyProcessingFeeMulti(saved.ccBreakdown, feePercent).gross - ccVal) < 0.005;
+        if (ccVal !== saved.creditCardTotal && !splitMatchesCC) delete saved.manualFee;
+        if (ccVal !== saved.creditCardTotal && !splitMatchesCC) delete saved.ccBreakdown;
         saved.creditCardTotal = ccVal;
         saved.cashTotal = cashVal;
         saved.workers.forEach(w => delete w.manualAmount);
