@@ -2131,7 +2131,7 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-cash').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
 
       const __splitBtn = ov.querySelector('#wt-tp-split');
-      if (__splitBtn) __splitBtn.onclick = () => _showSplitAmounts(saved, feePercent, () => { delete saved.manualFee; render(); });
+      if (__splitBtn) __splitBtn.onclick = () => _showSplitAmounts(saved, feePercent, () => { render(); });
       const __reverseCC = ov.querySelector('#wt-tp-reverse-cc');
       if (__reverseCC) __reverseCC.onclick = () => _showReverseAmount('cc', feePercent, workers, (reconstructedGross) => {
         ov.querySelector('#wt-tp-cc').value = reconstructedGross.toFixed(2);
@@ -2228,7 +2228,7 @@ const WorkTracker = (() => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
         const finalResult = TipRules.calculatePayouts(
-          saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent
+          saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee
         );
         const me = finalResult.payouts.find((p, i) => saved.workers[i] && saved.workers[i].isMe);
         saved.myPayout = me ? me.amount : 0;
