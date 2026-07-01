@@ -1891,6 +1891,8 @@ const WorkTracker = (() => {
     ov.className = 'wt-overlay';
 
     const render = () => {
+      const __modal = ov.querySelector('.wt-modal');
+      const __scrollTop = __modal ? __modal.scrollTop : 0;
       // Preserve input values before re-render
       const ccInput = ov.querySelector('#wt-tp-cc');
       const cashInput = ov.querySelector('#wt-tp-cash');
@@ -2107,6 +2109,8 @@ const WorkTracker = (() => {
           </div>
         </div>`;
 
+      const __modalAfter = ov.querySelector('.wt-modal');
+      if (__modalAfter && __scrollTop) __modalAfter.scrollTop = __scrollTop;
       ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
       ov.querySelectorAll('input').forEach(i => {
         i.addEventListener('focus', () => i.select && i.select());
@@ -2529,6 +2533,10 @@ const WorkTracker = (() => {
       i.value = (Math.round((cur + 0.05) * 100) / 100).toFixed(2);
     };
 
+    // On mobile, scroll input into view when keyboard opens so it's not hidden
+    addOv.querySelector('#wt-aw-name').addEventListener('focus', () => {
+      setTimeout(() => addOv.querySelector('#wt-aw-name').scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    });
     addOv.querySelector('#wt-aw-cancel').onclick = () => addOv.remove();
     addOv.querySelector('#wt-aw-add').onclick = () => {
       const name = addOv.querySelector('#wt-aw-name').value.trim();
@@ -2549,6 +2557,16 @@ const WorkTracker = (() => {
         saved.workers.forEach(w => delete w.manualAmount);
         delete saved.cashAdjustments;
       }
+      // Sort: isMe always first, then by points descending
+      const meIdx = saved.workers.findIndex(w => w.isMe);
+      if (meIdx > 0) {
+        const me = saved.workers.splice(meIdx, 1)[0];
+        saved.workers.unshift(me);
+      }
+      saved.workers = [
+        ...saved.workers.filter(w => w.isMe),
+        ...saved.workers.filter(w => !w.isMe).sort((a, b) => (b.points || 0) - (a.points || 0))
+      ];
       if (locationId) {
         WTDb.saveRosterMember(locationId, {
           name: workerData.name,
