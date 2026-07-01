@@ -2138,7 +2138,7 @@ const WorkTracker = (() => {
         if (ccVal !== saved.creditCardTotal && !splitMatchesCC) delete saved.ccBreakdown;
         saved.creditCardTotal = ccVal;
         saved.cashTotal = cashVal;
-        saved.workers.forEach(w => delete w.manualAmount);
+        saved.workers.forEach(w => { delete w.manualAmount; delete w.ccManualAmount; });
         render();
       };
       ov.querySelector('#wt-tp-cc').addEventListener('blur', doRecalc);
@@ -2159,20 +2159,20 @@ const WorkTracker = (() => {
         doRecalc();
       });
 
-      // +/- buttons
+      // +/- buttons — adjust CC amount only (cash is separate)
       ov.querySelectorAll('[data-minus]').forEach(btn => {
         btn.onclick = () => {
           const i = parseInt(btn.dataset.minus);
-          const cur = result.payouts[i].amount;
-          saved.workers[i].manualAmount = Math.max(0, cur - 1);
+          const cur = result.payouts[i].ccAmount !== undefined ? result.payouts[i].ccAmount : result.payouts[i].amount;
+          saved.workers[i].ccManualAmount = Math.max(0, cur - 1);
           render();
         };
       });
       ov.querySelectorAll('[data-plus]').forEach(btn => {
         btn.onclick = () => {
           const i = parseInt(btn.dataset.plus);
-          const cur = result.payouts[i].amount;
-          saved.workers[i].manualAmount = cur + 1;
+          const cur = result.payouts[i].ccAmount !== undefined ? result.payouts[i].ccAmount : result.payouts[i].amount;
+          saved.workers[i].ccManualAmount = cur + 1;
           render();
         };
       });

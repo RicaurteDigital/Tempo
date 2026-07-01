@@ -48,7 +48,9 @@ const TipRules = (() => {
       const amount = typeof w.manualAmount === 'number'
         ? w.manualAmount
         : Math.floor(exact);
-      const ccAmount = Math.floor(ccExact);
+      const ccAmount = typeof w.ccManualAmount === 'number'
+        ? w.ccManualAmount
+        : Math.floor(ccExact);
       return {
         name:         w.name,
         isMe:         w.isMe || false,
@@ -57,7 +59,7 @@ const TipRules = (() => {
         exact,        // CC + cash combined (kept for backward compat)
         amount,       // CC + cash combined (kept for backward compat)
         ccExact,      // CC only — use this for weekly check display
-        ccAmount      // CC only floored — use this for weekly check display
+        ccAmount      // CC only — respects ccManualAmount override
       };
     });
 
