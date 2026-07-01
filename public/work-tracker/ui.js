@@ -2235,7 +2235,10 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-add').onclick = () => _showAddWorker(saved, tipSettings, render, undefined, locationId);
       const __rosterBtn = ov.querySelector('#wt-tp-roster');
       if (__rosterBtn) __rosterBtn.onclick = () => _showRosterPicker(locationId, saved, render);
-      ov.querySelector('#wt-tp-cancel').onclick = () => ov.remove();
+      ov.querySelector('#wt-tp-cancel').onclick = () => {
+        if (ov._cleanupVV) ov._cleanupVV();
+        ov.remove();
+      };
       ov.querySelector('#wt-tp-save').onclick = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
@@ -2252,6 +2255,19 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
+    // iOS keyboard fix: adjust overlay to visible viewport when keyboard opens
+    if (window.visualViewport) {
+      const __vvHandler = () => {
+        ov.style.height = window.visualViewport.height + 'px';
+        ov.style.top = window.visualViewport.offsetTop + 'px';
+      };
+      window.visualViewport.addEventListener('resize', __vvHandler);
+      window.visualViewport.addEventListener('scroll', __vvHandler);
+      ov._cleanupVV = () => {
+        window.visualViewport.removeEventListener('resize', __vvHandler);
+        window.visualViewport.removeEventListener('scroll', __vvHandler);
+      };
+    }
   }
 
   function _showSplitAmounts(saved, feePercent, onSave) {
