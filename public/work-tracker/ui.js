@@ -1925,7 +1925,9 @@ const WorkTracker = (() => {
         <div style="display:flex;gap:10px">
           <button class="wt-btn wt-btn-secondary" id="wt-vp-close">Close</button>
           <button class="wt-btn wt-btn-secondary" id="wt-vp-replace">📷 Replace</button>
-          <button class="wt-btn" id="wt-vp-delete" style="background:rgba(255,69,58,.15);border:1px solid rgba(255,69,58,.3);color:#FF453A">🗑 Delete</button>
+          <button id="wt-vp-delete" style="width:44px;height:44px;border-radius:50%;background:rgba(255,69,58,.15);border:1.5px solid rgba(255,69,58,.3);color:#FF453A;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5h12M8 5V3h4v2M6 5l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
       </div>`;
 
