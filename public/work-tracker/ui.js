@@ -1766,6 +1766,11 @@ const WorkTracker = (() => {
   }
 
   async function _doPhotoThenRefresh(shiftId, photoKey, onDone) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;z-index:9999;pointer-events:none;text-align:center';
+    hint.textContent = '💡 Tip: turn off flash before taking photo';
+    document.body.appendChild(hint);
+    setTimeout(() => hint.remove(), 3000);
     const input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/*';
     input.onchange = async () => {
@@ -1786,6 +1791,11 @@ const WorkTracker = (() => {
   }
 
   async function _doPhoto(shiftId, photoKey) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;z-index:9999;pointer-events:none;text-align:center';
+    hint.textContent = '💡 Tip: turn off flash before taking photo';
+    document.body.appendChild(hint);
+    setTimeout(() => hint.remove(), 3000);
     const input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/*';
     input.onchange = async () => {
@@ -1897,6 +1907,7 @@ const WorkTracker = (() => {
     if (photoKey && photoKey.includes('clockin')) photoLabel = 'Clock In';
     else if (photoKey && photoKey.includes('clockout')) photoLabel = 'Clock Out';
     else if (photoKey && photoKey.includes('break')) photoLabel = 'Break';
+    else if (photoKey && photoKey.includes('report')) photoLabel = 'Report';
 
     ov.innerHTML = `
       <div class="wt-modal">
@@ -1914,6 +1925,7 @@ const WorkTracker = (() => {
         <div style="display:flex;gap:10px">
           <button class="wt-btn wt-btn-secondary" id="wt-vp-close">Close</button>
           <button class="wt-btn wt-btn-secondary" id="wt-vp-replace">📷 Replace</button>
+          <button class="wt-btn" id="wt-vp-delete" style="background:rgba(255,69,58,.15);border:1px solid rgba(255,69,58,.3);color:#FF453A">🗑 Delete</button>
         </div>
       </div>`;
 
@@ -2002,6 +2014,25 @@ const WorkTracker = (() => {
     ov.querySelector('#wt-vp-replace').onclick = () => {
       ov.remove();
       _doPhoto(shiftId, photoKey);
+    };
+    ov.querySelector('#wt-vp-delete').onclick = () => {
+      if (!confirm('Delete this photo? This cannot be undone.')) return;
+      WTDb.deletePhoto(shiftId, photoKey).then(() => {
+        ov.remove();
+        // Update button in ShiftCard
+        const btn = document.querySelector(`[data-pid="${photoKey}"]`);
+        if (btn) {
+          btn.textContent = photoKey.includes('report') ? '📋 Add report' : '📷 ' + photoLabel;
+          btn.classList.remove('has-photo');
+          btn.onclick = () => photoKey.includes('report')
+            ? _doPhotoThenRefresh(shiftId, photoKey, () => {
+                const rr = btn.closest('[data-shift-id]');
+                if (rr && rr._refresh) rr._refresh();
+              })
+            : _doPhoto(shiftId, photoKey);
+        }
+        _go('home');
+      });
     };
   }
 

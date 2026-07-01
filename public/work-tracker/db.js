@@ -88,6 +88,15 @@ const WTDb = (() => {
     localStorage.removeItem('wt_tips_' + shiftId);
   }
 
+  async function deletePhoto(shiftId, photoKey) {
+    const db = await openPhotoDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('photos', 'readwrite');
+      tx.objectStore('photos').delete(`${shiftId}_${photoKey}`);
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  }
+
   function getTaxSettings() {
     try {
       const raw = localStorage.getItem('wt_tax_settings');
@@ -239,6 +248,7 @@ const WTDb = (() => {
     getTaxSettings, saveTaxSettings,
     getTipSettings, saveTipSettings,
     getTipsForShift, saveTipsForShift, deleteTipsForShift,
-    getRoster, saveRosterMember, deleteRosterMember
+    getRoster, saveRosterMember, deleteRosterMember,
+    deletePhoto
   };
 })();
