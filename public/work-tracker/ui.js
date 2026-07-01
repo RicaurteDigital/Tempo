@@ -1491,15 +1491,15 @@ const WorkTracker = (() => {
       };
       WTDb.saveLocation(loc);
       ov.remove();
-      if (onDone) onDone();
+      if (onDone) onDone(loc.id);
     };
   }
 
-  function _showAddShift(dateStr) {
+  function _showAddShift(dateStr, preSelectLocId) {
     const settings = WTDb.getSettings();
     const currentProfile = (WTDb.getSettings().workProfile || 'restaurant');
     const locs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
-    if (!locs.length) { _showQuickAddLocation(() => _showAddShift(dateStr)); return; }
+    if (!locs.length) { _showQuickAddLocation((newLocId) => _showAddShift(dateStr, newLocId)); return; }
     const profile = settings.workProfile || 'restaurant';
     const suggested = _suggestShiftType(profile);
     const profileShifts = (WORK_PROFILES[profile]||WORK_PROFILES.restaurant).shifts;
@@ -1514,8 +1514,8 @@ const WorkTracker = (() => {
         <div class="wt-modal-handle"></div>
         <div class="wt-modal-title">New Shift · ${_fmtDate(dateStr)}</div>
         <label class="wt-modal-label">Location</label>
-        <select class="wt-input" id="wt-ml" style="display:block;width:100%">
-          ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}">${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
+        <select class="wt-input" id="wt-ml" style="display:block;width:100%;box-sizing:border-box;flex:none">
+          ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}" ${preSelectLocId === l.id ? 'selected' : ''}>${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
         </select>
         <button id="wt-ml-add" type="button" style="display:block;width:100%;background:none;border:none;color:#5E5CE6;font-size:13px;font-weight:600;padding:8px 0 4px;cursor:pointer;text-align:left">+ Add new location</button>
         <label class="wt-modal-label">Shift Type <span style="font-size:10px;color:#5E5CE6;font-weight:700;letter-spacing:.5px">AUTO-DETECTED</span></label>
@@ -1550,7 +1550,7 @@ const WorkTracker = (() => {
     };
     ov.querySelector('#wt-ml-add').onclick = () => {
       ov.remove();
-      _showQuickAddLocation(() => _showAddShift(dateStr));
+      _showQuickAddLocation((newLocId) => _showAddShift(dateStr, newLocId));
     };
     // Trigger on load to set initial rate from first location
     ov.querySelector('#wt-ml').dispatchEvent(new Event('change'));
