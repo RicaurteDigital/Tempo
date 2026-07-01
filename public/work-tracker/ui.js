@@ -158,17 +158,33 @@ const WorkTracker = (() => {
 
     const stats = document.createElement('div');
     stats.className = 'wt-stats-row';
+    // Get unique locations that have shifts this week
+    const weekLocIds = [...new Set(weekShifts.map(s => s.locationId).filter(Boolean))];
+    const weekLocs = locs.filter(l => weekLocIds.includes(l.id));
     stats.innerHTML = `
-      <div class="wt-stat-card">
-        <div class="wt-stat-label">This Week</div>
-        <div class="wt-stat-value">${WTRules.fmtHours(pay.totalHours)}</div>
-        <div class="wt-stat-sub">${WTRules.fmtMoney(pay.total)}</div>
-        ${pay.isOvertime ? `<div class="wt-ot-tag">OT +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
-      </div>
-      <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer">
-        <div class="wt-stat-label">Pay Day</div>
-        <div class="wt-stat-value" style="font-size:16px;line-height:1.3">${WTRules.getPayDate(ws, settings)}</div>
-        <div class="wt-stat-sub">Tap for history</div>
+      <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="wt-stat-label">This Week</div>
+            <div class="wt-stat-value">${WTRules.fmtHours(pay.totalHours)}</div>
+            <div class="wt-stat-sub">${WTRules.fmtMoney(pay.total)}</div>
+            ${pay.isOvertime ? `<div class="wt-ot-tag">OT +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
+          </div>
+        </div>
+        ${weekLocs.length > 0 ? `
+        <div style="border-top:1px solid rgba(255,255,255,0.07);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:6px">
+          ${weekLocs.map(l => `
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:12px;color:#98989D;font-weight:600">${l.name}</span>
+              <span style="font-size:12px;color:#fff;font-weight:600">💰 ${WTRules.getPayDate(ws, settings, l)}</span>
+            </div>`).join('')}
+        </div>` : `
+        <div style="border-top:1px solid rgba(255,255,255,0.07);margin-top:10px;padding-top:10px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:12px;color:#98989D">Pay Day</span>
+            <span style="font-size:12px;color:#fff">${WTRules.getPayDate(ws, settings)}</span>
+          </div>
+        </div>`}
       </div>`;
     w.appendChild(stats);
 
@@ -1040,9 +1056,17 @@ const WorkTracker = (() => {
         <div class="wt-setting-row">
           <label>Pay Period</label>
           <select class="wt-select-sm" id="wt-pay-period-top">
-            <option value="weekly" ${settings.payPeriod==='weekly'?'selected':''}>Weekly (Fri)</option>
+            <option value="weekly" ${settings.payPeriod==='weekly'?'selected':''}>Weekly</option>
             <option value="event" ${settings.payPeriod==='event'?'selected':''}>Per Event</option>
             <option value="biweekly" ${settings.payPeriod==='biweekly'?'selected':''}>Bi-Weekly</option>
+          </select>
+        </div>
+        <div class="wt-setting-row">
+          <label>Default Pay Day</label>
+          <select class="wt-select-sm" id="wt-pay-day-top">
+            ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) =>
+              `<option value="${i+1}" ${(settings.payDayOfWeek||5)===(i+1)?'selected':''}>${d}</option>`
+            ).join('')}
           </select>
         </div>
         <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-save-profile-top">Save Profile & Pay Period</button>
@@ -1350,6 +1374,7 @@ const WorkTracker = (() => {
         const s = WTDb.getSettings();
         s.workProfile = newProfile;
         s.payPeriod = newPayPeriod;
+        s.payDayOfWeek = parseInt(w.querySelector('#wt-pay-day-top').value) || 5;
         WTDb.saveSettings(s);
         _go('settings');
       };
@@ -1482,6 +1507,12 @@ const WorkTracker = (() => {
             style="flex:1;background:none;border:none;padding:12px 0"
             onclick="this.select()" onfocus="this.select()">
         </div>
+        <label class="wt-modal-label">Pay Day</label>
+        <select class="wt-input" id="wt-ql-payday" style="display:block;width:100%;box-sizing:border-box;margin-bottom:6px">
+          ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) =>
+            `<option value="${i+1}" ${(i+1)===5?'selected':''}>${d}</option>`
+          ).join('')}
+        </select>
         <div class="wt-modal-actions">
           <button class="wt-btn wt-btn-secondary" id="wt-ql-cancel">Cancel</button>
           <button class="wt-btn wt-btn-primary" id="wt-ql-save">Add Location</button>
@@ -1528,7 +1559,8 @@ const WorkTracker = (() => {
         hourlyRate: rate,
         color: '#5E5CE6',
         workProfile: settings.workProfile || 'restaurant',
-        overtimeRules: JSON.parse(JSON.stringify(DEFAULT_OT_RULES))
+        overtimeRules: JSON.parse(JSON.stringify(DEFAULT_OT_RULES)),
+        payDayOfWeek: parseInt(ov.querySelector('#wt-ql-payday').value) || 5
       };
       WTDb.saveLocation(loc);
       ov.remove();
@@ -2910,6 +2942,13 @@ const WorkTracker = (() => {
             onpointerup="this.style.background='none';this.style.color='#98989D'"
             onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
         </div>
+        <label class="wt-modal-label">Pay Day</label>
+        <select class="wt-input" id="wt-el-payday">
+          <option value="" ${!loc.payDayOfWeek?'selected':''}>Same as default (${['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'][settings.payDayOfWeek||5]})</option>
+          ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) =>
+            `<option value="${i+1}" ${loc.payDayOfWeek===(i+1)?'selected':''}>${d}</option>`
+          ).join('')}
+        </select>
         <label class="wt-modal-label">Color</label>
         <input id="wt-el-color" type="color" value="${loc.color}" style="width:100%;height:44px;border-radius:12px;border:none;cursor:pointer">
         <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#98989D;margin-top:14px;cursor:pointer">
@@ -3007,6 +3046,8 @@ const WorkTracker = (() => {
       loc.name = name; loc.hourlyRate = rate; loc.color = color;
       loc.workProfile = ov.querySelector('#wt-el-profile').value;
       loc.overtimeRules = { calculateBy: calcBy, levels };
+      const pdVal = ov.querySelector('#wt-el-payday').value;
+      loc.payDayOfWeek = pdVal ? parseInt(pdVal) : null;
       WTDb.saveLocation(loc);
       const s = WTDb.getSettings();
       if (!s.locationSettings) s.locationSettings = {};

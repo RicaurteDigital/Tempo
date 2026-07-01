@@ -218,17 +218,21 @@ const WTRules = (() => {
     };
   }
 
-  function getPayDate(weekStart, settings) {
+  function getPayDate(weekStart, settings, location) {
     if (!settings || settings.payPeriod === 'event') return 'Same day (event)';
     if (settings.payPeriod === 'custom' && settings.customPayDate) {
       return new Date(settings.customPayDate).toLocaleDateString('en-US',
         { weekday: 'long', month: 'short', day: 'numeric' });
     }
+    // Use location-specific payDay if set, otherwise fall back to global setting (default: Friday=5)
+    const targetDay = (location && location.payDayOfWeek) || settings.payDayOfWeek || 5;
     const ws = new Date(weekStart);
     ws.setDate(ws.getDate() + 7);
     const day = ws.getDay();
-    const daysToFri = (5 - day + 7) % 7;
-    ws.setDate(ws.getDate() + daysToFri);
+    // Convert 1-7 (Mon-Sun) to 0-6 (Sun-Sat) for JS Date
+    const targetJS = targetDay === 7 ? 0 : targetDay;
+    const daysTo = (targetJS - day + 7) % 7;
+    ws.setDate(ws.getDate() + daysTo);
     return ws.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   }
 
