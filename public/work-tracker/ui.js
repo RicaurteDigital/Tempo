@@ -2517,7 +2517,11 @@ const WorkTracker = (() => {
         })()}
         <label class="wt-modal-label">Position</label>
         <select class="wt-input" id="wt-aw-pos">
-          ${positions.map(p => `<option value="${p.id}" data-points="${p.points}">${p.label} (${p.points} pts)</option>`).join('')}
+          ${(() => {
+            const curWorker = typeof editIndex === 'number' ? saved.workers[editIndex] : null;
+            const curPos = curWorker ? curWorker.position : null;
+            return positions.map(p => `<option value="${p.id}" data-points="${p.points}" ${curPos && p.label === curPos ? 'selected' : ''}>${p.label} (${p.points} pts)</option>`).join('');
+          })()}
         </select>
         <label class="wt-modal-label">Points</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
@@ -2525,7 +2529,7 @@ const WorkTracker = (() => {
             onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
             onpointerup="this.style.background='none'"
             onpointerleave="this.style.background='none'">−</button>
-          <input id="wt-aw-pts" type="text" inputmode="decimal" value="${positions[0].points}"
+          <input id="wt-aw-pts" type="text" inputmode="decimal" value="${typeof editIndex === 'number' && saved.workers[editIndex] ? saved.workers[editIndex].points : positions[0].points}"
             style="flex:1;background:none;border:none;color:#fff;font-size:22px;font-weight:800;text-align:center;padding:0;outline:none"
             onclick="this.select()" onfocus="this.select()">
           <button id="wt-aw-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer"
@@ -2548,15 +2552,27 @@ const WorkTracker = (() => {
       addOv.querySelector('#wt-aw-pts').value = opt.dataset.points;
     };
 
+    const __autoDetectPos = () => {
+      const ptsVal = parseFloat(addOv.querySelector('#wt-aw-pts').value) || 0;
+      const posEl = addOv.querySelector('#wt-aw-pos');
+      const match = positions.find(p => Math.abs(p.points - ptsVal) < 0.001);
+      if (match) {
+        for (let i = 0; i < posEl.options.length; i++) {
+          if (posEl.options[i].value === match.id) { posEl.selectedIndex = i; break; }
+        }
+      }
+    };
     addOv.querySelector('#wt-aw-minus').onclick = () => {
       const i = addOv.querySelector('#wt-aw-pts');
       const cur = parseFloat(i.value) || 1;
       i.value = Math.max(0.25, Math.round((cur - 0.05) * 100) / 100).toFixed(2);
+      __autoDetectPos();
     };
     addOv.querySelector('#wt-aw-plus').onclick = () => {
       const i = addOv.querySelector('#wt-aw-pts');
       const cur = parseFloat(i.value) || 1;
       i.value = (Math.round((cur + 0.05) * 100) / 100).toFixed(2);
+      __autoDetectPos();
     };
 
     // iOS keyboard fix: adjust overlay height to visible viewport when keyboard opens
