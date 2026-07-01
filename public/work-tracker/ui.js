@@ -1448,10 +1448,32 @@ const WorkTracker = (() => {
       </div>`;
 
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
-    ov.querySelector('#wt-ql-cancel').onclick = () => ov.remove();
+    ov.querySelector('#wt-ql-cancel').onclick = () => {
+      if (ov._cleanupVV) ov._cleanupVV();
+      ov.remove();
+    };
     ov.querySelectorAll('input').forEach(i => {
       i.addEventListener('focus', () => i.select && i.select());
     });
+    if (window.visualViewport) {
+      const __vvHandler = () => {
+        const vh = window.visualViewport.height;
+        ov.style.height = vh + 'px';
+        ov.style.top = window.visualViewport.offsetTop + 'px';
+        const modal = ov.querySelector('.wt-modal');
+        if (modal) modal.style.maxHeight = (vh * 0.92) + 'px';
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl.tagName === 'INPUT' && ov.contains(activeEl)) {
+          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+        }
+      };
+      window.visualViewport.addEventListener('resize', __vvHandler);
+      window.visualViewport.addEventListener('scroll', __vvHandler);
+      ov._cleanupVV = () => {
+        window.visualViewport.removeEventListener('resize', __vvHandler);
+        window.visualViewport.removeEventListener('scroll', __vvHandler);
+      };
+    }
 
     ov.querySelector('#wt-ql-save').onclick = () => {
       const name = ov.querySelector('#wt-ql-name').value.trim();
