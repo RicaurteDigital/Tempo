@@ -1493,8 +1493,8 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">Location</label>
         <select class="wt-input" id="wt-ml">
           ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}">${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
-          <option value="__add_new__">+ Add new location...</option>
         </select>
+        <button id="wt-ml-add" type="button" style="background:none;border:none;color:#5E5CE6;font-size:13px;font-weight:600;padding:6px 0 2px;cursor:pointer;text-align:left">+ Add new location</button>
         <label class="wt-modal-label">Shift Type <span style="font-size:10px;color:#5E5CE6;font-weight:700;letter-spacing:.5px">AUTO-DETECTED</span></label>
         <select class="wt-input" id="wt-ms">
           ${profileShifts.map(s => `<option ${s===suggested?'selected':''}>${s}</option>`).join('')}
@@ -1520,16 +1520,14 @@ const WorkTracker = (() => {
     document.body.appendChild(ov);
     ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
 
-    // Location change → update rate or trigger add new location
+    // Location change → update rate
     ov.querySelector('#wt-ml').onchange = function() {
-      if (this.value === '__add_new__') {
-        this.selectedIndex = 0; // reset select
-        ov.remove();
-        _showQuickAddLocation(() => _showAddShift(dateStr));
-        return;
-      }
       const rate = this.options[this.selectedIndex].dataset.rate;
       if (rate) ov.querySelector('#wt-mr').value = rate;
+    };
+    ov.querySelector('#wt-ml-add').onclick = () => {
+      ov.remove();
+      _showQuickAddLocation(() => _showAddShift(dateStr));
     };
     // Trigger on load to set initial rate from first location
     ov.querySelector('#wt-ml').dispatchEvent(new Event('change'));
