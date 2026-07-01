@@ -314,7 +314,14 @@ const WorkTracker = (() => {
     if (nextBtn && !isToday) nextBtn.onclick = () => _navDay(1);
     w.querySelector('#wt-pay-card').onclick = () => _go('week');
     w.querySelectorAll('[data-loc-payday]').forEach(el => {
-      el.onclick = e => { e.stopPropagation(); _showEditLocation(el.dataset.locPayday); };
+      el.onclick = e => {
+        e.stopPropagation();
+        const locId = el.dataset.locPayday;
+        const loc = locs.find(l => l.id === locId);
+        if (!loc) return;
+        const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
+        _showPayDayOptions(locId, loc.name, wsStr, settings);
+      };
     });
     w.querySelector('#wt-week-btn').onclick = () => _go('week');
     w.querySelector('#wt-export-btn').onclick = () => _go('preview');
@@ -1496,6 +1503,154 @@ const WorkTracker = (() => {
 
     const fn = suggestions[profile] || suggestions.restaurant;
     return fn();
+  }
+
+  function _showPayDayOptions(locId, locName, weekStart, settings) {
+    const payment = WTDb.getPayment(locId, weekStart);
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    document.body.appendChild(ov);
+
+    const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">${locName}</div>
+        ${payment ? `
+        <div style="background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.2);border-radius:14px;padding:12px 14px;margin-bottom:16px">
+          <div style="font-size:11px;color:#30D158;font-weight:700;text-transform:uppercase;letter-spacing:.4px">✅ Payment Recorded</div>
+          <div style="font-size:15px;color:#fff;font-weight:700;margin-top:4px">${payment.amount ? '$'+parseFloat(payment.amount).toFixed(2) : 'Amount not set'}</div>
+          <div style="font-size:12px;color:#636366;margin-top:2px">Received: ${payment.receivedDate || '—'}</div>
+          ${payment.photoCount > 0 ? `<div style="font-size:12px;color:#5E5CE6;margin-top:2px">${payment.photoCount} photo${payment.photoCount>1?'s':''} attached</div>` : ''}
+        </div>` : `
+        <div style="background:rgba(255,159,10,.06);border:1px solid rgba(255,159,10,.15);border-radius:14px;padding:12px 14px;margin-bottom:16px">
+          <div style="font-size:11px;color:#FF9F0A;font-weight:700;text-transform:uppercase;letter-spacing:.4px">⏳ Payment Pending</div>
+          <div style="font-size:12px;color:#636366;margin-top:4px">No payment recorded yet for this week</div>
+        </div>`}
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button id="wt-pd-record" class="wt-btn wt-btn-primary">💰 ${payment ? 'Update Payment' : 'Record Payment'}</button>
+          <button id="wt-pd-editloc" class="wt-btn wt-btn-secondary">✏️ Edit Pay Day</button>
+          ${payment ? `<button id="wt-pd-delete" class="wt-btn" style="background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.2);color:#FF453A">Delete Record</button>` : ''}
+          <button id="wt-pd-close" class="wt-btn wt-btn-secondary">Cancel</button>
+        </div>
+      </div>`;
+
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#wt-pd-close').onclick = () => ov.remove();
+    ov.querySelector('#wt-pd-editloc').onclick = () => { ov.remove(); _showEditLocation(locId); };
+    ov.querySelector('#wt-pd-record').onclick = () => { ov.remove(); _showRecordPayment(locId, locName, weekStart, payment); };
+    const delBtn = ov.querySelector('#wt-pd-delete');
+    if (delBtn) delBtn.onclick = () => {
+      if (!confirm('Delete this payment record?')) return;
+      WTDb.deletePayment(locId, weekStart);
+      ov.remove();
+      _go('home');
+    };
+  }
+
+  function _showRecordPayment(locId, locName, weekStart, existing) {
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    document.body.appendChild(ov);
+
+    const todayStr = _today();
+    const existingCount = existing ? (existing.photoCount || 0) : 0;
+
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">💰 Record Payment</div>
+        <div style="font-size:13px;color:#636366;margin-bottom:16px">${locName}</div>
+        <label class="wt-modal-label">Date received</label>
+        <input id="wt-rp-date" class="wt-input" type="date" value="${existing?.receivedDate || todayStr}"
+          style="display:block;width:100%;box-sizing:border-box;margin-bottom:4px">
+        <label class="wt-modal-label">Amount received ($)</label>
+        <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:4px">
+          <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+          <input id="wt-rp-amount" type="text" inputmode="decimal"
+            value="${existing?.amount || ''}" placeholder="0.00"
+            style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
+            onclick="this.select()" onfocus="this.select()">
+        </div>
+        <label class="wt-modal-label">Notes (optional)</label>
+        <input id="wt-rp-notes" class="wt-input" type="text" placeholder="e.g. Received Thursday instead..."
+          value="${existing?.notes || ''}" style="display:block;width:100%;box-sizing:border-box;margin-bottom:14px">
+        <div style="margin-bottom:14px">
+          <div style="font-size:12px;color:#98989D;margin-bottom:8px">📎 Photos (optional — check stubs, signed hours, etc.)</div>
+          <div id="wt-rp-photos" style="display:flex;flex-wrap:wrap;gap:8px">
+            ${Array.from({length: existingCount}, (_,i) => `
+              <button class="wt-photo-btn has-photo" data-rp-photo="${i+1}">✓ Photo ${i+1}</button>
+            `).join('')}
+            <button id="wt-rp-add-photo" class="wt-photo-btn">📋 Add photo</button>
+          </div>
+        </div>
+        <div class="wt-modal-actions">
+          <button class="wt-btn wt-btn-secondary" id="wt-rp-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-rp-save">Save</button>
+        </div>
+      </div>`;
+
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#wt-rp-cancel').onclick = () => ov.remove();
+
+    // iOS keyboard fix
+    if (window.visualViewport) {
+      const __vvHandler = () => {
+        const vh = window.visualViewport.height;
+        ov.style.height = vh + 'px';
+        ov.style.top = window.visualViewport.offsetTop + 'px';
+        const modal = ov.querySelector('.wt-modal');
+        if (modal) modal.style.maxHeight = (vh * 0.92) + 'px';
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl.tagName === 'INPUT' && ov.contains(activeEl)) {
+          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+        }
+      };
+      window.visualViewport.addEventListener('resize', __vvHandler);
+      window.visualViewport.addEventListener('scroll', __vvHandler);
+      ov._cleanupVV = () => {
+        window.visualViewport.removeEventListener('resize', __vvHandler);
+        window.visualViewport.removeEventListener('scroll', __vvHandler);
+      };
+    }
+
+    let photoCount = existingCount;
+
+    // View existing photos
+    ov.querySelectorAll('[data-rp-photo]').forEach(btn => {
+      const n = parseInt(btn.dataset.rpPhoto);
+      const key = `payment_${locId}_${weekStart}_${n}`;
+      WTDb.getPhoto(locId, key).then(base64 => {
+        if (base64) btn.onclick = () => _viewOrReplacePhoto(locId, key, base64);
+      });
+    });
+
+    // Add new photo
+    ov.querySelector('#wt-rp-add-photo').onclick = () => {
+      photoCount++;
+      const key = `payment_${locId}_${weekStart}_${photoCount}`;
+      _doPhotoThenRefresh(locId, key, () => {
+        const addBtn = ov.querySelector('#wt-rp-add-photo');
+        const newBtn = document.createElement('button');
+        newBtn.className = 'wt-photo-btn has-photo';
+        newBtn.textContent = `✓ Photo ${photoCount}`;
+        WTDb.getPhoto(locId, key).then(base64 => {
+          if (base64) newBtn.onclick = () => _viewOrReplacePhoto(locId, key, base64);
+        });
+        ov.querySelector('#wt-rp-photos').insertBefore(newBtn, addBtn);
+      });
+    };
+
+    ov.querySelector('#wt-rp-save').onclick = () => {
+      if (ov._cleanupVV) ov._cleanupVV();
+      const receivedDate = ov.querySelector('#wt-rp-date').value;
+      const amount = ov.querySelector('#wt-rp-amount').value;
+      const notes = ov.querySelector('#wt-rp-notes').value.trim();
+      WTDb.savePayment(locId, weekStart, { receivedDate, amount, notes, photoCount });
+      ov.remove();
+      _go('home');
+    };
   }
 
   function _showQuickAddLocation(onDone) {

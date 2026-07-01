@@ -188,6 +188,34 @@ const WTDb = (() => {
   // Storage shape: { [locationId]: [{ name, position, points, isMe }, ...] }
   const ROSTER_KEY = 'wt_worker_roster_v1';
 
+  // ── PAYMENT RECORDS (NEW — wt_payments_v1) ──────────
+  // Shape: { [locationId_weekStart]: { receivedDate, amount, notes, photoCount } }
+  const PAYMENTS_KEY = 'wt_payments_v1';
+
+  function getPayment(locationId, weekStart) {
+    try {
+      const all = JSON.parse(localStorage.getItem(PAYMENTS_KEY)) || {};
+      return all[locationId + '_' + weekStart] || null;
+    } catch { return null; }
+  }
+
+  function savePayment(locationId, weekStart, data) {
+    try {
+      const all = JSON.parse(localStorage.getItem(PAYMENTS_KEY)) || {};
+      all[locationId + '_' + weekStart] = { ...data, locationId, weekStart };
+      localStorage.setItem(PAYMENTS_KEY, JSON.stringify(all));
+    } catch {}
+    return data;
+  }
+
+  function deletePayment(locationId, weekStart) {
+    try {
+      const all = JSON.parse(localStorage.getItem(PAYMENTS_KEY)) || {};
+      delete all[locationId + '_' + weekStart];
+      localStorage.setItem(PAYMENTS_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
   function getRoster(locationId) {
     try {
       const all = JSON.parse(localStorage.getItem(ROSTER_KEY)) || {};
@@ -249,6 +277,7 @@ const WTDb = (() => {
     getTipSettings, saveTipSettings,
     getTipsForShift, saveTipsForShift, deleteTipsForShift,
     getRoster, saveRosterMember, deleteRosterMember,
-    deletePhoto
+    deletePhoto,
+    getPayment, savePayment, deletePayment
   };
 })();
