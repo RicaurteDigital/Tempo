@@ -1905,7 +1905,12 @@ const WorkTracker = (() => {
         if (!isNaN(parsed)) saved.cashTotal = parsed;
       }
 
-      const workers = saved.workers || [];
+      // Always render isMe first, then by points descending — regardless of insertion order
+      const workers = [...(saved.workers || [])].sort((a, b) => {
+        if (a.isMe && !b.isMe) return -1;
+        if (!a.isMe && b.isMe) return 1;
+        return (b.points || 0) - (a.points || 0);
+      });
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
       const result = TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
