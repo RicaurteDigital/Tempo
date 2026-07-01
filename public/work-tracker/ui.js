@@ -172,17 +172,23 @@ const WorkTracker = (() => {
           </div>
         </div>
         ${weekLocs.length > 0 ? `
-        <div style="border-top:1px solid rgba(255,255,255,0.07);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:6px">
+        <div style="border-top:1px solid rgba(255,255,255,0.07);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
           ${weekLocs.map(l => `
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-size:12px;color:#98989D;font-weight:600">${l.name}</span>
-              <span style="font-size:12px;color:#fff;font-weight:600">💰 ${WTRules.getPayDate(ws, settings, l)}</span>
+            <div data-loc-payday="${l.id}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:4px 0">
+              <div>
+                <div style="font-size:11px;color:#636366;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
+                <div style="font-size:13px;color:#fff;font-weight:700;margin-top:1px">${l.name}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:13px;color:#FF9F0A;font-weight:700">${WTRules.getPayDate(ws, settings, l)}</div>
+                <div style="font-size:11px;color:#636366;margin-top:1px">Tap to change ›</div>
+              </div>
             </div>`).join('')}
         </div>` : `
         <div style="border-top:1px solid rgba(255,255,255,0.07);margin-top:10px;padding-top:10px">
-          <div style="display:flex;justify-content:space-between">
-            <span style="font-size:12px;color:#98989D">Pay Day</span>
-            <span style="font-size:12px;color:#fff">${WTRules.getPayDate(ws, settings)}</span>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:11px;color:#636366;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
+            <div style="font-size:13px;color:#FF9F0A;font-weight:700">${WTRules.getPayDate(ws, settings)}</div>
           </div>
         </div>`}
       </div>`;
@@ -307,6 +313,9 @@ const WorkTracker = (() => {
     const nextBtn = w.querySelector('#wt-nav-next');
     if (nextBtn && !isToday) nextBtn.onclick = () => _navDay(1);
     w.querySelector('#wt-pay-card').onclick = () => _go('week');
+    w.querySelectorAll('[data-loc-payday]').forEach(el => {
+      el.onclick = e => { e.stopPropagation(); _showEditLocation(el.dataset.locPayday); };
+    });
     w.querySelector('#wt-week-btn').onclick = () => _go('week');
     w.querySelector('#wt-export-btn').onclick = () => _go('preview');
     const addBtn = w.querySelector('#wt-add-shift');
