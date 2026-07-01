@@ -1765,6 +1765,22 @@ const WorkTracker = (() => {
     _go('home');
   }
 
+  function _compressImage(base64, maxPx, quality) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = base64;
+    });
+  }
+
   async function _doPhotoThenRefresh(shiftId, photoKey, onDone) {
     const hint = document.createElement('div');
     hint.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;z-index:9999;pointer-events:none;text-align:center';
@@ -1777,9 +1793,10 @@ const WorkTracker = (() => {
       const file = input.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = async ev => {
-        await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
+        const compressed = await _compressImage(ev.target.result, 1024, 0.75);
+        await WTDb.savePhoto(shiftId, photoKey, compressed);
         const a = document.createElement('a');
-        a.href = ev.target.result;
+        a.href = compressed;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
         a.download = `Tempo_report_${now}.jpg`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -1802,18 +1819,19 @@ const WorkTracker = (() => {
       const file = input.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = async ev => {
-        await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
+        const compressed = await _compressImage(ev.target.result, 1024, 0.75);
+        await WTDb.savePhoto(shiftId, photoKey, compressed);
         const btn = document.querySelector(`[data-pid="${photoKey}"]`);
         if (btn) {
           const img = document.createElement('img');
-          img.src = ev.target.result;
+          img.src = compressed;
           img.style.cssText = 'width:100%;border-radius:10px;margin-top:8px;max-height:200px;object-fit:cover';
           btn.parentNode.insertBefore(img, btn.nextSibling);
           btn.textContent = '✓ Proof saved';
           btn.classList.add('has-photo');
         }
         const a = document.createElement('a');
-        a.href = ev.target.result;
+        a.href = compressed;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
         a.download = 'Tempo_proof_' + now + '.jpg';
         a.click();
