@@ -1491,10 +1491,10 @@ const WorkTracker = (() => {
         <div class="wt-modal-handle"></div>
         <div class="wt-modal-title">New Shift · ${_fmtDate(dateStr)}</div>
         <label class="wt-modal-label">Location</label>
-        <select class="wt-input" id="wt-ml">
+        <select class="wt-input" id="wt-ml" style="display:block;width:100%">
           ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}">${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
         </select>
-        <button id="wt-ml-add" type="button" style="background:none;border:none;color:#5E5CE6;font-size:13px;font-weight:600;padding:6px 0 2px;cursor:pointer;text-align:left">+ Add new location</button>
+        <button id="wt-ml-add" type="button" style="display:block;width:100%;background:none;border:none;color:#5E5CE6;font-size:13px;font-weight:600;padding:8px 0 4px;cursor:pointer;text-align:left">+ Add new location</button>
         <label class="wt-modal-label">Shift Type <span style="font-size:10px;color:#5E5CE6;font-weight:700;letter-spacing:.5px">AUTO-DETECTED</span></label>
         <select class="wt-input" id="wt-ms">
           ${profileShifts.map(s => `<option ${s===suggested?'selected':''}>${s}</option>`).join('')}
