@@ -2110,7 +2110,7 @@ const WorkTracker = (() => {
         </div>`;
 
       const __modalAfter = ov.querySelector('.wt-modal');
-      if (__modalAfter && __scrollTop) __modalAfter.scrollTop = __scrollTop;
+      if (__modalAfter && __scrollTop) requestAnimationFrame(() => { __modalAfter.scrollTop = __scrollTop; });
       ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
       ov.querySelectorAll('input').forEach(i => {
         i.addEventListener('focus', () => i.select && i.select());
@@ -2533,10 +2533,6 @@ const WorkTracker = (() => {
       i.value = (Math.round((cur + 0.05) * 100) / 100).toFixed(2);
     };
 
-    // On mobile, scroll input into view when keyboard opens so it's not hidden
-    addOv.querySelector('#wt-aw-name').addEventListener('focus', () => {
-      setTimeout(() => addOv.querySelector('#wt-aw-name').scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
-    });
     addOv.querySelector('#wt-aw-cancel').onclick = () => addOv.remove();
     addOv.querySelector('#wt-aw-add').onclick = () => {
       const name = addOv.querySelector('#wt-aw-name').value.trim();
