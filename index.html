@@ -305,8 +305,12 @@ let simpleMode = localStorage.getItem('tempo_simple_mode') === 'true';
 
 function _renderSimple() {
   const today = new Date();
-  const todayStr = today.toISOString().slice(0,10);
-  const todayEvents = (S.events || []).filter(e => new Date(e.start).toISOString().slice(0,10) === todayStr);
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const todayEvents = (S.events || []).filter(e => {
+    const d = new Date(e.start);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    return ds === todayStr;
+  });
   
   const list = document.getElementById('bucketList');
   if (!list) return;

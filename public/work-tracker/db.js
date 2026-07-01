@@ -53,10 +53,10 @@ const WTDb = (() => {
   function getShiftsForWeek(weekStart) {
     const start = new Date(weekStart);
     const end = getWeekEnd(start);
-    return getShifts().filter(s => {
-      const d = new Date(s.date);
-      return d >= start && d <= end;
-    });
+    const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const startStr = _ds(start);
+    const endStr = _ds(end);
+    return getShifts().filter(s => s.date >= startStr && s.date <= endStr);
   }
 
   function getTipSettings() {

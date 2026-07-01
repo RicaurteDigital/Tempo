@@ -894,8 +894,11 @@ const WorkTracker = (() => {
     else if (range === 'quarter') start = new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3, 1);
     else if (range === 'semester') start = new Date(now.getFullYear(), now.getMonth() < 6 ? 0 : 6, 1);
     else start = new Date(now.getFullYear(), 0, 1);
-    return WTDb.getShifts().filter(s => { const d = new Date(s.date); return d >= start && d <= end; })
-      .sort((a,b) => new Date(a.date) - new Date(b.date));
+    const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const startStr = _ds(start);
+    const endStr = _ds(end);
+    return WTDb.getShifts().filter(s => s.date >= startStr && s.date <= endStr)
+      .sort((a,b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
   }
 
   function _buildTable(range, container) {
