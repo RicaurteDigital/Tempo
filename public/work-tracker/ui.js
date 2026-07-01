@@ -2459,6 +2459,11 @@ const WorkTracker = (() => {
         if (!member || TipRules.isAlreadyInWorkers(member.name, saved.workers || [])) return;
         if (!saved.workers) saved.workers = [];
         saved.workers.push(TipRules.rosterMemberToWorker(member));
+        // Same sort as manual add: isMe first, then by points descending
+        saved.workers = [
+          ...saved.workers.filter(w => w.isMe),
+          ...saved.workers.filter(w => !w.isMe).sort((a, b) => (b.points || 0) - (a.points || 0))
+        ];
         ov.remove();
         onSave();
       };
