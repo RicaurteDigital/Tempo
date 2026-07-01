@@ -2122,7 +2122,13 @@ const WorkTracker = (() => {
       if (__modalAfter && __scrollTop) requestAnimationFrame(() => { __modalAfter.scrollTop = __scrollTop; });
       ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
       ov.querySelectorAll('input').forEach(i => {
-        i.addEventListener('focus', () => i.select && i.select());
+        i.addEventListener('focus', () => {
+          i.select && i.select();
+          setTimeout(() => {
+            const modal = ov.querySelector('.wt-modal');
+            if (modal) i.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 350);
+        });
         i.addEventListener('click', () => i.select && i.select());
       });
 
