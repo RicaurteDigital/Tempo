@@ -729,11 +729,33 @@ const WorkTracker = (() => {
           ${pay.isOvertime ? '<span class="wt-ot-pill">OT</span>' : ''}
         </div>
         <div class="wt-week-dots">${dots}</div>
-        <div class="wt-week-paydate">Pay: ${WTRules.getPayDate(ws, settings)}</div>`;
+        ${(() => {
+          const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
+          const weekLocIds = [...new Set(shifts.map(s => s.locationId).filter(Boolean))];
+          const allLocs = WTDb.getLocations();
+          const weekLocs = allLocs.filter(l => weekLocIds.includes(l.id));
+          if (weekLocs.length === 0) return `<div class="wt-week-paydate">Pay: ${WTRules.getPayDate(ws, settings)}</div>`;
+          return weekLocs.map(l => {
+            const payment = WTDb.getPayment(l.id, wsStr);
+            const status = payment
+              ? `<span style="color:#30D158;font-weight:700">✅ Received${payment.amount ? ' $'+parseFloat(payment.amount).toFixed(2) : ''}${payment.receivedDate ? ' · '+payment.receivedDate : ''}</span>`
+              : `<span style="color:#FF9F0A">⏳ ${WTRules.getPayDate(ws, settings, l)}</span>`;
+            return `<div class="wt-week-paydate wt-pd-row" data-loc-id="${l.id}" data-loc-name="${l.name}" data-ws="${wsStr}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+              <span style="color:#636366">${l.name}</span>
+              ${status}
+            </div>`;
+          }).join('');
+        })()}`;
       row.querySelectorAll('.wt-dot').forEach(dot => {
         dot.onclick = (e) => {
           e.stopPropagation();
           _go('day', { date: dot.dataset.date });
+        };
+      });
+      row.querySelectorAll('.wt-pd-row').forEach(el => {
+        el.onclick = e => {
+          e.stopPropagation();
+          _showPayDayOptions(el.dataset.locId, el.dataset.locName, el.dataset.ws, settings);
         };
       });
 
@@ -1530,7 +1552,7 @@ const WorkTracker = (() => {
         </div>`}
         <div style="display:flex;flex-direction:column;gap:10px">
           <button id="wt-pd-record" class="wt-btn wt-btn-primary">💰 ${payment ? 'Update Payment' : 'Record Payment'}</button>
-          <button id="wt-pd-editloc" class="wt-btn wt-btn-secondary">✏️ Edit Pay Day</button>
+          <button id="wt-pd-editloc" class="wt-btn wt-btn-secondary">Edit Pay Day</button>
           ${payment ? `<button id="wt-pd-delete" class="wt-btn" style="background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.2);color:#FF453A">Delete Record</button>` : ''}
           <button id="wt-pd-close" class="wt-btn wt-btn-secondary">Cancel</button>
         </div>
