@@ -65,6 +65,9 @@ const TipRules = (() => {
 
     const distributed = payouts.reduce((s, p) => s + p.amount, 0);
     const remainder = parseFloat((totalNet - distributed).toFixed(2));
+    // CC-only tracking for the separate CC pool balance
+    const ccDistributed = payouts.reduce((s, p) => s + p.ccAmount, 0);
+    const ccRemainder = parseFloat((ccBreakdown.net - ccDistributed).toFixed(2));
 
     return {
       creditCard: {
@@ -80,7 +83,9 @@ const TipRules = (() => {
       perPoint,
       payouts,
       distributed,
-      remainder
+      remainder,
+      ccDistributed,
+      ccRemainder
     };
   }
 

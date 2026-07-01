@@ -2101,19 +2101,19 @@ const WorkTracker = (() => {
           </div>
 
           ${workers.length > 0 ? `
-          <div style="background:${result.remainder===0?'rgba(48,209,88,.1)':result.remainder>0?'rgba(255,149,0,.1)':'rgba(255,69,58,.1)'};
-               border:1px solid ${result.remainder===0?'rgba(48,209,88,.3)':result.remainder>0?'rgba(255,149,0,.3)':'rgba(255,69,58,.3)'};
+          <div style="background:${result.ccRemainder===0?'rgba(48,209,88,.1)':result.ccRemainder>0?'rgba(255,149,0,.1)':'rgba(255,69,58,.1)'};
+               border:1px solid ${result.ccRemainder===0?'rgba(48,209,88,.3)':result.ccRemainder>0?'rgba(255,149,0,.3)':'rgba(255,69,58,.3)'};
                border-radius:12px;padding:12px 14px;margin-top:4px;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:14px;font-weight:700;color:${result.remainder===0?'#30D158':result.remainder>0?'#FF9F0A':'#FF453A'}">
-              ${result.remainder===0 ? '✓ Pool balanced' : result.remainder>0 ? `$${result.remainder.toFixed(2)} unallocated` : `Over by $${Math.abs(result.remainder).toFixed(2)}`}
+            <span style="font-size:14px;font-weight:700;color:${result.ccRemainder===0?'#30D158':result.ccRemainder>0?'#FF9F0A':'#FF453A'}">
+              ${result.ccRemainder===0 ? '✓ CC Pool balanced' : result.ccRemainder>0 ? `$${result.ccRemainder.toFixed(2)} CC unallocated` : `Over by $${Math.abs(result.ccRemainder).toFixed(2)}`}
             </span>
-            <span style="font-size:12px;color:#636366">${TipRules.fmtMoney(result.distributed)} / ${TipRules.fmtMoney(result.totalNet)}</span>
+            <span style="font-size:12px;color:#636366">${TipRules.fmtMoney(result.ccDistributed)} / ${TipRules.fmtMoney(result.creditCard.net)}</span>
           </div>` : ''}
 
           <div class="wt-modal-actions" style="margin-top:16px">
             <button class="wt-btn wt-btn-secondary" id="wt-tp-cancel">Cancel</button>
-            <button class="wt-btn wt-btn-primary" id="wt-tp-save" ${result.remainder!==0&&workers.length>0?'style="background:#FF9F0A"':''}>
-              ${result.remainder===0||workers.length===0 ? 'Save' : `Save ($${result.remainder.toFixed(2)} unallocated)`}
+            <button class="wt-btn wt-btn-primary" id="wt-tp-save" ${result.ccRemainder!==0&&workers.length>0?'style="background:#FF9F0A"':''}>
+              ${result.ccRemainder===0||workers.length===0 ? 'Save' : `Save ($${result.ccRemainder.toFixed(2)} CC unallocated)`}
             </button>
           </div>
         </div>`;
