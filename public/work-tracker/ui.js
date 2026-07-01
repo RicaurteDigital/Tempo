@@ -737,12 +737,38 @@ const WorkTracker = (() => {
           if (weekLocs.length === 0) return `<div class="wt-week-paydate">Pay: ${WTRules.getPayDate(ws, settings)}</div>`;
           return weekLocs.map(l => {
             const payment = WTDb.getPayment(l.id, wsStr);
-            const status = payment
-              ? `<span style="color:#30D158;font-weight:700">✅ Received${payment.amount ? ' $'+parseFloat(payment.amount).toFixed(2) : ''}${payment.receivedDate ? ' · '+payment.receivedDate : ''}</span>`
-              : `<span style="color:#FF9F0A">⏳ ${WTRules.getPayDate(ws, settings, l)}</span>`;
-            return `<div class="wt-week-paydate wt-pd-row" data-loc-id="${l.id}" data-loc-name="${l.name}" data-ws="${wsStr}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
-              <span style="color:#636366">${l.name}</span>
-              ${status}
+            const locPay = pay.byLocation[l.name];
+            const expectedCC = locPay ? locPay.total : null;
+            let status, comparison = '';
+            if (payment) {
+              const received = parseFloat(payment.amount) || 0;
+              status = `<span style="color:#30D158;font-weight:700">✅ $${received.toFixed(2)}</span>`;
+              if (expectedCC !== null && received > 0) {
+                const diff = received - expectedCC;
+                const diffColor = diff >= 0 ? '#30D158' : '#FF453A';
+                const diffSign = diff >= 0 ? '+' : '';
+                comparison = `
+                  <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:#636366">Expected (hrs)</span>
+                      <span style="color:#98989D">$${expectedCC.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:#636366">Difference</span>
+                      <span style="color:${diffColor};font-weight:700">${diffSign}$${Math.abs(diff).toFixed(2)}</span>
+                    </div>
+                    ${payment.receivedDate ? `<div style="font-size:11px;color:#636366;margin-top:2px">Received: ${payment.receivedDate}</div>` : ''}
+                  </div>`;
+              }
+            } else {
+              status = `<span style="color:#FF9F0A">⏳ ${WTRules.getPayDate(ws, settings, l)}</span>`;
+            }
+            return `<div class="wt-week-paydate wt-pd-row" data-loc-id="${l.id}" data-loc-name="${l.name}" data-ws="${wsStr}" style="cursor:pointer">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="color:#636366">${l.name}</span>
+                ${status}
+              </div>
+              ${comparison}
             </div>`;
           }).join('');
         })()}`;
