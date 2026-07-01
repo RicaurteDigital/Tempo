@@ -1423,11 +1423,60 @@ const WorkTracker = (() => {
     return fn();
   }
 
+  function _showQuickAddLocation(onDone) {
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    document.body.appendChild(ov);
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">Add Work Location</div>
+        <label class="wt-modal-label">Location name</label>
+        <input id="wt-ql-name" class="wt-input" type="text" placeholder="e.g. Downtown Restaurant, Main St Cafe..."
+          autocapitalize="words" onclick="this.select()" onfocus="this.select()">
+        <label class="wt-modal-label">Hourly rate</label>
+        <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:6px">
+          <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+          <input id="wt-ql-rate" class="wt-input" type="text" inputmode="decimal" value="16.50"
+            style="flex:1;background:none;border:none;padding:12px 0"
+            onclick="this.select()" onfocus="this.select()">
+        </div>
+        <div class="wt-modal-actions">
+          <button class="wt-btn wt-btn-secondary" id="wt-ql-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-ql-save">Add Location</button>
+        </div>
+      </div>`;
+
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    ov.querySelector('#wt-ql-cancel').onclick = () => ov.remove();
+    ov.querySelectorAll('input').forEach(i => {
+      i.addEventListener('focus', () => i.select && i.select());
+    });
+
+    ov.querySelector('#wt-ql-save').onclick = () => {
+      const name = ov.querySelector('#wt-ql-name').value.trim();
+      const rate = parseFloat(ov.querySelector('#wt-ql-rate').value) || 16.50;
+      if (!name) { ov.querySelector('#wt-ql-name').focus(); return; }
+      const settings = WTDb.getSettings();
+      const loc = {
+        id: 'loc_' + Date.now(),
+        name,
+        hourlyRate: rate,
+        color: '#5E5CE6',
+        workProfile: settings.workProfile || 'restaurant',
+        overtimeRules: JSON.parse(JSON.stringify(DEFAULT_OT_RULES))
+      };
+      WTDb.saveLocation(loc);
+      ov.remove();
+      if (onDone) onDone();
+    };
+  }
+
   function _showAddShift(dateStr) {
     const settings = WTDb.getSettings();
     const currentProfile = (WTDb.getSettings().workProfile || 'restaurant');
     const locs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
-    if (!locs.length) { alert('Add a location in Settings first.'); _go('settings'); return; }
+    if (!locs.length) { _showQuickAddLocation(() => _showAddShift(dateStr)); return; }
     const profile = settings.workProfile || 'restaurant';
     const suggested = _suggestShiftType(profile);
     const profileShifts = (WORK_PROFILES[profile]||WORK_PROFILES.restaurant).shifts;
@@ -1444,6 +1493,7 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">Location</label>
         <select class="wt-input" id="wt-ml">
           ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}">${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
+          <option value="__add_new__">+ Add new location...</option>
         </select>
         <label class="wt-modal-label">Shift Type <span style="font-size:10px;color:#5E5CE6;font-weight:700;letter-spacing:.5px">AUTO-DETECTED</span></label>
         <select class="wt-input" id="wt-ms">
@@ -1470,8 +1520,14 @@ const WorkTracker = (() => {
     document.body.appendChild(ov);
     ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
 
-    // Location change → update rate
+    // Location change → update rate or trigger add new location
     ov.querySelector('#wt-ml').onchange = function() {
+      if (this.value === '__add_new__') {
+        this.selectedIndex = 0; // reset select
+        ov.remove();
+        _showQuickAddLocation(() => _showAddShift(dateStr));
+        return;
+      }
       const rate = this.options[this.selectedIndex].dataset.rate;
       if (rate) ov.querySelector('#wt-mr').value = rate;
     };
