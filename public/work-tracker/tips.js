@@ -38,19 +38,26 @@ const TipRules = (() => {
     const totalNet = ccBreakdown.net + cashTotal;
     const pts = totalPoints(workers);
     const perPoint = pts > 0 ? totalNet / pts : 0;
+    // CC-only per point (for separate CC payout display)
+    const ccPerPoint = pts > 0 ? ccBreakdown.net / pts : 0;
 
     const payouts = workers.map(w => {
-      const exact = (parseFloat(w.points) || 0) * perPoint;
+      const wpts = parseFloat(w.points) || 0;
+      const exact = wpts * perPoint;
+      const ccExact = wpts * ccPerPoint;
       const amount = typeof w.manualAmount === 'number'
         ? w.manualAmount
         : Math.floor(exact);
+      const ccAmount = Math.floor(ccExact);
       return {
         name:         w.name,
         isMe:         w.isMe || false,
         position:     w.position,
-        points:       parseFloat(w.points) || 0,
-        exact,
-        amount
+        points:       wpts,
+        exact,        // CC + cash combined (kept for backward compat)
+        amount,       // CC + cash combined (kept for backward compat)
+        ccExact,      // CC only — use this for weekly check display
+        ccAmount      // CC only floored — use this for weekly check display
       };
     });
 

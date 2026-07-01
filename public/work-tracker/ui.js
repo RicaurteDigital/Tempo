@@ -2050,7 +2050,7 @@ const WorkTracker = (() => {
             ${workers.length > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-top:4px">
               <span style="color:#636366">${result.totalPoints} pts total</span>
-              <span style="color:#636366">$${result.perPoint.toFixed(2)}/pt</span>
+              <span style="color:#636366">$${(result.creditCard.net / (result.totalPoints || 1)).toFixed(2)}/pt CC</span>
             </div>` : ''}
           </div>` : ''}
 
@@ -2068,7 +2068,7 @@ const WorkTracker = (() => {
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                   <div style="cursor:pointer" data-edit="${i}">
                     <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''} <span style="font-size:11px;color:#5E5CE6">edit</span></span>
-                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.points} pts · exact: <span style="color:#FF9F0A">$${p.exact.toFixed(2)}</span></div>
+                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.points} pts · CC exact: <span style="color:#FF9F0A">$${(p.ccExact||p.exact).toFixed(2)}</span></div>
                   </div>
                   <button data-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
                 </div>
@@ -2078,18 +2078,22 @@ const WorkTracker = (() => {
                       onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
                       onpointerup="this.style.background='none'"
                       onpointerleave="this.style.background='none'">−</button>
-                    <span style="width:60px;text-align:center;font-size:22px;font-weight:800;color:${p.isMe?'#30D158':'#fff'};font-variant-numeric:tabular-nums">$${p.amount}</span>
+                    <span style="width:60px;text-align:center;font-size:22px;font-weight:800;color:${p.isMe?'#30D158':'#fff'};font-variant-numeric:tabular-nums">$${p.ccAmount !== undefined ? p.ccAmount : p.amount}</span>
                     <button data-plus="${i}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:20px;font-weight:200;cursor:pointer;line-height:1"
                       onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
                       onpointerup="this.style.background='none'"
                       onpointerleave="this.style.background='none'">+</button>
                   </div>
                   <div style="text-align:right">
-                    ${p.amount > p.exact
-                      ? `<div style="font-size:11px;color:#FF9F0A">↑ +$${(p.amount-p.exact).toFixed(2)}</div>`
-                      : p.amount < p.exact
-                      ? `<div style="font-size:11px;color:#64D2FF">↓ −$${(p.exact-p.amount).toFixed(2)}</div>`
-                      : `<div style="font-size:11px;color:#636366">base</div>`}
+                    ${(() => {
+                      const disp = p.ccAmount !== undefined ? p.ccAmount : p.amount;
+                      const ref = p.ccExact !== undefined ? p.ccExact : p.exact;
+                      return disp > ref
+                        ? `<div style="font-size:11px;color:#FF9F0A">↑ +$${(disp-ref).toFixed(2)}</div>`
+                        : disp < ref
+                        ? `<div style="font-size:11px;color:#64D2FF">↓ −$${(ref-disp).toFixed(2)}</div>`
+                        : `<div style="font-size:11px;color:#636366">base</div>`;
+                    })()}
                   </div>
                 </div>
               </div>`).join('')
