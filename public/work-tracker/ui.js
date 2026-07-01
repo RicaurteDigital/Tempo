@@ -2265,14 +2265,17 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
-    // iOS keyboard fix: adjust overlay to visible viewport and scroll active input into view
+    // iOS keyboard fix: adjust overlay and modal max-height to visible viewport
     if (window.visualViewport) {
       const __vvHandler = () => {
-        ov.style.height = window.visualViewport.height + 'px';
+        const vh = window.visualViewport.height;
+        ov.style.height = vh + 'px';
         ov.style.top = window.visualViewport.offsetTop + 'px';
+        const modal = ov.querySelector('.wt-modal');
+        if (modal) modal.style.maxHeight = (vh * 0.92) + 'px';
         const activeEl = document.activeElement;
         if (activeEl && activeEl.tagName === 'INPUT' && ov.contains(activeEl)) {
-          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
         }
       };
       window.visualViewport.addEventListener('resize', __vvHandler);

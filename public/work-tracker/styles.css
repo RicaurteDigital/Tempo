@@ -593,7 +593,7 @@
   width: 100%;
   border-radius: 28px 28px 0 0;
   padding: 8px 20px calc(env(safe-area-inset-bottom,0px) + 28px);
-  max-height: 90vh;
+  max-height: 92vh;
   overflow-y: auto;
 }
 .wt-modal-handle {
