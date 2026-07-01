@@ -2002,7 +2002,7 @@ const WorkTracker = (() => {
             </div>` : ''}
             <div style="display:flex;justify-content:space-between;border-top:1px solid #38383A;padding-top:8px;margin-top:4px">
               <span style="color:#FF9F0A;font-weight:700">Total to distribute</span>
-              <span style="color:#FF9F0A;font-size:16px;font-weight:800">${TipRules.fmtMoney(result.totalNet)}</span>
+              <span style="color:#FF9F0A;font-size:16px;font-weight:800">${TipRules.fmtMoney(result.creditCard.net)}</span>
             </div>
             ${cashTotal > 0 && workers.length > 0 ? `
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
