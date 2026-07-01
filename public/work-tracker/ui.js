@@ -496,6 +496,7 @@ const WorkTracker = (() => {
       const built = _buildEntryRow(shift, first);
       entriesDiv.appendChild(built.row);
       entriesDiv.appendChild(built.photoRow);
+      entriesDiv.appendChild(built.reportRow);
     }
 
     if (older.length > 0) {
@@ -512,6 +513,7 @@ const WorkTracker = (() => {
         const built = _buildEntryRow(shift, e);
         olderDiv.appendChild(built.row);
         olderDiv.appendChild(built.photoRow);
+        olderDiv.appendChild(built.reportRow);
       });
       toggleBtn.onclick = () => {
         expanded = !expanded;
@@ -616,7 +618,46 @@ const WorkTracker = (() => {
       });
     });
 
-    return { row, photoRow };
+    // Report photos — multiple allowed, same pattern as proofs
+    const reportRow = document.createElement('div');
+    reportRow.className = 'wt-photo-row';
+    reportRow.dataset.shiftId = shift.id;
+    reportRow.dataset.entryId = e.id;
+
+    const _refreshReportRow = async () => {
+      reportRow.innerHTML = '';
+      // Find all existing report photos for this entry
+      let n = 1;
+      const existingBtns = [];
+      while (true) {
+        const key = `${shift.id}_report_${n}_${e.id}`;
+        const base64 = await WTDb.getPhoto(shift.id, key);
+        if (!base64 && n > 1) break;
+        if (base64) {
+          const b = document.createElement('button');
+          b.className = 'wt-photo-btn has-photo';
+          b.dataset.pid = key;
+          b.textContent = `✓ Report ${n}`;
+          b.onclick = () => _viewOrReplacePhoto(shift.id, key, base64);
+          reportRow.appendChild(b);
+          existingBtns.push(b);
+          n++;
+        } else break;
+      }
+      // Always show "+ Add report" button
+      const addBtn = document.createElement('button');
+      addBtn.className = 'wt-photo-btn';
+      addBtn.textContent = '📋 Add report';
+      addBtn.onclick = () => {
+        const newKey = `${shift.id}_report_${n}_${e.id}`;
+        _doPhotoThenRefresh(shift.id, newKey, _refreshReportRow);
+      };
+      reportRow.appendChild(addBtn);
+    };
+
+    _refreshReportRow();
+
+    return { row, photoRow, reportRow };
   }
 
   function _Week() {
@@ -1722,6 +1763,26 @@ const WorkTracker = (() => {
     shift.entries = shift.entries.filter(e => e.id !== entryId);
     WTDb.saveShift(shift);
     _go('home');
+  }
+
+  async function _doPhotoThenRefresh(shiftId, photoKey, onDone) {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = async () => {
+      const file = input.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
+        const a = document.createElement('a');
+        a.href = ev.target.result;
+        const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
+        a.download = `Tempo_report_${now}.jpg`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        if (onDone) onDone();
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
   }
 
   async function _doPhoto(shiftId, photoKey) {
