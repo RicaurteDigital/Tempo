@@ -57,8 +57,11 @@ const WorkTracker = (() => {
   }
 
   function _Home() {
-    const today = _today();
-    const ws = getWeekStart(new Date());
+    const realToday = _today();
+    const today = _date || realToday;
+    const isToday = today === realToday;
+    const selectedDate = new Date(today + 'T12:00:00');
+    const ws = getWeekStart(selectedDate);
     const settings = WTDb.getSettings();
     const currentProfile = settings.workProfile || 'restaurant';
     const weekShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === currentProfile);
@@ -67,6 +70,19 @@ const WorkTracker = (() => {
     const run = _running();
     const locs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
     const onBreak = _breakStart !== null;
+    // Day navigation helpers
+    const _navDay = (offset) => {
+      const d = new Date(today + 'T12:00:00');
+      d.setDate(d.getDate() + offset);
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (ds > realToday) return; // never go beyond today
+      _date = ds;
+      _go('home');
+    };
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dayLabel = dayNames[selectedDate.getDay()];
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dateLabel = `${monthNames[selectedDate.getMonth()]} ${selectedDate.getDate()}`;
 
     const w = document.createElement('div');
     w.className = 'wt-screen';
@@ -78,6 +94,16 @@ const WorkTracker = (() => {
           <p>${formatWeekLabel(ws)}</p>
         </div>
         <button class="wt-hdr-btn" id="wt-settings-btn">⚙</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;gap:12px">
+        <button id="wt-nav-prev" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">‹</button>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1">${dayLabel}</div>
+          <div style="font-size:13px;color:#98989D;margin-top:2px">${dateLabel}${isToday ? ' · Today' : ''}</div>
+        </div>
+        <button id="wt-nav-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${isToday ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${isToday ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">›</button>
       </div>`;
 
     if (run) {
@@ -122,7 +148,7 @@ const WorkTracker = (() => {
           acc.textContent = 'Total shift: ' + WTRules.fmtHours((completedSecs + currentSecs) / 3600);
         }
       }, 1000);
-    } else {
+    } else if (isToday) {
       const cta = document.createElement('button');
       cta.className = 'wt-clockin-cta';
       cta.id = 'wt-clockin-main';
@@ -207,7 +233,7 @@ const WorkTracker = (() => {
         <div style="background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.2);border-radius:20px;padding:16px 18px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
             <div>
-              <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px">Today's Tips</div>
+              <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px">${isToday ? "Today's Tips" : dayLabel + "'s Tips"}</div>
               <div style="font-size:11px;color:#636366;margin-top:2px">${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''} with tips</div>
             </div>
             <div style="text-align:right">
@@ -237,7 +263,7 @@ const WorkTracker = (() => {
     const secHdr = document.createElement('div');
     secHdr.className = 'wt-sec-hdr';
     secHdr.innerHTML = `
-      <span class="wt-sec-title">Today · ${_fmtDate(today)}</span>
+      <span class="wt-sec-title">${isToday ? 'Today' : dayLabel} · ${_fmtDate(today)}</span>
       <button class="wt-sec-action" id="wt-add-shift">+ Shift</button>`;
     w.appendChild(secHdr);
 
@@ -261,6 +287,9 @@ const WorkTracker = (() => {
     _root.appendChild(w);
 
     w.querySelector('#wt-settings-btn').onclick = () => _go('settings');
+    w.querySelector('#wt-nav-prev').onclick = () => _navDay(-1);
+    const nextBtn = w.querySelector('#wt-nav-next');
+    if (nextBtn && !isToday) nextBtn.onclick = () => _navDay(1);
     w.querySelector('#wt-pay-card').onclick = () => _go('week');
     w.querySelector('#wt-week-btn').onclick = () => _go('week');
     w.querySelector('#wt-export-btn').onclick = () => _go('preview');
