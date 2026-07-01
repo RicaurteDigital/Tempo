@@ -2265,11 +2265,15 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
-    // iOS keyboard fix: adjust overlay to visible viewport when keyboard opens
+    // iOS keyboard fix: adjust overlay to visible viewport and scroll active input into view
     if (window.visualViewport) {
       const __vvHandler = () => {
         ov.style.height = window.visualViewport.height + 'px';
         ov.style.top = window.visualViewport.offsetTop + 'px';
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl.tagName === 'INPUT' && ov.contains(activeEl)) {
+          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+        }
       };
       window.visualViewport.addEventListener('resize', __vvHandler);
       window.visualViewport.addEventListener('scroll', __vvHandler);
