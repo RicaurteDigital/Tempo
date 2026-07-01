@@ -1476,6 +1476,7 @@ const WorkTracker = (() => {
     }
 
     ov.querySelector('#wt-ql-save').onclick = () => {
+      if (ov._cleanupVV) ov._cleanupVV();
       const name = ov.querySelector('#wt-ql-name').value.trim();
       const rate = parseFloat(ov.querySelector('#wt-ql-rate').value) || 16.50;
       if (!name) { ov.querySelector('#wt-ql-name').focus(); return; }
