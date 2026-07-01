@@ -2543,7 +2543,22 @@ const WorkTracker = (() => {
       i.value = (Math.round((cur + 0.05) * 100) / 100).toFixed(2);
     };
 
-    addOv.querySelector('#wt-aw-cancel').onclick = () => addOv.remove();
+    // iOS keyboard fix: push modal up when keyboard opens using visualViewport
+    const __awInput = addOv.querySelector('#wt-aw-name');
+    if (window.visualViewport) {
+      const __vvHandler = () => {
+        const modal = addOv.querySelector('.wt-modal');
+        if (!modal) return;
+        const offset = window.innerHeight - window.visualViewport.height;
+        modal.style.transform = offset > 50 ? `translateY(-${offset}px)` : '';
+      };
+      window.visualViewport.addEventListener('resize', __vvHandler);
+      addOv.addEventListener('remove', () => window.visualViewport.removeEventListener('resize', __vvHandler));
+    }
+    addOv.querySelector('#wt-aw-cancel').onclick = () => {
+      if (window.visualViewport) window.visualViewport.onresize = null;
+      addOv.remove();
+    };
     addOv.querySelector('#wt-aw-add').onclick = () => {
       const name = addOv.querySelector('#wt-aw-name').value.trim();
       if (!name) { alert('Enter a name.'); return; }
