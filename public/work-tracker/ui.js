@@ -215,16 +215,16 @@ const WorkTracker = (() => {
 
       const shiftTipRows = shiftsWithTips.map(s => {
         const t = WTDb.getTipsForShift(s.id);
-        const result = TipRules.calculatePayouts(
-          t.creditCardTotal || 0, t.cashTotal || 0,
-          t.workers || [], feePercent, t.manualFee
-        );
-        const meIdx = t.workers ? t.workers.findIndex(w => w.isMe) : -1;
-        const myPayout = meIdx >= 0 ? result.payouts[meIdx] : null;
-        const myCash = meIdx >= 0 && result.totalPoints > 0
-          ? Math.floor((result.payouts[meIdx].points / result.totalPoints) * (t.cashTotal||0))
+        const tWorkers = t.workers || [];
+        const hasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
+        const result = hasFixed
+          ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee)
+          : TipRules.calculatePayouts(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee);
+        const myPayout = result.payouts.find(p => p.isMe) || null;
+        const myCash = myPayout && result.totalPoints > 0
+          ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0))
           : 0;
-        if (myPayout) totalMyCCCut += myPayout.amount;
+        if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
         if (result.remainder > 0) { hasAnyRemainder = true; totalUnallocated += result.remainder; }
 
@@ -236,7 +236,7 @@ const WorkTracker = (() => {
                 <div style="font-size:11px;color:#636366">CC ${TipRules.fmtMoney(result.creditCard.gross)} − fee ${TipRules.fmtMoney(result.creditCard.fee)}</div>
               </div>
               ${myPayout ? `<div style="text-align:right">
-                <div style="font-size:15px;font-weight:800;color:#30D158">$${myPayout.amount}</div>
+                <div style="font-size:15px;font-weight:800;color:#30D158">$${myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount}</div>
                 ${myCash > 0 ? `<div style="font-size:11px;color:#636366">+$${myCash} cash</div>` : ''}
               </div>` : `<div style="font-size:12px;color:#636366">no cut set</div>`}
             </div>
