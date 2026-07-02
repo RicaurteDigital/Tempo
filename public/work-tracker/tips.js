@@ -153,8 +153,7 @@ const TipRules = (() => {
       if (typeof cPts[w.name] === 'number') {
         cashPointsMap[w.name] = cPts[w.name]; // Force real points (or custom points)
       } else {
-        const isFixedCC = typeof w.fixedAmount === 'number';
-        cashPointsMap[w.name] = isFixedCC ? (impliedPointsMap[w.name] || 0) : (parseFloat(w.points) || 0);
+        cashPointsMap[w.name] = parseFloat(w.points) || 0; // default: real points, independent of CC — never impliedPoints
       }
     });
 
@@ -197,7 +196,9 @@ const TipRules = (() => {
         cashPoints: typeof cFlat[w.name] === 'number' ? null : (cashPointsMap[w.name] || 0),
         isFixed,
         hasFixedCash: typeof cFlat[w.name] === 'number',
-        exact, amount, ccExact, ccAmount
+        exact, amount, ccExact, ccAmount,
+        cashExact,  // NEW: true pre-rounding cash share — single source of truth for UI
+        cashAmount  // NEW: rounded/overridden cash share actually paid
       };
     });
 

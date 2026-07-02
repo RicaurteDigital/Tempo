@@ -2439,6 +2439,15 @@ const WorkTracker = (() => {
         }
       }
 
+      // Single source of truth for cash display — reused by render + balance check below
+      const cashRows = result.payouts.map(p => {
+        const exactCashShare = typeof p.cashExact === 'number' ? p.cashExact : (p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0));
+        const cashShare = saved.cashManualAmounts && saved.cashManualAmounts[p.name] !== undefined
+          ? saved.cashManualAmounts[p.name]
+          : Math.floor(exactCashShare);
+        return { name: p.name, exactCashShare, cashShare, diff: cashShare - exactCashShare, cashPoints: p.cashPoints || 0 };
+      });
+
       ov.innerHTML = `
         <div class="wt-modal" style="max-height:92vh;overflow-y:auto">
           <div class="wt-modal-handle"></div>
@@ -2519,52 +2528,45 @@ const WorkTracker = (() => {
             </div>
             ${cashTotal > 0 && workers.length > 0 ? `
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
-              <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split:</div>
-              ${result.payouts.map((p) => {
-                const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
-                const cashShare = p.hasFixedCash 
-                  ? exactCashShare 
-                  : (saved.cashManualAmounts && saved.cashManualAmounts[p.name] !== undefined ? saved.cashManualAmounts[p.name] : Math.floor(exactCashShare));
-                const diff = p.hasFixedCash ? 0 : (cashShare - exactCashShare);
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
-                  <div>
-                    <span style="color:#98989D;font-weight:600">${p.name}</span>
-                    <div style="font-size:11px;color:#636366;display:flex;align-items:center;gap:4px;margin-top:2px">
-                      <span>Pts:</span>
-                      ${!p.hasFixedCash ? `
-                      <button data-cashpt-minus="${p.name}" style="background:none;border:none;color:#64D2FF;cursor:pointer;padding:0 4px;font-size:14px;line-height:1">◀</button>
-                      <span style="color:#fff;font-weight:600">${p.cashPoints.toFixed(2)}</span>
-                      <button data-cashpt-plus="${p.name}" style="background:none;border:none;color:#64D2FF;cursor:pointer;padding:0 4px;font-size:14px;line-height:1">▶</button>
-                      ` : `<span style="color:#FF453A;font-weight:700">Flat</span>`}
-                    </div>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span style="font-size:11px;color:${diff>0?'#FF9F0A':diff<0?'#64D2FF':'#636366'}">
-                      ${diff<0?'↓ −$'+Math.abs(diff).toFixed(2):diff>0?'↑ +$'+diff.toFixed(2):''}
+              <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
+              ${cashRows.map(r => `
+                <div style="padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <span style="color:#98989D;font-weight:600">${r.name} · <span style="color:#FF9F0A">$${r.exactCashShare.toFixed(2)}</span></span>
+                    <span style="font-size:11px;color:${r.diff>0?'#FF9F0A':r.diff<0?'#64D2FF':'#636366'}">
+                      ${r.diff<0?'↓ −$'+Math.abs(r.diff).toFixed(2):r.diff>0?'↑ +$'+r.diff.toFixed(2):''}
                     </span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:center;gap:4px">
+                      <span style="font-size:10px;color:#636366">pts</span>
+                      <div style="display:flex;align-items:center;background:#1C1C1E;border-radius:8px;overflow:hidden;border:1px solid #38383A">
+                        <button data-cashpt-minus="${r.name}" style="width:22px;height:22px;background:none;border:none;color:#64D2FF;font-size:13px;cursor:pointer;line-height:1">−</button>
+                        <input data-cashpt-direct="${r.name}" type="text" inputmode="decimal" value="${r.cashPoints.toFixed(2)}"
+                          style="width:32px;text-align:center;font-size:12px;font-weight:700;color:#64D2FF;background:none;border:none;outline:none;padding:0"
+                          onclick="this.select()" onfocus="this.select()">
+                        <button data-cashpt-plus="${r.name}" style="width:22px;height:22px;background:none;border:none;color:#64D2FF;font-size:13px;cursor:pointer;line-height:1">+</button>
+                      </div>
+                    </div>
                     <div style="display:flex;align-items:center;background:#1C1C1E;border-radius:8px;overflow:hidden;border:1px solid #38383A">
-                      ${!p.hasFixedCash ? `<button data-cash-minus="${p.name}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:16px;cursor:pointer;line-height:1"
-                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">−</button>` : ''}
-                      <span data-cash-direct="${p.name}" style="color:${p.hasFixedCash ? '#FF9F0A' : '#30D158'};font-weight:700;min-width:32px;text-align:center;font-size:14px;cursor:pointer;padding:0 6px" title="Click to set flat cash amount">$${cashShare}</span>
-                      ${!p.hasFixedCash ? `<button data-cash-plus="${p.name}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:14px;cursor:pointer;line-height:1"
-                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">+</button>` : ''}
+                      <button data-cash-minus="${r.name}" style="width:26px;height:26px;background:none;border:none;color:#98989D;font-size:15px;cursor:pointer;line-height:1"
+                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">−</button>
+                      <span style="color:#30D158;font-size:13px;padding-left:2px">$</span><input data-cash-direct="${r.name}" type="text" inputmode="decimal" value="${r.cashShare}"
+                        style="width:30px;text-align:center;font-size:14px;font-weight:700;color:#30D158;background:none;border:none;outline:none;padding:0"
+                        onclick="this.select()" onfocus="this.select()">
+                      <button data-cash-plus="${r.name}" style="width:26px;height:26px;background:none;border:none;color:#98989D;font-size:13px;cursor:pointer;line-height:1"
+                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">+</button>
                     </div>
                   </div>
+                </div>`).join('')}
+              ${(() => {
+                const totalCashDistributed = cashRows.reduce((s, r) => s + r.cashShare, 0);
+                const cashRemainder = parseFloat((cashTotal - totalCashDistributed).toFixed(2));
+                if (cashRemainder === 0) return '<div style="font-size:12px;color:#30D158;margin-top:6px;font-weight:600">✓ Cash balanced</div>';
+                return `<div style="font-size:12px;color:${cashRemainder>0?'#FF9F0A':'#FF453A'};margin-top:6px;font-weight:600">
+                  ${cashRemainder>0?`$${cashRemainder.toFixed(2)} cash unallocated`:`Over by $${Math.abs(cashRemainder).toFixed(2)}`}
                 </div>`;
-              }).join('')}
-            ${(() => {
-              if (!saved.cashAdjustments) return '';
-              const totalCashDistributed = result.payouts.reduce((sum, p, i) => {
-                return sum + (saved.cashAdjustments[i] !== undefined
-                  ? saved.cashAdjustments[i]
-                  : Math.floor(result.totalPoints > 0 ? (p.points / result.totalPoints) * cashTotal : 0));
-              }, 0);
-              const cashRemainder = cashTotal - totalCashDistributed;
-              if (cashRemainder === 0) return '<div style="font-size:12px;color:#30D158;margin-top:4px;font-weight:600">✓ Cash balanced</div>';
-              return `<div style="font-size:12px;color:${cashRemainder>0?'#FF9F0A':'#FF453A'};margin-top:4px;font-weight:600">
-                ${cashRemainder>0?`$${cashRemainder.toFixed(2)} cash unallocated`:`Over by $${Math.abs(cashRemainder).toFixed(2)}`}
-              </div>`;
-            })()}
+              })()}
             </div>` : ''}
             ${workers.length > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-top:4px">
@@ -2771,19 +2773,24 @@ const WorkTracker = (() => {
       if (!saved.cashPointOverrides) saved.cashPointOverrides = {};
       if (!saved.cashManualAmounts) saved.cashManualAmounts = {};
 
-      ov.querySelectorAll('[data-cash-direct]').forEach(el => {
-        el.onclick = () => {
-          const name = el.dataset.cashDirect;
-          const val = prompt(`Enter exact Flat Cash amount for ${name}:\n(Leave empty to cancel)`, saved.cashFlatAmounts[name]||'');
-          if (val === null) return;
-          if (val.trim() === '') {
-            delete saved.cashFlatAmounts[name];
-          } else {
-            const parsed = parseFloat(val);
-            if (!isNaN(parsed) && parsed >= 0) saved.cashFlatAmounts[name] = parsed;
-          }
+      ov.querySelectorAll('[data-cash-direct]').forEach(inp => {
+        inp.addEventListener('blur', () => {
+          const name = inp.dataset.cashDirect;
+          const val = parseFloat(inp.value);
+          if (!isNaN(val) && val >= 0) saved.cashManualAmounts[name] = val;
           render();
-        };
+        });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+      });
+
+      ov.querySelectorAll('[data-cashpt-direct]').forEach(inp => {
+        inp.addEventListener('blur', () => {
+          const name = inp.dataset.cashptDirect;
+          const val = parseFloat(inp.value);
+          if (!isNaN(val) && val >= 0) saved.cashPointOverrides[name] = parseFloat(val.toFixed(2));
+          render();
+        });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
       });
 
       ov.querySelectorAll('[data-cashpt-minus]').forEach(btn => {
@@ -2813,7 +2820,7 @@ const WorkTracker = (() => {
           const name = btn.dataset.cashMinus;
           const p = result.payouts.find(p => p.name === name);
           if (!p) return;
-          const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
+          const exactCashShare = typeof p.cashExact === 'number' ? p.cashExact : (p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0));
           const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
           saved.cashManualAmounts[name] = Math.max(0, cur - 1);
           render();
@@ -2825,7 +2832,7 @@ const WorkTracker = (() => {
           const name = btn.dataset.cashPlus;
           const p = result.payouts.find(p => p.name === name);
           if (!p) return;
-          const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
+          const exactCashShare = typeof p.cashExact === 'number' ? p.cashExact : (p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0));
           const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
           saved.cashManualAmounts[name] = cur + 1;
           render();
@@ -2854,9 +2861,16 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-save').onclick = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
-        const finalResult = TipRules.calculatePayouts(
-          saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee
-        );
+        const saveCashOptions = {
+          flatAmounts: saved.cashFlatAmounts || {},
+          pointOverrides: saved.cashPointOverrides || {},
+          manualAmounts: saved.cashManualAmounts || {}
+        };
+        const saveHasFixed = saved.workers.some(w => typeof w.fixedAmount === 'number');
+        const saveHasCashOverrides = Object.keys(saveCashOptions.flatAmounts).length > 0 || Object.keys(saveCashOptions.pointOverrides).length > 0;
+        const finalResult = (saveHasFixed || saveHasCashOverrides)
+          ? TipRules.calculatePayoutsWithFixed(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee, saveCashOptions)
+          : TipRules.calculatePayouts(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee);
         const me = finalResult.payouts.find((p, i) => saved.workers[i] && saved.workers[i].isMe);
         saved.myPayout = me ? me.amount : 0;
         WTDb.saveTipsForShift(dayKey, saved);
