@@ -738,7 +738,26 @@ const WorkTracker = (() => {
           return weekLocs.map(l => {
             const payment = WTDb.getPayment(l.id, wsStr);
             const locPay = pay.byLocation[l.name];
-            const expectedCC = locPay ? locPay.total : null;
+            // Calculate my CC and cash tips for this week for this location
+            const locShifts = shifts.filter(s => s.locationId === l.id);
+            let myWeekCCTips = 0, myWeekCashTips = 0;
+            locShifts.forEach(s => {
+              const t = WTDb.getTipsForShift(s.id);
+              if (!t) return;
+              const result = TipRules.calculatePayouts(
+                t.creditCardTotal || 0, t.cashTotal || 0,
+                t.workers || [], t.feePercent || 3, t.manualFee
+              );
+              const meIdx = (result.payouts || []).findIndex(p => p.isMe);
+              if (meIdx >= 0) {
+                myWeekCCTips += result.payouts[meIdx].ccAmount || 0;
+                myWeekCashTips += result.payouts[meIdx].amount - (result.payouts[meIdx].ccAmount || 0);
+              }
+            });
+            const cashInCheck = payment && payment.cashInCheck;
+            const expectedCC = locPay
+              ? locPay.total + myWeekCCTips + (cashInCheck ? myWeekCashTips : 0)
+              : null;
             let status, comparison = '';
             if (payment) {
               const received = parseFloat(payment.amount) || 0;
@@ -749,11 +768,23 @@ const WorkTracker = (() => {
                 const diffSign = diff >= 0 ? '+' : '';
                 comparison = `
                   <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px">
-                    <div style="display:flex;justify-content:space-between;font-size:11px">
-                      <span style="color:#636366">Expected (hrs)</span>
-                      <span style="color:#98989D">$${expectedCC.toFixed(2)}</span>
+                    ${locPay ? `<div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:#636366">Hours (gross)</span>
+                      <span style="color:#98989D">$${locPay.total.toFixed(2)}</span>
+                    </div>` : ''}
+                    ${myWeekCCTips > 0 ? `<div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:#636366">CC tips</span>
+                      <span style="color:#98989D">+$${myWeekCCTips.toFixed(2)}</span>
+                    </div>` : ''}
+                    ${cashInCheck && myWeekCashTips > 0 ? `<div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:#636366">Cash tips (in check)</span>
+                      <span style="color:#98989D">+$${myWeekCashTips.toFixed(2)}</span>
+                    </div>` : ''}
+                    <div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);padding-top:3px;margin-top:2px">
+                      <span style="color:#636366">Total expected</span>
+                      <span style="color:#fff;font-weight:700">$${expectedCC.toFixed(2)}</span>
                     </div>
-                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
                       <span style="color:#636366">Difference</span>
                       <span style="color:${diffColor};font-weight:700">${diffSign}$${Math.abs(diff).toFixed(2)}</span>
                     </div>
@@ -1624,6 +1655,13 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">Notes (optional)</label>
         <input id="wt-rp-notes" class="wt-input" type="text" placeholder="e.g. Received Thursday instead..."
           value="${existing?.notes || ''}" style="display:block;width:100%;box-sizing:border-box;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer">
+          <input type="checkbox" id="wt-rp-cashincheck" ${existing?.cashInCheck ? 'checked' : ''} style="width:18px;height:18px;accent-color:#5E5CE6">
+          <div>
+            <div style="font-size:14px;color:#fff;font-weight:600">Cash tips included in check</div>
+            <div style="font-size:11px;color:#636366;margin-top:2px">Enable if your employer includes cash tips in the paycheck</div>
+          </div>
+        </label>
         <div style="margin-bottom:14px">
           <div style="font-size:12px;color:#98989D;margin-bottom:8px">📎 Photos (optional — check stubs, signed hours, etc.)</div>
           <div id="wt-rp-photos" style="display:flex;flex-wrap:wrap;gap:8px">
@@ -1695,7 +1733,8 @@ const WorkTracker = (() => {
       const receivedDate = ov.querySelector('#wt-rp-date').value;
       const amount = ov.querySelector('#wt-rp-amount').value;
       const notes = ov.querySelector('#wt-rp-notes').value.trim();
-      WTDb.savePayment(locId, weekStart, { receivedDate, amount, notes, photoCount });
+      const cashInCheck = ov.querySelector('#wt-rp-cashincheck').checked;
+      WTDb.savePayment(locId, weekStart, { receivedDate, amount, notes, photoCount, cashInCheck });
       ov.remove();
       _go('home');
     };
