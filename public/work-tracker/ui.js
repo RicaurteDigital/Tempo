@@ -2692,7 +2692,11 @@ const WorkTracker = (() => {
         btn.onclick = () => {
           const i = parseInt(btn.dataset.minus);
           const cur = result.payouts[i].ccAmount !== undefined ? result.payouts[i].ccAmount : result.payouts[i].amount;
-          saved.workers[i].ccManualAmount = Math.max(0, cur - 1);
+          if (typeof saved.workers[i].fixedAmount === 'number') {
+            saved.workers[i].fixedAmount = Math.max(0, cur - 1);
+          } else {
+            saved.workers[i].ccManualAmount = Math.max(0, cur - 1);
+          }
           render();
         };
       });
@@ -2700,7 +2704,11 @@ const WorkTracker = (() => {
         btn.onclick = () => {
           const i = parseInt(btn.dataset.plus);
           const cur = result.payouts[i].ccAmount !== undefined ? result.payouts[i].ccAmount : result.payouts[i].amount;
-          saved.workers[i].ccManualAmount = cur + 1;
+          if (typeof saved.workers[i].fixedAmount === 'number') {
+            saved.workers[i].fixedAmount = cur + 1;
+          } else {
+            saved.workers[i].ccManualAmount = cur + 1;
+          }
           render();
         };
       });
