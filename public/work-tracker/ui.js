@@ -2725,13 +2725,23 @@ const WorkTracker = (() => {
       // Delete worker
       ov.querySelectorAll('[data-del]').forEach(btn => {
         btn.onclick = () => {
-          saved.workers.splice(parseInt(btn.dataset.del), 1);
+          const i = parseInt(btn.dataset.del);
+          const vw = workers[i];
+          if (!vw) return;
+          const trueIdx = saved.workers.findIndex(w => w.name === vw.name);
+          if (trueIdx >= 0) saved.workers.splice(trueIdx, 1);
           render();
         };
       });
 
       ov.querySelectorAll('[data-edit]').forEach(el => {
-        el.onclick = () => _showAddWorker(saved, tipSettings, render, parseInt(el.dataset.edit), locationId);
+        el.onclick = () => {
+          const i = parseInt(el.dataset.edit);
+          const vw = workers[i];
+          if (!vw) return;
+          const trueIdx = saved.workers.findIndex(w => w.name === vw.name);
+          _showAddWorker(saved, tipSettings, render, trueIdx >= 0 ? trueIdx : undefined, locationId);
+        };
       });
 
       // Cash per-person adjustment buttons
