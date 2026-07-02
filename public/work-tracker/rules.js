@@ -251,6 +251,16 @@ const WTRules = (() => {
     return ws.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   }
 
+  function paymentAmounts(payment) {
+    if (!payment) return { gross: null, net: null };
+    const legacyAmt = payment.amount !== undefined && payment.amount !== '' ? parseFloat(payment.amount) : null;
+    const gross = typeof payment.grossAmount === 'number' ? payment.grossAmount
+      : (payment.amountType !== 'net' && legacyAmt !== null && !isNaN(legacyAmt) ? legacyAmt : null);
+    const net = typeof payment.netAmount === 'number' ? payment.netAmount
+      : (payment.amountType === 'net' && legacyAmt !== null && !isNaN(legacyAmt) ? legacyAmt : null);
+    return { gross, net };
+  }
+
   function getRecentWeeks(n) {
     n = n || 8;
     const weeks = [];
@@ -266,6 +276,6 @@ const WTRules = (() => {
   return {
     entryHours, shiftHours, shiftEarnings, weeklyPay,
     dailySummary, fmtHours, fmtMoney, getPayDate, getRecentWeeks,
-    estimateNet
+    estimateNet, paymentAmounts
   };
 })();
