@@ -2697,16 +2697,12 @@ const WorkTracker = (() => {
       ov.querySelectorAll('[data-minus]').forEach(btn => {
         btn.onclick = () => {
           const name = btn.dataset.minusName;
-          console.log('MINUS clicked, name:', name, 'workers:', saved.workers.map(w=>({name:w.name,fixed:w.fixedAmount,manual:w.ccManualAmount})));
           const w = _workerByName(name);
+          if (!w || typeof w.fixedAmount === 'number') return; // fixed — use direct input
           const p = _payoutByName(name);
-          if (!w || !p) return;
+          if (!p) return;
           const cur = p.ccAmount !== undefined ? p.ccAmount : p.amount;
-          if (typeof w.fixedAmount === 'number') {
-            w.fixedAmount = Math.max(0, cur - 1);
-          } else {
-            w.ccManualAmount = Math.max(0, cur - 1);
-          }
+          w.ccManualAmount = Math.max(0, cur - 1);
           render();
         };
       });
@@ -2714,14 +2710,11 @@ const WorkTracker = (() => {
         btn.onclick = () => {
           const name = btn.dataset.plusName;
           const w = _workerByName(name);
+          if (!w || typeof w.fixedAmount === 'number') return; // fixed — use direct input
           const p = _payoutByName(name);
-          if (!w || !p) return;
+          if (!p) return;
           const cur = p.ccAmount !== undefined ? p.ccAmount : p.amount;
-          if (typeof w.fixedAmount === 'number') {
-            w.fixedAmount = cur + 1;
-          } else {
-            w.ccManualAmount = cur + 1;
-          }
+          w.ccManualAmount = cur + 1;
           render();
         };
       });
