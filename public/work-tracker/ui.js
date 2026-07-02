@@ -2515,7 +2515,7 @@ const WorkTracker = (() => {
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
               <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
               ${result.payouts.map((p, i) => {
-                const exactCashShare = result.totalPoints > 0 ? (p.points / result.totalPoints) * cashTotal : 0;
+                const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
                 const cashShare = saved.cashAdjustments && saved.cashAdjustments[i] !== undefined
                   ? saved.cashAdjustments[i]
                   : Math.floor(exactCashShare);
@@ -2754,15 +2754,14 @@ const WorkTracker = (() => {
       ov.querySelectorAll('[data-cash-minus]').forEach(btn => {
         btn.onclick = () => {
           const i = parseInt(btn.dataset.cashMinus);
-          const result2 = TipRules.calculatePayouts(
-            saved.creditCardTotal||0, saved.cashTotal||0, saved.workers||[], feePercent, saved.manualFee
-          );
-          const exactCashShare = result2.totalPoints > 0
-            ? (result2.payouts[i].points / result2.totalPoints) * (saved.cashTotal||0)
-            : 0;
-          const cur = saved.cashAdjustments[i] !== undefined
-            ? saved.cashAdjustments[i]
-            : Math.floor(exactCashShare);
+          const vw = workers[i];
+          if (!vw) return;
+          const p = result.payouts.find(p => p.name === vw.name);
+          if (!p) return;
+          const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
+          const cur = saved.cashAdjustments && saved.cashAdjustments[i] !== undefined
+            ? saved.cashAdjustments[i] : Math.floor(exactCashShare);
+          if (!saved.cashAdjustments) saved.cashAdjustments = {};
           saved.cashAdjustments[i] = Math.max(0, cur - 1);
           render();
         };
@@ -2770,15 +2769,14 @@ const WorkTracker = (() => {
       ov.querySelectorAll('[data-cash-plus]').forEach(btn => {
         btn.onclick = () => {
           const i = parseInt(btn.dataset.cashPlus);
-          const result2 = TipRules.calculatePayouts(
-            saved.creditCardTotal||0, saved.cashTotal||0, saved.workers||[], feePercent, saved.manualFee
-          );
-          const exactCashShare = result2.totalPoints > 0
-            ? (result2.payouts[i].points / result2.totalPoints) * (saved.cashTotal||0)
-            : 0;
-          const cur = saved.cashAdjustments[i] !== undefined
-            ? saved.cashAdjustments[i]
-            : Math.floor(exactCashShare);
+          const vw = workers[i];
+          if (!vw) return;
+          const p = result.payouts.find(p => p.name === vw.name);
+          if (!p) return;
+          const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
+          const cur = saved.cashAdjustments && saved.cashAdjustments[i] !== undefined
+            ? saved.cashAdjustments[i] : Math.floor(exactCashShare);
+          if (!saved.cashAdjustments) saved.cashAdjustments = {};
           saved.cashAdjustments[i] = cur + 1;
           render();
         };
