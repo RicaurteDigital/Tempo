@@ -2730,6 +2730,8 @@ const WorkTracker = (() => {
           if (!vw) return;
           const trueIdx = saved.workers.findIndex(w => w.name === vw.name);
           if (trueIdx >= 0) saved.workers.splice(trueIdx, 1);
+          // Reset ccManualAmount for remaining workers (pool changed) but keep fixedAmount
+          saved.workers.forEach(w => { delete w.ccManualAmount; delete w.manualAmount; });
           render();
         };
       });
