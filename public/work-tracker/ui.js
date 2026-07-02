@@ -735,7 +735,9 @@ const WorkTracker = (() => {
           const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
           const weekLocIds = [...new Set(shifts.map(s => s.locationId).filter(Boolean))];
           const allLocs = WTDb.getLocations();
-          const weekLocs = allLocs.filter(l => weekLocIds.includes(l.id));
+          let weekLocs = allLocs.filter(l => weekLocIds.includes(l.id));
+          // No tracked shifts this week — still let the user log a past check manually for any known location
+          if (weekLocs.length === 0) weekLocs = allLocs;
           if (weekLocs.length === 0) return `<div class="wt-week-paydate">Pay: ${WTRules.getPayDate(ws, settings)}</div>`;
           return weekLocs.map(l => {
             const payment = WTDb.getPayment(l.id, wsStr);
