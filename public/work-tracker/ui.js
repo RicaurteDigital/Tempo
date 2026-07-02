@@ -2676,19 +2676,18 @@ const WorkTracker = (() => {
       });
 
       // +/- buttons — adjust CC amount only (cash is separate)
-      const _workerByName = name => saved.workers.find(w => w.name === name);
-      const _payoutByName = name => result.payouts.find(p => p.name === name);
-
       ov.querySelectorAll('[data-direct]').forEach(inp => {
         inp.addEventListener('blur', () => {
-          const name = inp.dataset.directName;
-          const w = _workerByName(name);
-          const p = _payoutByName(name);
-          if (!w) return;
+          const i = parseInt(inp.dataset.direct);
+          const vw = workers[i];
+          if (!vw) return;
+          const sw = saved.workers.find(w => w.name === vw.name);
+          if (!sw) return;
+          const p = result.payouts.find(p => p.name === vw.name);
           const val = parseFloat(inp.value);
           if (!isNaN(val) && val !== (p?.ccAmount)) {
-            w.fixedAmount = val;
-            delete w.ccManualAmount;
+            sw.fixedAmount = val;
+            delete sw.ccManualAmount;
           }
           render();
         });
@@ -2696,25 +2695,29 @@ const WorkTracker = (() => {
       });
       ov.querySelectorAll('[data-minus]').forEach(btn => {
         btn.onclick = () => {
-          const name = btn.dataset.minusName;
-          const w = _workerByName(name);
-          if (!w || typeof w.fixedAmount === 'number') return; // fixed — use direct input
-          const p = _payoutByName(name);
+          const i = parseInt(btn.dataset.minus);
+          const vw = workers[i]; // workers = sorted visual copy
+          if (!vw) return;
+          const sw = saved.workers.find(w => w.name === vw.name); // find in saved
+          if (!sw || typeof sw.fixedAmount === 'number') return;
+          const p = result.payouts.find(p => p.name === vw.name);
           if (!p) return;
           const cur = p.ccAmount !== undefined ? p.ccAmount : p.amount;
-          w.ccManualAmount = Math.max(0, cur - 1);
+          sw.ccManualAmount = Math.max(0, cur - 1);
           render();
         };
       });
       ov.querySelectorAll('[data-plus]').forEach(btn => {
         btn.onclick = () => {
-          const name = btn.dataset.plusName;
-          const w = _workerByName(name);
-          if (!w || typeof w.fixedAmount === 'number') return; // fixed — use direct input
-          const p = _payoutByName(name);
+          const i = parseInt(btn.dataset.plus);
+          const vw = workers[i]; // workers = sorted visual copy
+          if (!vw) return;
+          const sw = saved.workers.find(w => w.name === vw.name); // find in saved
+          if (!sw || typeof sw.fixedAmount === 'number') return;
+          const p = result.payouts.find(p => p.name === vw.name);
           if (!p) return;
           const cur = p.ccAmount !== undefined ? p.ccAmount : p.amount;
-          w.ccManualAmount = cur + 1;
+          sw.ccManualAmount = cur + 1;
           render();
         };
       });
