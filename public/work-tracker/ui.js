@@ -2571,25 +2571,25 @@ const WorkTracker = (() => {
           ${workers.length === 0
             ? '<div style="color:#636366;font-size:13px;text-align:center;padding:20px 0">No workers yet.<br>Add yourself first with ⭐</div>'
             : result.payouts.map((p, i) => `
-              <div style="background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px">
+              <div data-worker-name="${p.name}" style="background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                  <div style="cursor:pointer" data-edit="${i}">
+                  <div style="cursor:pointer" data-edit="${i}" data-edit-name="${p.name}">
                     <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''} <span style="font-size:11px;color:#5E5CE6">edit</span></span>
                     <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.isFixed ? `<span style="color:#FF9F0A">${(p.impliedPoints||0).toFixed(2)} pts (fixed)</span>` : `${p.points} pts`} · CC exact: <span style="color:#FF9F0A">$${(p.ccExact||p.exact).toFixed(2)}</span></div>
                   </div>
-                  <button data-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
+                  <button data-del="${i}" data-del-name="${p.name}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between">
                   <div style="display:flex;align-items:center;gap:0;background:#1C1C1E;border-radius:12px;overflow:hidden;border:1px solid #38383A">
-                    <button data-minus="${i}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1"
+                    <button data-minus="${i}" data-minus-name="${p.name}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1"
                       onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
                       onpointerup="this.style.background='none'"
                       onpointerleave="this.style.background='none'">−</button>
-                    <span style="color:${p.isMe?'#30D158':'#98989D'};font-size:16px;padding-left:4px">$</span><input data-direct="${i}" type="text" inputmode="decimal"
+                    <span style="color:${p.isMe?'#30D158':'#98989D'};font-size:16px;padding-left:4px">$</span><input data-direct="${i}" data-direct-name="${p.name}" type="text" inputmode="decimal"
                       value="${p.ccAmount !== undefined ? p.ccAmount : p.amount}"
                       style="width:50px;text-align:center;font-size:22px;font-weight:800;color:${p.isMe?'#30D158':'#fff'};font-variant-numeric:tabular-nums;background:none;border:none;outline:none;padding:0"
                       onclick="this.select()" onfocus="this.select()">
-                    <button data-plus="${i}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:20px;font-weight:200;cursor:pointer;line-height:1"
+                    <button data-plus="${i}" data-plus-name="${p.name}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:20px;font-weight:200;cursor:pointer;line-height:1"
                       onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
                       onpointerup="this.style.background='none'"
                       onpointerleave="this.style.background='none'">+</button>
@@ -2676,13 +2676,19 @@ const WorkTracker = (() => {
       });
 
       // +/- buttons — adjust CC amount only (cash is separate)
+      const _workerByName = name => saved.workers.find(w => w.name === name);
+      const _payoutByName = name => result.payouts.find(p => p.name === name);
+
       ov.querySelectorAll('[data-direct]').forEach(inp => {
         inp.addEventListener('blur', () => {
-          const i = parseInt(inp.dataset.direct);
+          const name = inp.dataset.directName;
+          const w = _workerByName(name);
+          const p = _payoutByName(name);
+          if (!w) return;
           const val = parseFloat(inp.value);
-          if (!isNaN(val) && val !== (result.payouts[i]?.ccAmount)) {
-            saved.workers[i].fixedAmount = val;
-            delete saved.workers[i].ccManualAmount;
+          if (!isNaN(val) && val !== (p?.ccAmount)) {
+            w.fixedAmount = val;
+            delete w.ccManualAmount;
           }
           render();
         });
@@ -2690,24 +2696,30 @@ const WorkTracker = (() => {
       });
       ov.querySelectorAll('[data-minus]').forEach(btn => {
         btn.onclick = () => {
-          const i = parseInt(btn.dataset.minus);
-          const cur = result.payouts[i].ccAmount !== undefined ? result.payouts[i].ccAmount : result.payouts[i].amount;
-          if (typeof saved.workers[i].fixedAmount === 'number') {
-            saved.workers[i].fixedAmount = Math.max(0, cur - 1);
+          const name = btn.dataset.minusName;
+          const w = _workerByName(name);
+          const p = _payoutByName(name);
+          if (!w || !p) return;
+          const cur = p.ccAmount !== undefined ? p.ccAmount : p.amount;
+          if (typeof w.fixedAmount === 'number') {
+            w.fixedAmount = Math.max(0, cur - 1);
           } else {
-            saved.workers[i].ccManualAmount = Math.max(0, cur - 1);
+            w.ccManualAmount = Math.max(0, cur - 1);
           }
           render();
         };
       });
       ov.querySelectorAll('[data-plus]').forEach(btn => {
         btn.onclick = () => {
-          const i = parseInt(btn.dataset.plus);
-          const cur = result.payouts[i].ccAmount !== undefined ? result.payouts[i].ccAmount : result.payouts[i].amount;
-          if (typeof saved.workers[i].fixedAmount === 'number') {
-            saved.workers[i].fixedAmount = cur + 1;
+          const name = btn.dataset.plusName;
+          const w = _workerByName(name);
+          const p = _payoutByName(name);
+          if (!w || !p) return;
+          const cur = p.ccAmount !== undefined ? p.ccAmount : p.amount;
+          if (typeof w.fixedAmount === 'number') {
+            w.fixedAmount = cur + 1;
           } else {
-            saved.workers[i].ccManualAmount = cur + 1;
+            w.ccManualAmount = cur + 1;
           }
           render();
         };
