@@ -112,7 +112,9 @@ const WTDb = (() => {
       pfl: 0,
       otherLabel: '',
       other: 0,
-      showEstimate: true
+      showEstimate: true,
+      mode: 'detailed',
+      simplePercent: 25
     };
   }
 

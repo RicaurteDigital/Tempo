@@ -764,12 +764,14 @@ const WorkTracker = (() => {
             const expectedCC = locPay
               ? locPay.total + myWeekCCTips + (cashInCheck ? myWeekCashTips : 0)
               : null;
+            const netData = expectedCC !== null ? WTRules.estimateNet(expectedCC, WTDb.getTaxSettings()) : null;
+            const expectedForCompare = (payment && payment.amountType === 'net' && netData) ? netData.net : expectedCC;
             let status, comparison = '';
             if (payment) {
               const received = parseFloat(payment.amount) || 0;
               status = `<span style="color:#30D158;font-weight:700">✅ $${received.toFixed(2)}</span>`;
-              if (expectedCC !== null && received > 0) {
-                const diff = received - expectedCC;
+              if (expectedForCompare !== null && received > 0) {
+                const diff = received - expectedForCompare;
                 const diffColor = diff >= 0 ? '#30D158' : '#FF453A';
                 const diffSign = diff >= 0 ? '+' : '';
                 comparison = `
@@ -782,18 +784,28 @@ const WorkTracker = (() => {
                       <span style="color:#636366">CC tips</span>
                       <span style="color:#98989D">+$${myWeekCCTips.toFixed(2)}</span>
                     </div>` : ''}
-                    ${cashInCheck && myWeekCashTips > 0 ? `<div style="display:flex;justify-content:space-between;font-size:11px">
-                      <span style="color:#636366">Cash tips (in check)</span>
-                      <span style="color:#98989D">+$${myWeekCashTips.toFixed(2)}</span>
+                    ${myWeekCashTips > 0 ? `<div data-cash-lock="${l.id}" data-cash-ws="${wsStr}" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;cursor:pointer">
+                      <span style="color:#636366">${cashInCheck ? '🔒' : '🔓'} Cash tips${cashInCheck ? ' (in check)' : ''}</span>
+                      <span style="color:#636366">+$${myWeekCashTips.toFixed(2)}</span>
                     </div>` : ''}
                     <div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);padding-top:3px;margin-top:2px">
-                      <span style="color:#636366">Total expected</span>
-                      <span style="color:#fff;font-weight:700">$${expectedCC.toFixed(2)}</span>
+                      <span style="color:#636366">Total expected${payment.amountType === 'net' ? ' (net)' : ' (gross)'}</span>
+                      <span style="color:#fff;font-weight:700">$${expectedForCompare.toFixed(2)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
                       <span style="color:#636366">Difference</span>
                       <span style="color:${diffColor};font-weight:700">${diffSign}$${Math.abs(diff).toFixed(2)}</span>
                     </div>
+                    ${netData ? `<div data-net-toggle="${l.id}_${wsStr}" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:4px;cursor:pointer;color:#5E5CE6">
+                      <span>Est. Net (after taxes)</span>
+                      <span data-net-chevron="${l.id}_${wsStr}">▼</span>
+                    </div>
+                    <div data-net-body="${l.id}_${wsStr}" style="display:none;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
+                      ${netData.lines.map(ln => `<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0"><span style="color:#636366">${ln.label}</span><span style="color:#FF453A">−$${ln.amount.toFixed(2)}</span></div>`).join('')}
+                      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding-top:3px;margin-top:2px;border-top:1px solid rgba(255,255,255,0.06)">
+                        <span style="color:#fff">Net expected</span><span style="color:#64D2FF">$${netData.net.toFixed(2)}</span>
+                      </div>
+                    </div>` : ''}
                     ${payment.receivedDate ? `<div style="font-size:11px;color:#636366;margin-top:2px">Received: ${payment.receivedDate}</div>` : ''}
                   </div>`;
               }
@@ -819,6 +831,29 @@ const WorkTracker = (() => {
         el.onclick = e => {
           e.stopPropagation();
           _showPayDayOptions(el.dataset.locId, el.dataset.locName, el.dataset.ws, settings);
+        };
+      });
+      row.querySelectorAll('[data-cash-lock]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          const lId = el.dataset.cashLock;
+          const wsKey = el.dataset.cashWs;
+          const existingP = WTDb.getPayment(lId, wsKey);
+          if (!existingP) return;
+          WTDb.savePayment(lId, wsKey, { ...existingP, cashInCheck: !existingP.cashInCheck });
+          _go('week');
+        };
+      });
+      row.querySelectorAll('[data-net-toggle]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          const key = el.dataset.netToggle;
+          const body = row.querySelector(`[data-net-body="${key}"]`);
+          const chev = row.querySelector(`[data-net-chevron="${key}"]`);
+          if (!body) return;
+          const open = body.style.display !== 'none';
+          body.style.display = open ? 'none' : 'block';
+          if (chev) chev.textContent = open ? '▼' : '▲';
         };
       });
 
@@ -1394,6 +1429,24 @@ const WorkTracker = (() => {
     taxBlock.innerHTML = `
       <div class="wt-settings-title">Tax Estimate (2026)</div>
 
+      <div style="display:flex;gap:8px;margin:12px 0 16px">
+        <button id="wt-tax-mode-detailed" class="wt-btn" style="flex:1;border:1px solid ${taxSettings.mode==='simple'?'#38383A':'#5E5CE6'};background:${taxSettings.mode==='simple'?'none':'rgba(94,92,230,.15)'};color:${taxSettings.mode==='simple'?'#98989D':'#5E5CE6'}">Detailed</button>
+        <button id="wt-tax-mode-simple" class="wt-btn" style="flex:1;border:1px solid ${taxSettings.mode==='simple'?'#5E5CE6':'#38383A'};background:${taxSettings.mode==='simple'?'rgba(94,92,230,.15)':'none'};color:${taxSettings.mode==='simple'?'#5E5CE6':'#98989D'}">Simple %</button>
+      </div>
+
+      <div id="wt-tax-simple" style="${taxSettings.mode==='simple'?'':'display:none'}">
+        <div style="font-size:12px;color:#636366;margin-bottom:8px">A single percentage deducted from gross pay.</div>
+        <div class="wt-setting-row">
+          <label>Estimated tax %</label>
+          <div style="display:flex;align-items:center;background:#2C2C2E;border:1px solid #38383A;border-radius:10px;overflow:hidden">
+            <button id="wt-tax-simple-minus" style="background:none;border:none;color:#5E5CE6;padding:8px 12px;font-size:18px;cursor:pointer">−</button>
+            <input type="text" inputmode="decimal" id="wt-tax-simple-pct" value="${taxSettings.simplePercent||25}" style="width:40px;background:none;border:none;color:#fff;font-weight:700;text-align:center;font-size:16px;outline:none" onclick="this.select()" onfocus="this.select()">
+            <button id="wt-tax-simple-plus" style="background:none;border:none;color:#5E5CE6;padding:8px 12px;font-size:18px;cursor:pointer">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="wt-tax-detailed" style="${taxSettings.mode==='simple'?'display:none':''}">
       <div style="font-size:11px;font-weight:700;color:#5E5CE6;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px">Federal — same in all states</div>
       <div class="wt-setting-row"><label>Federal income tax % <span style="font-size:11px;color:#636366;font-weight:400">(withholding rate)</span></label><input type="text" inputmode="decimal" id="wt-tax-fed" class="wt-input" style="width:80px;flex:none" value="${taxSettings.federal}" onclick="this.select()" onfocus="this.select()"></div>
       <div class="wt-setting-row"><label>Social Security % <span style="font-size:11px;color:#636366;font-weight:400">(FICA — 6.2% fixed)</span></label><input type="text" inputmode="decimal" id="wt-tax-ss" class="wt-input" style="width:80px;flex:none" value="${taxSettings.socialSecurity}" onclick="this.select()" onfocus="this.select()"></div>
@@ -1414,6 +1467,7 @@ const WorkTracker = (() => {
       <div class="wt-setting-row"><label>PFL/SDI % <span style="font-size:11px;color:#636366;font-weight:400">(Paid Family Leave / State Disability)</span></label><input type="text" inputmode="decimal" id="wt-tax-pfl" class="wt-input" style="width:80px;flex:none" value="${taxSettings.pfl}" onclick="this.select()" onfocus="this.select()"></div>
       <div class="wt-setting-row"><label>Other label <span style="font-size:11px;color:#636366;font-weight:400">(optional extra deduction)</span></label><input type="text" id="wt-tax-other-label" class="wt-input" style="width:110px;flex:none" value="${taxSettings.otherLabel||''}" placeholder="e.g. SDI"></div>
       <div class="wt-setting-row"><label>Other %</label><input type="text" inputmode="decimal" id="wt-tax-other" class="wt-input" style="width:80px;flex:none" value="${taxSettings.other||0}" onclick="this.select()" onfocus="this.select()"></div>
+      </div>
 
       <div style="font-size:11px;font-weight:700;color:#636366;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 8px">Display</div>
       <div class="wt-setting-row">
@@ -1423,6 +1477,30 @@ const WorkTracker = (() => {
       <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Estimate only — not tax advice. All rates are editable. Does not account for filing status, dependents, or multi-state situations. Update rates each year as laws change.</div>
       <button class="wt-btn wt-btn-primary" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>`;
     w.appendChild(taxBlock);
+
+    let currentTaxMode = taxSettings.mode || 'detailed';
+    const btnDet = taxBlock.querySelector('#wt-tax-mode-detailed');
+    const btnSim = taxBlock.querySelector('#wt-tax-mode-simple');
+    const divDet = taxBlock.querySelector('#wt-tax-detailed');
+    const divSim = taxBlock.querySelector('#wt-tax-simple');
+
+    const updateTaxModeUI = () => {
+      btnDet.style.borderColor = currentTaxMode === 'detailed' ? '#5E5CE6' : '#38383A';
+      btnDet.style.background  = currentTaxMode === 'detailed' ? 'rgba(94,92,230,.15)' : 'none';
+      btnDet.style.color       = currentTaxMode === 'detailed' ? '#5E5CE6' : '#98989D';
+      btnSim.style.borderColor = currentTaxMode === 'simple'   ? '#5E5CE6' : '#38383A';
+      btnSim.style.background  = currentTaxMode === 'simple'   ? 'rgba(94,92,230,.15)' : 'none';
+      btnSim.style.color       = currentTaxMode === 'simple'   ? '#5E5CE6' : '#98989D';
+      divDet.style.display     = currentTaxMode === 'detailed' ? 'block' : 'none';
+      divSim.style.display     = currentTaxMode === 'simple'   ? 'block' : 'none';
+    };
+
+    btnDet.onclick = () => { currentTaxMode = 'detailed'; updateTaxModeUI(); };
+    btnSim.onclick = () => { currentTaxMode = 'simple';   updateTaxModeUI(); };
+
+    const inpSim = taxBlock.querySelector('#wt-tax-simple-pct');
+    taxBlock.querySelector('#wt-tax-simple-minus').onclick = () => { inpSim.value = Math.max(0, parseFloat(inpSim.value) - 1); };
+    taxBlock.querySelector('#wt-tax-simple-plus').onclick = () => { inpSim.value = parseFloat(inpSim.value) + 1; };
 
     taxBlock.querySelector('#wt-tax-profile').onchange = function() {
       const p = DEFAULT_TAX_PROFILES[this.value];
@@ -1449,6 +1527,8 @@ const WorkTracker = (() => {
 
     taxBlock.querySelector('#wt-tax-save').onclick = () => {
       WTDb.saveTaxSettings({
+        mode:           currentTaxMode,
+        simplePercent:  parseFloat(taxBlock.querySelector('#wt-tax-simple-pct').value) || 0,
         profile:        taxBlock.querySelector('#wt-tax-profile').value,
         federal:        parseFloat(taxBlock.querySelector('#wt-tax-fed').value)         || 0,
         socialSecurity: parseFloat(taxBlock.querySelector('#wt-tax-ss').value)          || 0,
@@ -1662,6 +1742,10 @@ const WorkTracker = (() => {
             style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
             onclick="this.select()" onfocus="this.select()">
         </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button type="button" id="wt-rp-type-gross" style="flex:1;padding:8px;border-radius:10px;border:1px solid ${(!existing || existing.amountType !== 'net') ? '#5E5CE6' : '#38383A'};background:${(!existing || existing.amountType !== 'net') ? 'rgba(94,92,230,.15)' : 'none'};color:${(!existing || existing.amountType !== 'net') ? '#5E5CE6' : '#98989D'};font-size:13px;font-weight:700;cursor:pointer">Gross (before taxes)</button>
+          <button type="button" id="wt-rp-type-net" style="flex:1;padding:8px;border-radius:10px;border:1px solid ${existing?.amountType === 'net' ? '#5E5CE6' : '#38383A'};background:${existing?.amountType === 'net' ? 'rgba(94,92,230,.15)' : 'none'};color:${existing?.amountType === 'net' ? '#5E5CE6' : '#98989D'};font-size:13px;font-weight:700;cursor:pointer">Net (take-home)</button>
+        </div>
         <label class="wt-modal-label">Notes (optional)</label>
         <input id="wt-rp-notes" class="wt-input" type="text" placeholder="e.g. Received Thursday instead..."
           value="${existing?.notes || ''}" style="display:block;width:100%;box-sizing:border-box;margin-bottom:14px">
@@ -1689,6 +1773,20 @@ const WorkTracker = (() => {
 
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
     ov.querySelector('#wt-rp-cancel').onclick = () => ov.remove();
+
+    let rpAmountType = (existing && existing.amountType === 'net') ? 'net' : 'gross';
+    const rpTypeGrossBtn = ov.querySelector('#wt-rp-type-gross');
+    const rpTypeNetBtn = ov.querySelector('#wt-rp-type-net');
+    function updateRpTypeUI() {
+      rpTypeGrossBtn.style.borderColor = rpAmountType === 'gross' ? '#5E5CE6' : '#38383A';
+      rpTypeGrossBtn.style.background = rpAmountType === 'gross' ? 'rgba(94,92,230,.15)' : 'none';
+      rpTypeGrossBtn.style.color = rpAmountType === 'gross' ? '#5E5CE6' : '#98989D';
+      rpTypeNetBtn.style.borderColor = rpAmountType === 'net' ? '#5E5CE6' : '#38383A';
+      rpTypeNetBtn.style.background = rpAmountType === 'net' ? 'rgba(94,92,230,.15)' : 'none';
+      rpTypeNetBtn.style.color = rpAmountType === 'net' ? '#5E5CE6' : '#98989D';
+    }
+    rpTypeGrossBtn.onclick = () => { rpAmountType = 'gross'; updateRpTypeUI(); };
+    rpTypeNetBtn.onclick = () => { rpAmountType = 'net'; updateRpTypeUI(); };
 
     // iOS keyboard fix
     if (window.visualViewport) {
@@ -1744,7 +1842,7 @@ const WorkTracker = (() => {
       const amount = ov.querySelector('#wt-rp-amount').value;
       const notes = ov.querySelector('#wt-rp-notes').value.trim();
       const cashInCheck = ov.querySelector('#wt-rp-cashincheck').checked;
-      WTDb.savePayment(locId, weekStart, { receivedDate, amount, notes, photoCount, cashInCheck });
+      WTDb.savePayment(locId, weekStart, { receivedDate, amount, notes, photoCount, cashInCheck, amountType: rpAmountType });
       ov.remove();
       _go('home');
     };

@@ -73,13 +73,18 @@ const WTRules = (() => {
 
   // Internal: calculate pay for one location's shifts with its OT rules
   function _calcLocationPay(shifts, rate, otRules) {
+    // Each shift may carry its own hourlyRate (e.g. rate changed mid-week) —
+    // true earnings always uses the shift's own rate, never one locked group rate.
+    const totalHrs = shifts.reduce((s, sh) => s + shiftHours(sh), 0);
+    const trueStraightPay = shifts.reduce((s, sh) => s + shiftHours(sh) * (sh.hourlyRate || rate), 0);
+    const blendedRate = totalHrs > 0 ? trueStraightPay / totalHrs : rate;
+
     const levels = (otRules && otRules.levels) ? [...otRules.levels] : [];
     const calcBy = (otRules && otRules.calculateBy) || 'week';
 
-    // If no OT levels — flat rate
+    // If no OT levels — pay each shift at its own true rate
     if (levels.length === 0) {
-      const hrs = shifts.reduce((s, sh) => s + shiftHours(sh), 0);
-      return { regularHours: hrs, overtimeHours: 0, regularPay: hrs * rate, overtimePay: 0 };
+      return { regularHours: totalHrs, overtimeHours: 0, regularPay: trueStraightPay, overtimePay: 0 };
     }
 
     // Sort levels: day levels first, then week levels, each by threshold ascending
@@ -97,7 +102,7 @@ const WTRules = (() => {
       weekLevels.forEach(level => {
         const regularPortion = Math.min(remaining, level.after - prevThreshold);
         if (regularPortion > 0) {
-          regularPay += regularPortion * rate;
+          regularPay += regularPortion * blendedRate;
           regularHours += regularPortion;
           remaining -= regularPortion;
         }
@@ -106,7 +111,7 @@ const WTRules = (() => {
 
       if (remaining > 0) {
         const lastMultiplier = weekLevels[weekLevels.length - 1]?.multiplier || 1.5;
-        overtimePay += remaining * rate * lastMultiplier;
+        overtimePay += remaining * blendedRate * lastMultiplier;
         overtimeHours += remaining;
       }
     }
@@ -129,7 +134,7 @@ const WTRules = (() => {
         dayLevels.forEach(level => {
           const regularPortion = Math.min(remaining, level.after - prevThreshold);
           if (regularPortion > 0) {
-            dayRegularPay += regularPortion * rate;
+            dayRegularPay += regularPortion * blendedRate;
             dayRegHrs += regularPortion;
             remaining -= regularPortion;
           }
@@ -137,7 +142,7 @@ const WTRules = (() => {
             const otPortion = Math.min(remaining,
               (dayLevels[dayLevels.indexOf(level)+1]?.after || Infinity) - level.after);
             if (otPortion > 0) {
-              dayOTPay += otPortion * rate * level.multiplier;
+              dayOTPay += otPortion * blendedRate * level.multiplier;
               dayOTHrs += otPortion;
               remaining -= otPortion;
             }
@@ -147,7 +152,7 @@ const WTRules = (() => {
 
         if (remaining > 0) {
           const lastMultiplier = dayLevels[dayLevels.length-1]?.multiplier || 1.5;
-          dayOTPay += remaining * rate * lastMultiplier;
+          dayOTPay += remaining * blendedRate * lastMultiplier;
           dayOTHrs += remaining;
         }
       });
@@ -193,6 +198,16 @@ const WTRules = (() => {
   function estimateNet(grossPay, taxSettings) {
     if (!taxSettings || !taxSettings.showEstimate || grossPay <= 0) return null;
     const g = grossPay;
+    if (taxSettings.mode === 'simple') {
+      const pct = (taxSettings.simplePercent || 0) / 100;
+      const amount = g * pct;
+      return {
+        gross: g,
+        lines: [{ label: `Estimated deductions ~${taxSettings.simplePercent}%`, amount }],
+        totalDeductions: amount,
+        net: g - amount
+      };
+    }
     const federal  = g * ((taxSettings.federal        || 0) / 100);
     const ss       = g * ((taxSettings.socialSecurity || 0) / 100);
     const medicare = g * ((taxSettings.medicare       || 0) / 100);
