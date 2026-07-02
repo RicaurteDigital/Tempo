@@ -2418,8 +2418,14 @@ const WorkTracker = (() => {
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
       const hasFixed = workers.some(w => typeof w.fixedAmount === 'number');
-      const result = hasFixed
-        ? TipRules.calculatePayoutsWithFixed(ccTotal, cashTotal, workers, feePercent, saved.manualFee)
+      const cashOptions = {
+        flatAmounts: saved.cashFlatAmounts || {},
+        pointOverrides: saved.cashPointOverrides || {},
+        manualAmounts: saved.cashManualAmounts || {}
+      };
+      const hasCashOverrides = Object.keys(cashOptions.flatAmounts).length > 0 || Object.keys(cashOptions.pointOverrides).length > 0;
+      const result = (hasFixed || hasCashOverrides)
+        ? TipRules.calculatePayoutsWithFixed(ccTotal, cashTotal, workers, feePercent, saved.manualFee, cashOptions)
         : TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
       const hasSplit = saved.ccBreakdown && saved.ccBreakdown.length > 1;
       // Ensure exactFee is always calculated correctly:
@@ -2513,29 +2519,35 @@ const WorkTracker = (() => {
             </div>
             ${cashTotal > 0 && workers.length > 0 ? `
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
-              <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
-              ${result.payouts.map((p, i) => {
+              <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split:</div>
+              ${result.payouts.map((p) => {
                 const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
-                const cashShare = saved.cashAdjustments && saved.cashAdjustments[i] !== undefined
-                  ? saved.cashAdjustments[i]
-                  : Math.floor(exactCashShare);
-                const diff = cashShare - exactCashShare;
-                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
-                  <span style="color:#98989D">${p.name} · <span style="color:#FF9F0A">$${exactCashShare.toFixed(2)}</span></span>
+                const cashShare = p.hasFixedCash 
+                  ? exactCashShare 
+                  : (saved.cashManualAmounts && saved.cashManualAmounts[p.name] !== undefined ? saved.cashManualAmounts[p.name] : Math.floor(exactCashShare));
+                const diff = p.hasFixedCash ? 0 : (cashShare - exactCashShare);
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
+                  <div>
+                    <span style="color:#98989D;font-weight:600">${p.name}</span>
+                    <div style="font-size:11px;color:#636366;display:flex;align-items:center;gap:4px;margin-top:2px">
+                      <span>Pts:</span>
+                      ${!p.hasFixedCash ? `
+                      <button data-cashpt-minus="${p.name}" style="background:none;border:none;color:#64D2FF;cursor:pointer;padding:0 4px;font-size:14px;line-height:1">◀</button>
+                      <span style="color:#fff;font-weight:600">${p.cashPoints.toFixed(2)}</span>
+                      <button data-cashpt-plus="${p.name}" style="background:none;border:none;color:#64D2FF;cursor:pointer;padding:0 4px;font-size:14px;line-height:1">▶</button>
+                      ` : `<span style="color:#FF453A;font-weight:700">Flat</span>`}
+                    </div>
+                  </div>
                   <div style="display:flex;align-items:center;gap:6px">
                     <span style="font-size:11px;color:${diff>0?'#FF9F0A':diff<0?'#64D2FF':'#636366'}">
                       ${diff<0?'↓ −$'+Math.abs(diff).toFixed(2):diff>0?'↑ +$'+diff.toFixed(2):''}
                     </span>
                     <div style="display:flex;align-items:center;background:#1C1C1E;border-radius:8px;overflow:hidden;border:1px solid #38383A">
-                      <button data-cash-minus="${i}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:16px;cursor:pointer;line-height:1"
-                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
-                        onpointerup="this.style.background='none'"
-                        onpointerleave="this.style.background='none'">−</button>
-                      <span style="color:#30D158;font-weight:700;min-width:32px;text-align:center;font-size:14px">$${cashShare}</span>
-                      <button data-cash-plus="${i}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:14px;cursor:pointer;line-height:1"
-                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
-                        onpointerup="this.style.background='none'"
-                        onpointerleave="this.style.background='none'">+</button>
+                      ${!p.hasFixedCash ? `<button data-cash-minus="${p.name}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:16px;cursor:pointer;line-height:1"
+                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">−</button>` : ''}
+                      <span data-cash-direct="${p.name}" style="color:${p.hasFixedCash ? '#FF9F0A' : '#30D158'};font-weight:700;min-width:32px;text-align:center;font-size:14px;cursor:pointer;padding:0 6px" title="Click to set flat cash amount">$${cashShare}</span>
+                      ${!p.hasFixedCash ? `<button data-cash-plus="${p.name}" style="width:28px;height:28px;background:none;border:none;color:#98989D;font-size:14px;cursor:pointer;line-height:1"
+                        onpointerdown="this.style.background='rgba(255,255,255,0.1)'" onpointerup="this.style.background='none'" onpointerleave="this.style.background='none'">+</button>` : ''}
                     </div>
                   </div>
                 </div>`;
@@ -2656,6 +2668,11 @@ const WorkTracker = (() => {
         if (ccVal !== saved.creditCardTotal && !splitMatchesCC) {
           saved.workers.forEach(w => { delete w.manualAmount; delete w.ccManualAmount; delete w.fixedAmount; });
         }
+        if (cashVal !== saved.cashTotal) {
+          delete saved.cashFlatAmounts;
+          delete saved.cashPointOverrides;
+          delete saved.cashManualAmounts;
+        }
         saved.creditCardTotal = ccVal;
         saved.cashTotal = cashVal;
         render();
@@ -2749,35 +2766,68 @@ const WorkTracker = (() => {
         };
       });
 
-      // Cash per-person adjustment buttons
-      if (!saved.cashAdjustments) saved.cashAdjustments = {};
-      ov.querySelectorAll('[data-cash-minus]').forEach(btn => {
-        btn.onclick = () => {
-          const i = parseInt(btn.dataset.cashMinus);
-          const vw = workers[i];
-          if (!vw) return;
-          const p = result.payouts.find(p => p.name === vw.name);
-          if (!p) return;
-          const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
-          const cur = saved.cashAdjustments && saved.cashAdjustments[i] !== undefined
-            ? saved.cashAdjustments[i] : Math.floor(exactCashShare);
-          if (!saved.cashAdjustments) saved.cashAdjustments = {};
-          saved.cashAdjustments[i] = Math.max(0, cur - 1);
+      // Cash UI listeners
+      if (!saved.cashFlatAmounts) saved.cashFlatAmounts = {};
+      if (!saved.cashPointOverrides) saved.cashPointOverrides = {};
+      if (!saved.cashManualAmounts) saved.cashManualAmounts = {};
+
+      ov.querySelectorAll('[data-cash-direct]').forEach(el => {
+        el.onclick = () => {
+          const name = el.dataset.cashDirect;
+          const val = prompt(`Enter exact Flat Cash amount for ${name}:\n(Leave empty to cancel)`, saved.cashFlatAmounts[name]||'');
+          if (val === null) return;
+          if (val.trim() === '') {
+            delete saved.cashFlatAmounts[name];
+          } else {
+            const parsed = parseFloat(val);
+            if (!isNaN(parsed) && parsed >= 0) saved.cashFlatAmounts[name] = parsed;
+          }
           render();
         };
       });
-      ov.querySelectorAll('[data-cash-plus]').forEach(btn => {
+
+      ov.querySelectorAll('[data-cashpt-minus]').forEach(btn => {
         btn.onclick = () => {
-          const i = parseInt(btn.dataset.cashPlus);
-          const vw = workers[i];
-          if (!vw) return;
-          const p = result.payouts.find(p => p.name === vw.name);
+          const name = btn.dataset.cashptMinus;
+          const p = result.payouts.find(p => p.name === name);
+          if (!p) return;
+          const cur = saved.cashPointOverrides[name] !== undefined ? saved.cashPointOverrides[name] : p.cashPoints;
+          saved.cashPointOverrides[name] = Math.max(0, parseFloat((cur - 0.05).toFixed(2)));
+          render();
+        };
+      });
+
+      ov.querySelectorAll('[data-cashpt-plus]').forEach(btn => {
+        btn.onclick = () => {
+          const name = btn.dataset.cashptPlus;
+          const p = result.payouts.find(p => p.name === name);
+          if (!p) return;
+          const cur = saved.cashPointOverrides[name] !== undefined ? saved.cashPointOverrides[name] : p.cashPoints;
+          saved.cashPointOverrides[name] = parseFloat((cur + 0.05).toFixed(2));
+          render();
+        };
+      });
+
+      ov.querySelectorAll('[data-cash-minus]').forEach(btn => {
+        btn.onclick = () => {
+          const name = btn.dataset.cashMinus;
+          const p = result.payouts.find(p => p.name === name);
           if (!p) return;
           const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
-          const cur = saved.cashAdjustments && saved.cashAdjustments[i] !== undefined
-            ? saved.cashAdjustments[i] : Math.floor(exactCashShare);
-          if (!saved.cashAdjustments) saved.cashAdjustments = {};
-          saved.cashAdjustments[i] = cur + 1;
+          const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
+          saved.cashManualAmounts[name] = Math.max(0, cur - 1);
+          render();
+        };
+      });
+
+      ov.querySelectorAll('[data-cash-plus]').forEach(btn => {
+        btn.onclick = () => {
+          const name = btn.dataset.cashPlus;
+          const p = result.payouts.find(p => p.name === name);
+          if (!p) return;
+          const exactCashShare = p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0);
+          const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
+          saved.cashManualAmounts[name] = cur + 1;
           render();
         };
       });

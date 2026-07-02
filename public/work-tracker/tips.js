@@ -113,7 +113,10 @@ const TipRules = (() => {
   // When a worker has a fixed amount (written directly, not +/- approximation),
   // deduct their fixed amount from the pool first, then distribute the remainder
   // proportionally among workers with points. Returns same shape as calculatePayouts.
-  function calculatePayoutsWithFixed(creditCardTotal, cashTotal, workers, feePercent, manualFee) {
+  function calculatePayoutsWithFixed(creditCardTotal, cashTotal, workers, feePercent, manualFee, cashOptions = {}) {
+    const cFlat = cashOptions.flatAmounts || {};
+    const cPts = cashOptions.pointOverrides || {};
+    const cMan = cashOptions.manualAmounts || {};
     const ccBreakdown = applyProcessingFee(creditCardTotal, feePercent, manualFee);
     const totalNet = ccBreakdown.net + cashTotal;
     const ccNet = ccBreakdown.net;
@@ -137,6 +140,26 @@ const TipRules = (() => {
 
     const totalImpliedPoints = fixedWorkers.reduce((s, w) => s + (impliedPointsMap[w.name] || 0), 0);
 
+    // --- HYBRID CASH ENGINE ---
+    // 1. Identify workers with Flat Cash (locked amount)
+    const fixedCashWorkers = workers.filter(w => typeof cFlat[w.name] === 'number');
+    const totalFixedCash = fixedCashWorkers.reduce((s, w) => s + cFlat[w.name], 0);
+    const remainingCash = Math.max(0, cashTotal - totalFixedCash);
+
+    // 2. Identify effective cash points for the remaining (unlocked) workers
+    const unlockedCashWorkers = workers.filter(w => typeof cFlat[w.name] !== 'number');
+    const cashPointsMap = {};
+    unlockedCashWorkers.forEach(w => {
+      if (typeof cPts[w.name] === 'number') {
+        cashPointsMap[w.name] = cPts[w.name]; // Force real points (or custom points)
+      } else {
+        const isFixedCC = typeof w.fixedAmount === 'number';
+        cashPointsMap[w.name] = isFixedCC ? (impliedPointsMap[w.name] || 0) : (parseFloat(w.points) || 0);
+      }
+    });
+
+    const totalCashPoints = unlockedCashWorkers.reduce((s, w) => s + cashPointsMap[w.name], 0);
+
     const payouts = workers.map(w => {
       const wpts = parseFloat(w.points) || 0;
       const isFixed = typeof w.fixedAmount === 'number';
@@ -146,19 +169,34 @@ const TipRules = (() => {
         : typeof w.ccManualAmount === 'number'
           ? w.ccManualAmount
           : Math.floor(ccExact);
-      // Cash distributed normally by original points
-      const cashPts = pointTotal + totalImpliedPoints;
-      const effectivePts = isFixed ? (impliedPointsMap[w.name] || 0) : wpts;
-      const cashExact = cashPts > 0 ? effectivePts / cashPts * cashTotal : 0;
+
+      // --- Cash Distribution for this worker ---
+      let cashExact = 0;
+      let cashAmount = 0;
+
+      if (typeof cFlat[w.name] === 'number') {
+        cashExact = cFlat[w.name];
+        cashAmount = cFlat[w.name]; // Flat amounts skip rounding
+      } else {
+        const myCashPts = cashPointsMap[w.name] || 0;
+        cashExact = totalCashPoints > 0 ? (myCashPts / totalCashPoints) * remainingCash : 0;
+        cashAmount = typeof cMan[w.name] === 'number' 
+          ? cMan[w.name] // Rounding / Manual Adjustment +/-
+          : Math.floor(cashExact);
+      }
+
       const exact = ccExact + cashExact;
-      const amount = ccAmount + Math.floor(cashExact);
+      const amount = ccAmount + cashAmount;
+
       return {
         name: w.name,
         isMe: w.isMe || false,
         position: w.position,
         points: wpts,
         impliedPoints: isFixed ? (impliedPointsMap[w.name] || 0) : null,
+        cashPoints: typeof cFlat[w.name] === 'number' ? null : (cashPointsMap[w.name] || 0),
         isFixed,
+        hasFixedCash: typeof cFlat[w.name] === 'number',
         exact, amount, ccExact, ccAmount
       };
     });
