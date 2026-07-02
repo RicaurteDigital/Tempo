@@ -217,13 +217,15 @@ const WorkTracker = (() => {
         const t = WTDb.getTipsForShift(s.id);
         const tWorkers = t.workers || [];
         const hasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
-        const result = hasFixed
-          ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee)
+        const tCashOptions = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
+        const tHasCashOverrides = Object.keys(tCashOptions.flatAmounts).length > 0 || Object.keys(tCashOptions.pointOverrides).length > 0;
+        const result = (hasFixed || tHasCashOverrides)
+          ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee, tCashOptions)
           : TipRules.calculatePayouts(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee);
         const myPayout = result.payouts.find(p => p.isMe) || null;
-        const myCash = myPayout && result.totalPoints > 0
-          ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0))
-          : 0;
+        const myCash = myPayout && typeof myPayout.cashExact === 'number'
+          ? Math.floor(myPayout.cashExact)
+          : (myPayout && result.totalPoints > 0 ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0)) : 0);
         if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
         if (result.remainder > 0) { hasAnyRemainder = true; totalUnallocated += result.remainder; }
@@ -744,14 +746,18 @@ const WorkTracker = (() => {
             locShifts.forEach(s => {
               const t = WTDb.getTipsForShift(s.id);
               if (!t) return;
-              const result = TipRules.calculatePayouts(
-                t.creditCardTotal || 0, t.cashTotal || 0,
-                t.workers || [], t.feePercent || 3, t.manualFee
-              );
+              const tWorkers = t.workers || [];
+              const tHasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
+              const tCashOpts = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
+              const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0;
+              const result = (tHasFixed || tHasCashOv)
+                ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, t.feePercent || 3, t.manualFee, tCashOpts)
+                : TipRules.calculatePayouts(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, t.feePercent || 3, t.manualFee);
               const meIdx = (result.payouts || []).findIndex(p => p.isMe);
               if (meIdx >= 0) {
-                myWeekCCTips += result.payouts[meIdx].ccAmount || 0;
-                myWeekCashTips += result.payouts[meIdx].amount - (result.payouts[meIdx].ccAmount || 0);
+                const mp = result.payouts[meIdx];
+                myWeekCCTips += mp.ccAmount || 0;
+                myWeekCashTips += typeof mp.cashAmount === 'number' ? mp.cashAmount : (mp.amount - (mp.ccAmount || 0));
               }
             });
             const cashInCheck = payment && payment.cashInCheck;
@@ -867,16 +873,20 @@ const WorkTracker = (() => {
                 let totalMyCash = 0;
                 const shiftRows = shiftsWithTips.map(s => {
                   const t = WTDb.getTipsForShift(s.id);
-                  const tipResult = TipRules.calculatePayouts(
-                    t.creditCardTotal||0, t.cashTotal||0,
-                    t.workers||[], feePercent, t.manualFee
-                  );
-                  const meIdx = t.workers ? t.workers.findIndex(w => w.isMe) : -1;
+                  const tWorkers = t.workers || [];
+                  const tHasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
+                  const tCashOpts = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
+                  const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0;
+                  const tipResult = (tHasFixed || tHasCashOv)
+                    ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal||0, t.cashTotal||0, tWorkers, feePercent, t.manualFee, tCashOpts)
+                    : TipRules.calculatePayouts(t.creditCardTotal||0, t.cashTotal||0, tWorkers, feePercent, t.manualFee);
+                  const meIdx = tWorkers.findIndex(w => w.isMe);
                   const myPayout = meIdx >= 0 ? tipResult.payouts[meIdx] : null;
-                  const myCash = meIdx >= 0 && tipResult.totalPoints > 0
-                    ? Math.floor((tipResult.payouts[meIdx].points / tipResult.totalPoints) * (t.cashTotal||0))
-                    : 0;
-                  if (myPayout) totalMyCCCut += myPayout.amount;
+                  const myCash = myPayout && typeof myPayout.cashExact === 'number'
+                    ? Math.floor(myPayout.cashExact)
+                    : (myPayout && tipResult.totalPoints > 0 ? Math.floor((myPayout.points / tipResult.totalPoints) * (t.cashTotal||0)) : 0);
+                  const myCC = myPayout ? (myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount) : 0;
+                  if (myPayout) totalMyCCCut += myCC;
                   totalMyCash += myCash;
                   return `
                     <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #2C2C2E">
@@ -890,7 +900,7 @@ const WorkTracker = (() => {
                       </div>` : ''}
                       ${myPayout ? `<div style="display:flex;justify-content:space-between;margin-top:4px">
                         <span style="font-size:12px;color:#64D2FF">⭐ Your cut</span>
-                        <span style="color:#64D2FF;font-weight:700">$${myPayout.amount}${myCash>0?' + $'+myCash+' cash':''}</span>
+                        <span style="color:#64D2FF;font-weight:700">$${myCC}${myCash>0?' + $'+myCash+' cash':''}</span>
                       </div>` : ''}
                     </div>`;
                 }).join('');
