@@ -2697,6 +2697,7 @@ const WorkTracker = (() => {
       ov.querySelectorAll('[data-minus]').forEach(btn => {
         btn.onclick = () => {
           const name = btn.dataset.minusName;
+          console.log('MINUS clicked, name:', name, 'workers:', saved.workers.map(w=>({name:w.name,fixed:w.fixedAmount,manual:w.ccManualAmount})));
           const w = _workerByName(name);
           const p = _payoutByName(name);
           if (!w || !p) return;
