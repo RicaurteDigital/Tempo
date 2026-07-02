@@ -2417,7 +2417,10 @@ const WorkTracker = (() => {
       });
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
-      const result = TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
+      const hasFixed = workers.some(w => typeof w.fixedAmount === 'number');
+      const result = hasFixed
+        ? TipRules.calculatePayoutsWithFixed(ccTotal, cashTotal, workers, feePercent, saved.manualFee)
+        : TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
       const hasSplit = saved.ccBreakdown && saved.ccBreakdown.length > 1;
       // Ensure exactFee is always calculated correctly:
       // if split, only fee-applicable amounts count toward the exact fee.
@@ -2553,8 +2556,8 @@ const WorkTracker = (() => {
             </div>` : ''}
             ${workers.length > 0 ? `
             <div style="display:flex;justify-content:space-between;margin-top:4px">
-              <span style="color:#636366">${result.totalPoints} pts total</span>
-              <span style="color:#636366">$${(result.creditCard.net / (result.totalPoints || 1)).toFixed(2)}/pt CC</span>
+              <span style="color:#636366">${result.totalPoints} pts${result.impliedPoints > 0 ? ` + ${result.impliedPoints.toFixed(2)} fixed` : ''} total</span>
+              <span style="color:#636366">$${(result.perPoint || result.creditCard.net / (result.totalPoints || 1)).toFixed(2)}/pt CC</span>
             </div>` : ''}
           </div>` : ''}
 
@@ -2572,7 +2575,7 @@ const WorkTracker = (() => {
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                   <div style="cursor:pointer" data-edit="${i}">
                     <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''} <span style="font-size:11px;color:#5E5CE6">edit</span></span>
-                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.points} pts · CC exact: <span style="color:#FF9F0A">$${(p.ccExact||p.exact).toFixed(2)}</span></div>
+                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.isFixed ? `<span style="color:#FF9F0A">${(p.impliedPoints||0).toFixed(2)} pts (fixed)</span>` : `${p.points} pts`} · CC exact: <span style="color:#FF9F0A">$${(p.ccExact||p.exact).toFixed(2)}</span></div>
                   </div>
                   <button data-del="${i}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
                 </div>
@@ -2582,7 +2585,10 @@ const WorkTracker = (() => {
                       onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
                       onpointerup="this.style.background='none'"
                       onpointerleave="this.style.background='none'">−</button>
-                    <span style="width:60px;text-align:center;font-size:22px;font-weight:800;color:${p.isMe?'#30D158':'#fff'};font-variant-numeric:tabular-nums">$${p.ccAmount !== undefined ? p.ccAmount : p.amount}</span>
+                    <span style="color:${p.isMe?'#30D158':'#98989D'};font-size:16px;padding-left:4px">$</span><input data-direct="${i}" type="text" inputmode="decimal"
+                      value="${p.ccAmount !== undefined ? p.ccAmount : p.amount}"
+                      style="width:50px;text-align:center;font-size:22px;font-weight:800;color:${p.isMe?'#30D158':'#fff'};font-variant-numeric:tabular-nums;background:none;border:none;outline:none;padding:0"
+                      onclick="this.select()" onfocus="this.select()">
                     <button data-plus="${i}" style="width:44px;height:44px;background:none;border:none;color:#98989D;font-size:20px;font-weight:200;cursor:pointer;line-height:1"
                       onpointerdown="this.style.background='rgba(255,255,255,0.1)'"
                       onpointerup="this.style.background='none'"
@@ -2648,7 +2654,7 @@ const WorkTracker = (() => {
         if (ccVal !== saved.creditCardTotal && !splitMatchesCC) delete saved.ccBreakdown;
         saved.creditCardTotal = ccVal;
         saved.cashTotal = cashVal;
-        saved.workers.forEach(w => { delete w.manualAmount; delete w.ccManualAmount; });
+        saved.workers.forEach(w => { delete w.manualAmount; delete w.ccManualAmount; delete w.fixedAmount; });
         render();
       };
       ov.querySelector('#wt-tp-cc').addEventListener('blur', doRecalc);
@@ -2670,6 +2676,18 @@ const WorkTracker = (() => {
       });
 
       // +/- buttons — adjust CC amount only (cash is separate)
+      ov.querySelectorAll('[data-direct]').forEach(inp => {
+        inp.addEventListener('blur', () => {
+          const i = parseInt(inp.dataset.direct);
+          const val = parseFloat(inp.value);
+          if (!isNaN(val) && val !== (result.payouts[i]?.ccAmount)) {
+            saved.workers[i].fixedAmount = val;
+            delete saved.workers[i].ccManualAmount;
+          }
+          render();
+        });
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+      });
       ov.querySelectorAll('[data-minus]').forEach(btn => {
         btn.onclick = () => {
           const i = parseInt(btn.dataset.minus);

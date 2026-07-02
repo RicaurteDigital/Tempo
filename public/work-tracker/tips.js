@@ -109,6 +109,69 @@ const TipRules = (() => {
   // amounts: [{ amount: number, feeExempt: boolean }, ...]
   // Returns same shape as applyProcessingFee, so it's a drop-in
   // replacement for creditCardTotal when multi-amount mode is on.
+  // ── FIXED AMOUNT PAYOUT CALCULATION ──────────────────
+  // When a worker has a fixed amount (written directly, not +/- approximation),
+  // deduct their fixed amount from the pool first, then distribute the remainder
+  // proportionally among workers with points. Returns same shape as calculatePayouts.
+  function calculatePayoutsWithFixed(creditCardTotal, cashTotal, workers, feePercent, manualFee) {
+    const ccBreakdown = applyProcessingFee(creditCardTotal, feePercent, manualFee);
+    const totalNet = ccBreakdown.net + cashTotal;
+    const ccNet = ccBreakdown.net;
+    const ccPerPointBase = 0; // will be recalculated
+
+    // Separate fixed workers from point-based workers
+    const fixedWorkers = workers.filter(w => typeof w.fixedAmount === 'number');
+    const pointWorkers = workers.filter(w => typeof w.fixedAmount !== 'number');
+
+    // Total fixed CC amounts
+    const totalFixed = fixedWorkers.reduce((s, w) => s + w.fixedAmount, 0);
+    const remainingCC = Math.max(0, ccNet - totalFixed);
+
+    // Calculate implied points for fixed workers: fixedAmount / perPoint
+    const pointTotal = pointWorkers.reduce((s, w) => s + (parseFloat(w.points) || 0), 0);
+    const perPoint = pointTotal > 0 ? remainingCC / pointTotal : 0;
+    const impliedPointsMap = {};
+    fixedWorkers.forEach(w => {
+      impliedPointsMap[w.name] = perPoint > 0 ? w.fixedAmount / perPoint : 0;
+    });
+
+    const totalImpliedPoints = fixedWorkers.reduce((s, w) => s + (impliedPointsMap[w.name] || 0), 0);
+
+    const payouts = workers.map(w => {
+      const wpts = parseFloat(w.points) || 0;
+      const isFixed = typeof w.fixedAmount === 'number';
+      const ccExact = isFixed ? w.fixedAmount : wpts * perPoint;
+      const ccAmount = isFixed ? w.fixedAmount : Math.floor(ccExact);
+      // Cash distributed normally by original points
+      const cashPts = pointTotal + totalImpliedPoints;
+      const effectivePts = isFixed ? (impliedPointsMap[w.name] || 0) : wpts;
+      const cashExact = cashPts > 0 ? effectivePts / cashPts * cashTotal : 0;
+      const exact = ccExact + cashExact;
+      const amount = ccAmount + Math.floor(cashExact);
+      return {
+        name: w.name,
+        isMe: w.isMe || false,
+        position: w.position,
+        points: wpts,
+        impliedPoints: isFixed ? (impliedPointsMap[w.name] || 0) : null,
+        isFixed,
+        exact, amount, ccExact, ccAmount
+      };
+    });
+
+    const distributed = payouts.reduce((s, p) => s + p.amount, 0);
+    const ccDistributed = payouts.reduce((s, p) => s + p.ccAmount, 0);
+    const remainder = parseFloat((totalNet - distributed).toFixed(2));
+    const ccRemainder = parseFloat((ccNet - ccDistributed).toFixed(2));
+
+    return {
+      creditCard: { gross: creditCardTotal, fee: ccBreakdown.fee, feePercent, net: ccNet },
+      cash: cashTotal, totalGross: creditCardTotal + cashTotal, totalNet,
+      totalPoints: pointTotal, impliedPoints: totalImpliedPoints,
+      perPoint, payouts, distributed, remainder, ccDistributed, ccRemainder
+    };
+  }
+
   function applyProcessingFeeMulti(amounts, feePercent, manualFee) {
     const list = Array.isArray(amounts) ? amounts : [];
     const gross = list.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
@@ -178,6 +241,7 @@ const TipRules = (() => {
     fmtMoneyInt,
     // new, additive:
     applyProcessingFeeMulti,
+    calculatePayoutsWithFixed,
     reverseFromKnownAmount,
     rosterMemberToWorker,
     isAlreadyInWorkers
