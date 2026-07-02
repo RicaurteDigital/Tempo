@@ -2652,9 +2652,12 @@ const WorkTracker = (() => {
           && Math.abs(TipRules.applyProcessingFeeMulti(saved.ccBreakdown, feePercent).gross - ccVal) < 0.005;
         if (ccVal !== saved.creditCardTotal && !splitMatchesCC) delete saved.manualFee;
         if (ccVal !== saved.creditCardTotal && !splitMatchesCC) delete saved.ccBreakdown;
+        // Only reset worker CC overrides if CC total changed — cash changes should not affect CC adjustments
+        if (ccVal !== saved.creditCardTotal && !splitMatchesCC) {
+          saved.workers.forEach(w => { delete w.manualAmount; delete w.ccManualAmount; delete w.fixedAmount; });
+        }
         saved.creditCardTotal = ccVal;
         saved.cashTotal = cashVal;
-        saved.workers.forEach(w => { delete w.manualAmount; delete w.ccManualAmount; delete w.fixedAmount; });
         render();
       };
       ov.querySelector('#wt-tp-cc').addEventListener('blur', doRecalc);
