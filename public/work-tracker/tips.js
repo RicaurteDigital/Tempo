@@ -141,7 +141,11 @@ const TipRules = (() => {
       const wpts = parseFloat(w.points) || 0;
       const isFixed = typeof w.fixedAmount === 'number';
       const ccExact = isFixed ? w.fixedAmount : wpts * perPoint;
-      const ccAmount = isFixed ? w.fixedAmount : Math.floor(ccExact);
+      const ccAmount = isFixed
+        ? w.fixedAmount
+        : typeof w.ccManualAmount === 'number'
+          ? w.ccManualAmount
+          : Math.floor(ccExact);
       // Cash distributed normally by original points
       const cashPts = pointTotal + totalImpliedPoints;
       const effectivePts = isFixed ? (impliedPointsMap[w.name] || 0) : wpts;
