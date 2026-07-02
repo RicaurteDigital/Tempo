@@ -1778,7 +1778,7 @@ const WorkTracker = (() => {
             <span id="wt-rp-rate-value" style="font-size:16px;font-weight:800;color:#5E5CE6">0%</span>
           </div>
           <label style="display:flex;align-items:center;gap:10px;margin-top:10px;cursor:pointer">
-            <input type="checkbox" id="wt-rp-use-rate" style="width:18px;height:18px;accent-color:#5E5CE6">
+            <input type="checkbox" id="wt-rp-use-rate" ${existing?.usedRealRate ? 'checked' : ''} style="width:18px;height:18px;accent-color:#5E5CE6">
             <span style="font-size:13px;color:#fff">Usar esta tasa real para mis estimados (Simple %)</span>
           </label>
         </div>
@@ -1886,7 +1886,7 @@ const WorkTracker = (() => {
       const netVal = parseFloat(rpNetInput.value);
       const notes = ov.querySelector('#wt-rp-notes').value.trim();
       const cashInCheck = ov.querySelector('#wt-rp-cashincheck').checked;
-      const payload = { receivedDate, notes, photoCount, cashInCheck };
+      const payload = { receivedDate, notes, photoCount, cashInCheck, usedRealRate: rpUseRateCheck.checked };
       if (!isNaN(grossVal) && grossVal > 0) payload.grossAmount = grossVal;
       if (!isNaN(netVal) && netVal > 0) payload.netAmount = netVal;
       if (rpUseRateCheck.checked && !isNaN(grossVal) && grossVal > 0 && !isNaN(netVal) && netVal <= grossVal) {
@@ -1896,7 +1896,7 @@ const WorkTracker = (() => {
       }
       WTDb.savePayment(locId, weekStart, payload);
       ov.remove();
-      _go('home');
+      _go('week');
     };
   }
 
