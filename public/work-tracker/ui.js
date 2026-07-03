@@ -1789,8 +1789,13 @@ const WorkTracker = (() => {
         <div style="font-size:11px;color:#636366;margin-bottom:14px">Ambos son opcionales — pon el que tengas, o los dos si te salen en el cheque.</div>
         <div id="wt-rp-rate-box" style="display:none;background:rgba(94,92,230,.08);border:1px solid rgba(94,92,230,.2);border-radius:14px;padding:12px 14px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;color:#98989D">Tasa real de este cheque</span>
+            <span style="font-size:13px;color:#98989D;display:flex;align-items:center;gap:5px">Tasa real de este cheque
+              <span id="wt-rp-rate-info" style="cursor:pointer;width:15px;height:15px;border-radius:50%;background:rgba(152,152,157,.25);color:#98989D;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;line-height:1">i</span>
+            </span>
             <span id="wt-rp-rate-value" style="font-size:16px;font-weight:800;color:#5E5CE6">0%</span>
+          </div>
+          <div id="wt-rp-rate-explain" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#98989D;line-height:1.5">
+            Esta tasa varía cheque a cheque porque tu empleador retiene impuestos anualizando cada pago: en semanas con overtime, el sistema asume que ganarías eso todo el año y te retiene más. En semanas flojas, retiene menos. No es tu tasa real anual — es una proyección semanal. Por eso existe la devolución de impuestos: ajusta lo que se retuvo de más o de menos.
           </div>
           <label style="display:flex;align-items:center;gap:10px;margin-top:10px;cursor:pointer">
             <input type="checkbox" id="wt-rp-use-rate" ${existing?.usedRealRate ? 'checked' : ''} style="width:18px;height:18px;accent-color:#5E5CE6">
@@ -1845,6 +1850,11 @@ const WorkTracker = (() => {
     rpGrossInput.addEventListener('input', updateRpRate);
     rpNetInput.addEventListener('input', updateRpRate);
     updateRpRate();
+    ov.querySelector('#wt-rp-rate-info').onclick = (e) => {
+      e.stopPropagation();
+      const el = ov.querySelector('#wt-rp-rate-explain');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    };
 
     // iOS keyboard fix
     if (window.visualViewport) {
