@@ -701,6 +701,19 @@ const WorkTracker = (() => {
     const curMs = getWeekStart(new Date()).getTime();
     const weeks = WTRules.getRecentWeeks(12);
 
+    // Earliest active week per location — explicit startDate wins if set, else earliest tracked shift.
+    // Used so "no shifts this week" doesn't retroactively show a location before it existed.
+    const _allLocsForStart = WTDb.getLocations();
+    const _allShiftsForStart = WTDb.getShifts();
+    const locStartMs = {};
+    _allLocsForStart.forEach(l => {
+      const candidates = [];
+      if (l.startDate) candidates.push(new Date(l.startDate+'T12:00:00').getTime());
+      const shiftDates = _allShiftsForStart.filter(s => s.locationId === l.id).map(s => s.date);
+      if (shiftDates.length) candidates.push(new Date(shiftDates.sort()[0]+'T12:00:00').getTime());
+      locStartMs[l.id] = candidates.length ? getWeekStart(new Date(Math.min(...candidates))).getTime() : null;
+    });
+
     w.innerHTML = `
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
@@ -737,7 +750,7 @@ const WorkTracker = (() => {
           const allLocs = WTDb.getLocations();
           let weekLocs = allLocs.filter(l => weekLocIds.includes(l.id));
           // No tracked shifts this week — still let the user log a past check manually for any known location
-          if (weekLocs.length === 0) weekLocs = allLocs;
+          if (weekLocs.length === 0) weekLocs = allLocs.filter(l => locStartMs[l.id] !== null && locStartMs[l.id] <= ws.getTime());
           if (weekLocs.length === 0) return `<div class="wt-week-paydate">Pay: ${WTRules.getPayDate(ws, settings)}</div>`;
           return weekLocs.map(l => {
             const payment = WTDb.getPayment(l.id, wsStr);
@@ -3454,6 +3467,8 @@ const WorkTracker = (() => {
         </select>
         <label class="wt-modal-label">Name</label>
         <input id="wt-el-name" class="wt-input" type="text" value="${loc.name}" autocapitalize="words">
+        <label class="wt-modal-label">Start date <span style="font-size:11px;color:#636366;font-weight:400">(cuándo empezaste — opcional, si no lo pones se usa tu primer turno registrado)</span></label>
+        <input id="wt-el-startdate" class="wt-input" type="date" value="${loc.startDate || ''}">
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
           <button id="wt-el-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer;line-height:1"
@@ -3569,6 +3584,7 @@ const WorkTracker = (() => {
         if (ot2After > 0) levels.push({ after: ot2After, per: ot2Per, multiplier: ot2Mult });
       }
       loc.name = name; loc.hourlyRate = rate; loc.color = color;
+      loc.startDate = ov.querySelector('#wt-el-startdate').value || null;
       loc.workProfile = ov.querySelector('#wt-el-profile').value;
       loc.overtimeRules = { calculateBy: calcBy, levels };
       const pdVal = ov.querySelector('#wt-el-payday').value;
