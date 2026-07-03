@@ -141,7 +141,7 @@
 
 <section id="vLive" class="hide">
   <div class="session">
-    <div class="label">Sesión actual</div>
+    <div class="label">Current session</div>
     <div class="bname" id="lName"></div>
     <div class="ringwrap">
       <svg width="230" height="230" viewBox="0 0 230 230">
@@ -150,20 +150,20 @@
       </svg>
       <div class="timer"><div class="t" id="lTimer">00:00</div><div class="avg" id="lAvg"></div></div>
     </div>
-    <button class="endbtn" id="endBtn">Terminar bloque</button>
+    <button class="endbtn" id="endBtn">End block</button>
   </div>
   <div class="grid2">
-    <div class="stat"><div class="k">Estudio hoy</div><div class="v" id="sStudy">0m</div><div class="bar"><i id="sStudyBar" style="background:var(--study)"></i></div></div>
-    <div class="stat"><div class="k">Fuga hoy</div><div class="v" id="sLeak" style="color:var(--leak)">0m</div><div class="bar"><i id="sLeakBar" style="background:var(--leak)"></i></div></div>
+    <div class="stat"><div class="k">Study today</div><div class="v" id="sStudy">0m</div><div class="bar"><i id="sStudyBar" style="background:var(--study)"></i></div></div>
+    <div class="stat"><div class="k">Leak today</div><div class="v" id="sLeak" style="color:var(--leak)">0m</div><div class="bar"><i id="sLeakBar" style="background:var(--leak)"></i></div></div>
   </div>
-  <div class="secthead"><h2>Hoy</h2><span id="todayTotal">0h 0m</span></div>
+  <div class="secthead"><h2>Today</h2><span id="todayTotal">0h 0m</span></div>
   <div class="tl" id="timeline"></div>
 </section>
 
 <section id="vPicker" class="picker">
   <div id="doneCard"></div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 2px 12px">
-    <div class="ph" style="margin:0"><h2 id="pTitle">¿Con qué empezamos?</h2></div>
+    <div class="ph" style="margin:0"><h2 id="pTitle">What are we starting?</h2></div>
     <button id="toggleModeBtn" style="background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:20px;color:#98989D;font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer">
       Avanzado
     </button>
@@ -177,18 +177,18 @@
 </section>
 
 <div class="nudge" id="nudge">
-  <h3>Parece que terminaste</h3>
+  <h3>Looks like you finished</h3>
   <p id="nudgeTxt"></p>
-  <div class="row"><button class="yes" id="nYes">Sí, terminar</button><button class="no" id="nNo">Sigo en esto</button></div>
+  <div class="row"><button class="yes" id="nYes">Yes, finish</button><button class="no" id="nNo">Still on it</button></div>
 </div>
 
 <div class="sheet hide" id="settings">
   <div class="in">
-    <h2>Parámetros</h2>
-    <p style="font-size:13px;color:var(--mut);margin-bottom:8px">Duración esperada por sesión (minutos). El nudge salta al superarla.</p>
+    <h2>Settings</h2>
+    <p style="font-size:13px;color:var(--mut);margin-bottom:8px">Expected duration per session (minutes). The nudge appears once you go over it.</p>
     <div id="pList"></div>
-    <div class="acts"><button class="sec" id="expBtn">Exportar JSON</button><button class="pri" id="saveBtn">Guardar</button></div>
-    <button class="danger" id="wipeBtn">Borrar toda la data</button>
+    <div class="acts"><button class="sec" id="expBtn">Export JSON</button><button class="pri" id="saveBtn">Save</button></div>
+    <button class="danger" id="wipeBtn">Delete all data</button>
   </div>
 </div>
 
@@ -203,13 +203,13 @@ const BUCKET_ICONS = {
   leak:  `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="2" width="10" height="16" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M8 5h4M8 8h4M8 11h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
 };
 const BUCKETS = [
-  {id:'study', name:'Estudio PM',   col:'var(--study)', hex:'#5E5CE6', exp:120},
-  {id:'work',  name:'Trabajo',      col:'var(--work)',  hex:'#64D2FF', exp:180},
-  {id:'transport', name:'Transporte', col:'var(--transport)', hex:'#98989D', exp:45},
-  {id:'body',  name:'Cuerpo',       col:'var(--body)',  hex:'#30D158', exp:60},
-  {id:'sleep', name:'Sueño',        col:'var(--sleep)', hex:'#BF5AF2', exp:450},
-  {id:'rest',  name:'Descanso',     col:'var(--rest)',  hex:'#66D4CF', exp:45},
-  {id:'leak',  name:'Fuga',         col:'var(--leak)',  hex:'#FF453A', exp:15},
+  {id:'study', name:'Study PM',    col:'var(--study)', hex:'#5E5CE6', exp:120},
+  {id:'work',  name:'Work',        col:'var(--work)',  hex:'#64D2FF', exp:180},
+  {id:'transport', name:'Transport', col:'var(--transport)', hex:'#98989D', exp:45},
+  {id:'body',  name:'Body',        col:'var(--body)',  hex:'#30D158', exp:60},
+  {id:'sleep', name:'Sleep',       col:'var(--sleep)', hex:'#BF5AF2', exp:450},
+  {id:'rest',  name:'Rest',        col:'var(--rest)',  hex:'#66D4CF', exp:45},
+  {id:'leak',  name:'Leak',        col:'var(--leak)',  hex:'#FF453A', exp:15},
 ];
 const $ = id => document.getElementById(id);
 const KEY = 'tempo_v1';
@@ -413,7 +413,7 @@ function startBucket(bucketId) {
       </div>
       <div style="font-size:22px;font-weight:700;color:#fff">${name}</div>
       <div id="cdNum" style="font-size:96px;font-weight:800;color:${hex};font-variant-numeric:tabular-nums;line-height:1;transition:transform .1s">3</div>
-      <button id="cdCancel" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:20px;color:#fff;font-size:15px;font-weight:600;padding:10px 32px;cursor:pointer">Cancelar</button>
+      <button id="cdCancel" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:20px;color:#fff;font-size:15px;font-weight:600;padding:10px 32px;cursor:pointer">Cancel</button>
     </div>`;
   document.body.appendChild(ov);
 
@@ -489,7 +489,7 @@ function tick(){
   $('ringFg').style.strokeDashoffset = CIRC * (1 - Math.min(el/exp, 1));
   if (el > exp && Date.now() - S.nudgeDismissedAt > 15*60000 && !$('nudge').classList.contains('show')){
     const b = bucket(S.current.b);
-    $('nudgeTxt').textContent = `Llevas ${fmtH(el)} en ${b.name} y tu duración esperada es ${fmtH(exp)}. ¿Cerramos el bloque?`;
+    $('nudgeTxt').textContent = `You have spent ${fmtH(el)} on ${b.name} and your expected duration is ${fmtH(exp)}. Close this block?`;
     $('nudge').classList.add('show');
   }
 }
@@ -513,7 +513,7 @@ function renderTimeline(){
     return `<div class="item"><div class="dot" style="background:${b.hex}"></div>
       <div class="nm">${bucketName(b.id)}<small>${t(e.start)} — ${t(e.end)}</small></div>
       <div class="dur" ${e.b==='leak'?'style="color:var(--leak)"':''}>${fmtH((e.end-e.start)/1000)}</div></div>`;
-  }).join('') : '<div class="empty">Aún no hay bloques hoy.</div>';
+  }).join('') : '<div class="empty">No blocks yet today.</div>';
 }
 
 function renderPicker(){
@@ -582,7 +582,7 @@ $('expBtn').onclick = () => {
   a.href = URL.createObjectURL(blob); a.download = 'tempo-data.json'; a.click();
 };
 $('wipeBtn').onclick = () => {
-  if (confirm('¿Borrar TODA la data? Esto no se puede deshacer.')){
+  if (confirm('Delete ALL data? This cannot be undone.')){
     localStorage.removeItem(KEY); location.reload();
   }
 };

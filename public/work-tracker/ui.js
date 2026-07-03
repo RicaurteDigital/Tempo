@@ -1455,7 +1455,7 @@ const WorkTracker = (() => {
       <div class="wt-settings-title">Tax Estimate (${new Date().getFullYear()})</div>
       ${(!taxSettings.lastConfirmedYear || taxSettings.lastConfirmedYear < new Date().getFullYear()) ? `
       <div style="background:rgba(255,159,10,.08);border:1px solid rgba(255,159,10,.2);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#FF9F0A">
-        ⚠️ Estas tasas son de ${taxSettings.lastConfirmedYear || 'hace un tiempo'}. Revisa si cambiaron para ${new Date().getFullYear()} y guarda de nuevo para confirmar.
+        ⚠️ These rates are from ${taxSettings.lastConfirmedYear || 'a while ago'}. Check if they changed for ${new Date().getFullYear()} and save again to confirm.
       </div>` : ''}
 
       <div style="display:flex;gap:8px;margin:12px 0 16px">
@@ -1786,20 +1786,20 @@ const WorkTracker = (() => {
             style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
             onclick="this.select()" onfocus="this.select()">
         </div>
-        <div style="font-size:11px;color:#636366;margin-bottom:14px">Ambos son opcionales — pon el que tengas, o los dos si te salen en el cheque.</div>
+        <div style="font-size:11px;color:#636366;margin-bottom:14px">Both are optional — enter whichever you have, or both if they're on the check.</div>
         <div id="wt-rp-rate-box" style="display:none;background:rgba(94,92,230,.08);border:1px solid rgba(94,92,230,.2);border-radius:14px;padding:12px 14px;margin-bottom:14px">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:13px;color:#98989D;display:flex;align-items:center;gap:5px">Tasa real de este cheque
+            <span style="font-size:13px;color:#98989D;display:flex;align-items:center;gap:5px">Real rate on this check
               <span id="wt-rp-rate-info" style="cursor:pointer;width:15px;height:15px;border-radius:50%;background:rgba(152,152,157,.25);color:#98989D;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;line-height:1">i</span>
             </span>
             <span id="wt-rp-rate-value" style="font-size:16px;font-weight:800;color:#5E5CE6">0%</span>
           </div>
           <div id="wt-rp-rate-explain" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#98989D;line-height:1.5">
-            Esta tasa varía cheque a cheque porque tu empleador retiene impuestos anualizando cada pago: en semanas con overtime, el sistema asume que ganarías eso todo el año y te retiene más. En semanas flojas, retiene menos. No es tu tasa real anual — es una proyección semanal. Por eso existe la devolución de impuestos: ajusta lo que se retuvo de más o de menos.
+            This rate varies check to check because your employer withholds taxes by annualizing each paycheck: in overtime-heavy weeks, the system assumes you'd earn that much all year and withholds more. In slower weeks, it withholds less. It's not your real annual rate — it's a weekly projection. That's why tax refunds exist: they correct whatever was over- or under-withheld.
           </div>
           <label style="display:flex;align-items:center;gap:10px;margin-top:10px;cursor:pointer">
             <input type="checkbox" id="wt-rp-use-rate" ${existing?.usedRealRate ? 'checked' : ''} style="width:18px;height:18px;accent-color:#5E5CE6">
-            <span style="font-size:13px;color:#fff">Usar esta tasa real para mis estimados (Simple %)</span>
+            <span style="font-size:13px;color:#fff">Use this real rate for my estimates (Simple %)</span>
           </label>
         </div>
         <label class="wt-modal-label">Notes (optional)</label>
@@ -3477,7 +3477,7 @@ const WorkTracker = (() => {
         </select>
         <label class="wt-modal-label">Name</label>
         <input id="wt-el-name" class="wt-input" type="text" value="${loc.name}" autocapitalize="words">
-        <label class="wt-modal-label">Start date <span style="font-size:11px;color:#636366;font-weight:400">(cuándo empezaste — opcional, si no lo pones se usa tu primer turno registrado)</span></label>
+        <label class="wt-modal-label">Start date <span style="font-size:11px;color:#636366;font-weight:400">(when you started — optional, defaults to your first tracked shift)</span></label>
         <input id="wt-el-startdate" class="wt-input" type="date" value="${loc.startDate || ''}">
         <label class="wt-modal-label">Hourly Rate ($/hr)</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
