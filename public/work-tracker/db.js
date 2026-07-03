@@ -250,21 +250,31 @@ const WTDb = (() => {
   }
 
   function exportData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('wt_')) data[key] = localStorage.getItem(key);
+    }
     return JSON.stringify({
       version: WT_VERSION,
       exportedAt: new Date().toISOString(),
-      locations: getLocations(),
-      shifts: getShifts(),
-      settings: getSettings()
+      data
     }, null, 2);
   }
 
   function importData(jsonStr) {
     try {
-      const data = JSON.parse(jsonStr);
-      if (data.locations) localStorage.setItem(LOCATIONS_KEY, JSON.stringify(data.locations));
-      if (data.shifts) localStorage.setItem(SHIFTS_KEY, JSON.stringify(data.shifts));
-      if (data.settings) localStorage.setItem(SETTINGS_KEY, JSON.stringify(data.settings));
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.data && typeof parsed.data === 'object') {
+        Object.entries(parsed.data).forEach(([key, value]) => {
+          if (key.startsWith('wt_')) localStorage.setItem(key, value);
+        });
+        return true;
+      }
+      // Legacy fallback: older exports only had locations/shifts/settings
+      if (parsed.locations) localStorage.setItem(LOCATIONS_KEY, JSON.stringify(parsed.locations));
+      if (parsed.shifts) localStorage.setItem(SHIFTS_KEY, JSON.stringify(parsed.shifts));
+      if (parsed.settings) localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed.settings));
       return true;
     } catch { return false; }
   }

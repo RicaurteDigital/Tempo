@@ -1520,18 +1520,11 @@ const WorkTracker = (() => {
     w.appendChild(backupBlock);
 
     backupBlock.querySelector('#wt-backup-export').onclick = () => {
-      const data = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('wt_')) data[key] = localStorage.getItem(key);
-      }
-      const payload = { app: 'Tempo Work Tracker', exportedAt: new Date().toISOString(), version: 1, data };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const blob = new Blob([WTDb.exportData()], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const dateStr = new Date().toISOString().slice(0,10);
       a.href = url;
-      a.download = `tempo-backup-${dateStr}.json`;
+      a.download = `tempo-backup-${_today()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1547,22 +1540,11 @@ const WorkTracker = (() => {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        try {
-          const parsed = JSON.parse(reader.result);
-          if (!parsed || !parsed.data || typeof parsed.data !== 'object') {
-            alert("This file doesn't look like a valid Tempo backup.");
-            return;
-          }
-          const keyCount = Object.keys(parsed.data).length;
-          if (!confirm(`This will replace ALL Work Tracker data on this device (${keyCount} items) with the data from this backup. This cannot be undone. Continue?`)) return;
-          Object.entries(parsed.data).forEach(([key, value]) => {
-            if (key.startsWith('wt_')) localStorage.setItem(key, value);
-          });
-          alert('Backup restored. Reloading...');
-          location.reload();
-        } catch (err) {
-          alert("Could not read this file. Make sure it's a valid Tempo backup JSON.");
-        }
+        if (!confirm('This will replace ALL Work Tracker data on this device with the data from this backup. This cannot be undone. Continue?')) return;
+        const ok = WTDb.importData(reader.result);
+        if (!ok) { alert("Could not read this file. Make sure it's a valid Tempo backup JSON."); return; }
+        alert('Backup restored. Reloading...');
+        location.reload();
       };
       reader.readAsText(file);
       e.target.value = '';
