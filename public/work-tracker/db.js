@@ -218,6 +218,15 @@ const WTDb = (() => {
     } catch {}
   }
 
+  function getShiftsInRange(startDate, endDate) {
+    return getShifts().filter(s => s.date >= startDate && s.date <= endDate);
+  }
+
+  function getAllPayments() {
+    try { return Object.values(JSON.parse(localStorage.getItem(PAYMENTS_KEY)) || {}); }
+    catch { return []; }
+  }
+
   function getRoster(locationId) {
     try {
       const all = JSON.parse(localStorage.getItem(ROSTER_KEY)) || {};
@@ -290,6 +299,7 @@ const WTDb = (() => {
     getTipsForShift, saveTipsForShift, deleteTipsForShift,
     getRoster, saveRosterMember, deleteRosterMember,
     deletePhoto,
-    getPayment, savePayment, deletePayment
+    getPayment, savePayment, deletePayment,
+    getShiftsInRange, getAllPayments
   };
 })();

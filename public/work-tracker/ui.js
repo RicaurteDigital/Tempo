@@ -20,7 +20,7 @@ const WorkTracker = (() => {
     clearInterval(_heroTimer);
     if (!_root) return;
     _root.innerHTML = '';
-    ({ home: _Home, week: _Week, day: _Day, preview: _Preview, settings: _Settings }[view] || _Home)();
+    ({ home: _Home, week: _Week, day: _Day, preview: _Preview, settings: _Settings, stats: _Stats }[view] || _Home)();
   }
 
   function _today() {
@@ -305,6 +305,7 @@ const WorkTracker = (() => {
     acts.className = 'wt-actions';
     acts.innerHTML = `
       <button class="wt-btn wt-btn-secondary" id="wt-week-btn">📅 History</button>
+      <button class="wt-btn wt-btn-secondary" id="wt-stats-btn">📈 Stats</button>
       <button class="wt-btn wt-btn-primary" id="wt-export-btn">📊 Export</button>`;
     w.appendChild(acts);
 
@@ -326,6 +327,7 @@ const WorkTracker = (() => {
       };
     });
     w.querySelector('#wt-week-btn').onclick = () => _go('week');
+    w.querySelector('#wt-stats-btn').onclick = () => _go('stats');
     w.querySelector('#wt-export-btn').onclick = () => _go('preview');
     const addBtn = w.querySelector('#wt-add-shift');
     if (addBtn) addBtn.onclick = () => _showAddShift(today);
@@ -1186,6 +1188,170 @@ const WorkTracker = (() => {
     if (wp.isOvertime) rows += `<tr class="wt-row-ot"><td colspan="8">⚠️ OT: ${WTRules.fmtHours(wp.overtimeHours)} × 1.5 = +${WTRules.fmtMoney(wp.overtimePay)}</td></tr>`;
     rows += `<tr class="wt-row-total"><td colspan="5"><strong>TOTAL</strong></td><td class="wt-td-num"><strong>${WTRules.fmtHours(gHrs)}</strong></td><td></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(wp.total)}</strong></td></tr>`;
     container.innerHTML = `<table class="wt-table"><thead><tr><th>Date</th><th>Location</th><th>Shift</th><th>In</th><th>Out</th><th>Hrs</th><th>Rate</th><th>Pay</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function _svgBarRow(items, fmtFn) {
+    if (!items.length) return '<div style="color:#636366;font-size:13px;padding:8px 0">No data</div>';
+    const maxVal = Math.max(...items.map(i => i.value), 0.01);
+    const barH = 26, gap = 14, labelW = 76, chartW = 150;
+    const rowH = barH + gap;
+    const totalH = items.length * rowH - gap;
+    const rows = items.map((it, i) => {
+      const barW = Math.max(3, (it.value / maxVal) * chartW);
+      const y = i * rowH;
+      return `
+        <text x="0" y="${y + barH/2 + 4}" font-size="11" fill="#98989D">${it.label.length > 10 ? it.label.slice(0,9)+'…' : it.label}</text>
+        <rect x="${labelW}" y="${y}" width="${chartW}" height="${barH}" rx="7" fill="rgba(255,255,255,0.06)"/>
+        <rect x="${labelW}" y="${y}" width="${barW}" height="${barH}" rx="7" fill="${it.color}"/>
+        <text x="${labelW + chartW + 8}" y="${y + barH/2 + 4}" font-size="12" font-weight="700" fill="#fff">${fmtFn(it.value)}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${labelW + chartW + 60} ${totalH}" width="100%" height="${totalH}" xmlns="http://www.w3.org/2000/svg">${rows}</svg>`;
+  }
+
+  function _statRow(label, value, color) {
+    return `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0">
+      <span style="color:#636366">${label}</span>
+      <span style="color:${color||'#fff'};font-weight:700">${value}</span>
+    </div>`;
+  }
+
+  function _Stats() {
+    const w = document.createElement('div');
+    w.className = 'wt-screen';
+    const years = StatsRules.activeYears();
+    const curYear = new Date().getFullYear();
+    w.innerHTML = `
+      <div class="wt-hdr">
+        <button class="wt-back" id="wt-back">‹ Back</button>
+        <div style="font-size:18px;font-weight:800">Stats</div>
+        <div style="width:36px"></div>
+      </div>
+      <div id="wt-stats-pills" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px">
+        ${['7D','30D','3M','6M','1A','Year','Custom'].map(p =>
+          `<button class="wt-stats-pill" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+        ).join('')}
+      </div>
+      <div id="wt-stats-year-picker" style="display:none;margin-bottom:12px">
+        <select class="wt-select-sm" id="wt-stats-year-sel" style="width:100%">
+          ${(years.length ? years : [curYear]).map(y => `<option value="${y}">${y}</option>`).join('')}
+        </select>
+      </div>
+      <div id="wt-stats-custom-picker" style="display:none;margin-bottom:12px;display:flex;gap:8px">
+        <input type="date" class="wt-input" id="wt-stats-start" style="flex:1">
+        <input type="date" class="wt-input" id="wt-stats-end" style="flex:1">
+        <button class="wt-btn wt-btn-primary" id="wt-stats-apply" style="flex-shrink:0">Go</button>
+      </div>
+      <div id="wt-stats-range-label" style="font-size:12px;color:#636366;margin-bottom:12px"></div>
+      <div id="wt-stats-results"></div>`;
+    _root.appendChild(w);
+    w.querySelector('#wt-back').onclick = () => _go('home');
+
+    const pillsEl = w.querySelector('#wt-stats-pills');
+    const yearPicker = w.querySelector('#wt-stats-year-picker');
+    const customPicker = w.querySelector('#wt-stats-custom-picker');
+    const yearSel = w.querySelector('#wt-stats-year-sel');
+    const rangeLabelEl = w.querySelector('#wt-stats-range-label');
+    const resultsEl = w.querySelector('#wt-stats-results');
+
+    function setActivePill(name) {
+      pillsEl.querySelectorAll('.wt-stats-pill').forEach(btn => {
+        const active = btn.dataset.pill === name;
+        btn.style.borderColor = active ? '#5E5CE6' : '#38383A';
+        btn.style.background = active ? 'rgba(94,92,230,.15)' : 'none';
+        btn.style.color = active ? '#5E5CE6' : '#98989D';
+      });
+    }
+
+    function loadRange(start, end, label) {
+      rangeLabelEl.textContent = `${label} · ${start} → ${end}`;
+      const stats = StatsRules.computeAllStats(start, end);
+      resultsEl.innerHTML = _renderStatsResults(stats);
+    }
+
+    pillsEl.querySelectorAll('.wt-stats-pill').forEach(btn => {
+      btn.onclick = () => {
+        const p = btn.dataset.pill;
+        setActivePill(p);
+        yearPicker.style.display = p === 'Year' ? 'block' : 'none';
+        customPicker.style.display = p === 'Custom' ? 'flex' : 'none';
+        if (p === '7D') { const r = StatsRules.rollingRange(7); loadRange(r.start, r.end, 'Last 7 days'); }
+        else if (p === '30D') { const r = StatsRules.rollingRange(30); loadRange(r.start, r.end, 'Last 30 days'); }
+        else if (p === '3M') { const r = StatsRules.rollingRange(90); loadRange(r.start, r.end, 'Last 3 months'); }
+        else if (p === '6M') { const r = StatsRules.rollingRange(180); loadRange(r.start, r.end, 'Last 6 months'); }
+        else if (p === '1A') { const r = StatsRules.rollingRange(365); loadRange(r.start, r.end, 'Last year'); }
+        else if (p === 'Year') { const y = parseInt(yearSel.value) || curYear; const r = StatsRules.yearRange(y); loadRange(r.start, r.end, String(y)); }
+        else if (p === 'Custom') { /* wait for Go button */ }
+      };
+    });
+
+    yearSel.onchange = () => {
+      const y = parseInt(yearSel.value) || curYear;
+      const r = StatsRules.yearRange(y);
+      loadRange(r.start, r.end, String(y));
+    };
+
+    w.querySelector('#wt-stats-apply').onclick = () => {
+      const start = w.querySelector('#wt-stats-start').value;
+      const end = w.querySelector('#wt-stats-end').value;
+      if (!start || !end || start > end) { alert('Pick a valid start and end date.'); return; }
+      loadRange(start, end, 'Custom range');
+    };
+
+    // Default view on open
+    setActivePill('30D');
+    const r0 = StatsRules.rollingRange(30);
+    loadRange(r0.start, r0.end, 'Last 30 days');
+  }
+
+  function _renderStatsResults(stats) {
+    if (!stats.perLocation.length) {
+      return '<div class="wt-empty"><strong>No data</strong>No shifts or payments in this period.</div>';
+    }
+    const t = stats.totals;
+    const colors = ['#5E5CE6', '#30D158', '#64D2FF', '#FF9F0A', '#FF453A', '#BF5AF2'];
+
+    const summaryCard = `
+      <div class="wt-summary" style="margin-bottom:16px">
+        ${_statRow('Hours worked', WTRules.fmtHours(t.hours))}
+        ${_statRow('Gross from hours', WTRules.fmtMoney(t.grossFromHours))}
+        ${_statRow('CC tips', '+' + WTRules.fmtMoney(t.ccTips), '#30D158')}
+        ${_statRow('Cash tips', '+' + WTRules.fmtMoney(t.cashTips), '#FF9F0A')}
+        ${_statRow('Expected total', WTRules.fmtMoney(t.expectedGross), '#fff')}
+        ${t.receivedGross !== null ? _statRow('Received (gross)', WTRules.fmtMoney(t.receivedGross), '#64D2FF') : ''}
+        ${t.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(t.receivedNet), '#64D2FF') : ''}
+      </div>`;
+
+    const hoursChart = stats.perLocation.length > 1 ? `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">Hours by location</div>
+        ${_svgBarRow(stats.perLocation.map((l,i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v))}
+      </div>` : '';
+
+    const incomeChart = stats.perLocation.length > 1 ? `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">Expected income by location</div>
+        ${_svgBarRow(stats.perLocation.map((l,i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v))}
+      </div>` : '';
+
+    const locCards = stats.perLocation.map((l, i) => `
+      <div class="wt-settings-block" style="margin-bottom:12px">
+        <div class="wt-settings-title" style="display:flex;align-items:center;gap:8px">
+          <span style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]}"></span>
+          ${l.locationName}
+        </div>
+        ${_statRow('Hours', WTRules.fmtHours(l.hours) + (l.overtimeHours > 0 ? ` (${WTRules.fmtHours(l.overtimeHours)} OT)` : ''))}
+        ${_statRow('Gross from hours', WTRules.fmtMoney(l.grossFromHours))}
+        ${_statRow('CC tips', '+' + WTRules.fmtMoney(l.ccTips), '#30D158')}
+        ${_statRow('Cash tips', '+' + WTRules.fmtMoney(l.cashTips), '#FF9F0A')}
+        ${_statRow('Expected total', WTRules.fmtMoney(l.expectedGross))}
+        ${l.expectedNet !== null ? _statRow('Est. net (after taxes)', WTRules.fmtMoney(l.expectedNet), '#64D2FF') : ''}
+        ${l.receivedGross !== null ? _statRow('Received (gross)', WTRules.fmtMoney(l.receivedGross), '#64D2FF') : ''}
+        ${l.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(l.receivedNet), '#64D2FF') : ''}
+        ${l.realTaxRate !== null ? _statRow('Avg. real tax rate', l.realTaxRate.toFixed(1) + '%', '#FF9F0A') : ''}
+        ${_statRow('Shifts tracked', String(l.shiftsCount))}
+      </div>`).join('');
+
+    return summaryCard + hoursChart + incomeChart + locCards;
   }
 
   function _Settings() {
