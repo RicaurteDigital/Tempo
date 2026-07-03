@@ -1507,6 +1507,67 @@ const WorkTracker = (() => {
       <button class="wt-btn wt-btn-primary" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>`;
     w.appendChild(taxBlock);
 
+    const backupBlock = document.createElement('div');
+    backupBlock.className = 'wt-settings-block';
+    backupBlock.innerHTML = `
+      <div class="wt-settings-title">Backup & Restore</div>
+      <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Export all your shifts, tips, locations, and payment records to a file. Use it to move your data to a new device or a newly installed app, or just to keep a safe copy.</div>
+      <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:10px" id="wt-backup-export">⬇️ Export All Data</button>
+      <button class="wt-btn wt-btn-secondary" style="width:100%" id="wt-backup-import">⬆️ Import from Backup</button>
+      <input type="file" id="wt-backup-file" accept="application/json" style="display:none">
+      <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Photos aren't included — they're already saved to your phone's photo gallery separately.</div>
+    `;
+    w.appendChild(backupBlock);
+
+    backupBlock.querySelector('#wt-backup-export').onclick = () => {
+      const data = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('wt_')) data[key] = localStorage.getItem(key);
+      }
+      const payload = { app: 'Tempo Work Tracker', exportedAt: new Date().toISOString(), version: 1, data };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0,10);
+      a.href = url;
+      a.download = `tempo-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
+
+    backupBlock.querySelector('#wt-backup-import').onclick = () => {
+      backupBlock.querySelector('#wt-backup-file').click();
+    };
+
+    backupBlock.querySelector('#wt-backup-file').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          if (!parsed || !parsed.data || typeof parsed.data !== 'object') {
+            alert("This file doesn't look like a valid Tempo backup.");
+            return;
+          }
+          const keyCount = Object.keys(parsed.data).length;
+          if (!confirm(`This will replace ALL Work Tracker data on this device (${keyCount} items) with the data from this backup. This cannot be undone. Continue?`)) return;
+          Object.entries(parsed.data).forEach(([key, value]) => {
+            if (key.startsWith('wt_')) localStorage.setItem(key, value);
+          });
+          alert('Backup restored. Reloading...');
+          location.reload();
+        } catch (err) {
+          alert("Could not read this file. Make sure it's a valid Tempo backup JSON.");
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+
     let currentTaxMode = taxSettings.mode || 'detailed';
     const btnDet = taxBlock.querySelector('#wt-tax-mode-detailed');
     const btnSim = taxBlock.querySelector('#wt-tax-mode-simple');
