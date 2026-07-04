@@ -1355,8 +1355,6 @@ const WorkTracker = (() => {
     return summaryCard + hoursChart + incomeChart + locCards;
   }
 
-  let _settingsOpenSection = null;
-
   function _Settings() {
     const settings = WTDb.getSettings();
     const currentProfile = settings.workProfile || 'restaurant';
