@@ -213,13 +213,14 @@ const WorkTracker = (() => {
       let totalMyCash = 0;
       let totalUnallocated = 0;
       let hasAnyRemainder = false;
+      let firstUnallocatedShiftId = null;
 
       const shiftTipRows = shiftsWithTips.map(s => {
         const t = WTDb.getTipsForShift(s.id);
         const tWorkers = t.workers || [];
         const hasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
         const tCashOptions = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
-        const tHasCashOverrides = Object.keys(tCashOptions.flatAmounts).length > 0 || Object.keys(tCashOptions.pointOverrides).length > 0;
+        const tHasCashOverrides = Object.keys(tCashOptions.flatAmounts).length > 0 || Object.keys(tCashOptions.pointOverrides).length > 0 || Object.keys(tCashOptions.manualAmounts).length > 0;
         const result = (hasFixed || tHasCashOverrides)
           ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee, tCashOptions)
           : TipRules.calculatePayouts(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee);
@@ -229,7 +230,11 @@ const WorkTracker = (() => {
           : (myPayout && result.totalPoints > 0 ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0)) : 0);
         if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
-        if (result.remainder > 0) { hasAnyRemainder = true; totalUnallocated += result.remainder; }
+        if (result.remainder > 0) {
+          hasAnyRemainder = true;
+          totalUnallocated += result.remainder;
+          if (!firstUnallocatedShiftId) firstUnallocatedShiftId = s.id;
+        }
 
         return `
           <div style="border-top:1px solid rgba(255,149,0,.15);margin-top:8px;padding-top:8px">
@@ -268,8 +273,12 @@ const WorkTracker = (() => {
             </div>
           </div>
           ${shiftTipRows}
-          ${hasAnyRemainder ? `<div style="font-size:12px;color:#FF9F0A;margin-top:8px;font-weight:600">⚠ $${totalUnallocated.toFixed(2)} unallocated across shifts</div>` : ''}
+          ${hasAnyRemainder ? `<div id="wt-home-unallocated" style="font-size:12px;color:#FF9F0A;margin-top:8px;font-weight:600;cursor:pointer;text-decoration:underline">⚠ $${totalUnallocated.toFixed(2)} unallocated across shifts — tap to fix</div>` : ''}
         </div>`;
+      const unallocEl = tipBlock.querySelector('#wt-home-unallocated');
+      if (unallocEl && firstUnallocatedShiftId) {
+        unallocEl.onclick = () => _showTipPool(firstUnallocatedShiftId);
+      }
     } else if (homeProfile.hasTips) {
       tipBlock.innerHTML = `
         <button id="wt-tip-new" style="width:100%;background:rgba(255,149,0,.08);border:1px dashed rgba(255,149,0,.3);border-radius:20px;padding:16px;color:#FF9F0A;font-size:15px;font-weight:700;cursor:pointer;text-align:center">
@@ -767,7 +776,7 @@ const WorkTracker = (() => {
               const tWorkers = t.workers || [];
               const tHasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
               const tCashOpts = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
-              const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0;
+              const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0 || Object.keys(tCashOpts.manualAmounts).length > 0;
               const result = (tHasFixed || tHasCashOv)
                 ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, t.feePercent || 3, t.manualFee, tCashOpts)
                 : TipRules.calculatePayouts(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, t.feePercent || 3, t.manualFee);
@@ -939,7 +948,7 @@ const WorkTracker = (() => {
                   const tWorkers = t.workers || [];
                   const tHasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
                   const tCashOpts = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
-                  const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0;
+                  const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0 || Object.keys(tCashOpts.manualAmounts).length > 0;
                   const tipResult = (tHasFixed || tHasCashOv)
                     ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal||0, t.cashTotal||0, tWorkers, feePercent, t.manualFee, tCashOpts)
                     : TipRules.calculatePayouts(t.creditCardTotal||0, t.cashTotal||0, tWorkers, feePercent, t.manualFee);
@@ -1519,9 +1528,9 @@ const WorkTracker = (() => {
       <div class="wt-settings-body" data-accordion-body="tips" style="margin-top:14px">
 
       <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Processing Fee</div>
-      <div class="wt-setting-row ${typeof tipSettings.processingFeePercent === 'undefined' ? 'wt-glow' : ''}">
+      <div class="wt-setting-row">
         <label>Credit card fee % <span style="font-size:11px;color:#636366;font-weight:400">(deducted from CC tips before split)</span></label>
-        <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:12px;overflow:hidden;border:1px solid #38383A;width:140px;flex-shrink:0">
+        <div id="wt-tip-fee-pill" class="${typeof tipSettings.processingFeePercent === 'undefined' ? 'wt-glow' : ''}" style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:12px;overflow:hidden;border:1px solid #38383A;width:140px;flex-shrink:0">
           <button id="wt-tip-fee-minus" style="width:40px;height:40px;background:none;border:none;color:#98989D;font-size:22px;cursor:pointer"
             onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
             onpointerup="this.style.background='none'"
@@ -1586,11 +1595,16 @@ const WorkTracker = (() => {
     tipBlock.querySelector('#wt-tip-fee-minus').onclick = () => {
       const i = tipBlock.querySelector('#wt-tip-fee');
       i.value = Math.max(0, (parseFloat(i.value)||3) - 0.25).toFixed(2);
+      tipBlock.querySelector('#wt-tip-fee-pill').classList.remove('wt-glow');
     };
     tipBlock.querySelector('#wt-tip-fee-plus').onclick = () => {
       const i = tipBlock.querySelector('#wt-tip-fee');
       i.value = ((parseFloat(i.value)||3) + 0.25).toFixed(2);
+      tipBlock.querySelector('#wt-tip-fee-pill').classList.remove('wt-glow');
     };
+    tipBlock.querySelector('#wt-tip-fee').addEventListener('input', function() {
+      tipBlock.querySelector('#wt-tip-fee-pill').classList.remove('wt-glow');
+    });
 
     // Position steppers
     tipBlock.querySelectorAll('[data-pos-minus]').forEach(btn => {
@@ -2898,7 +2912,7 @@ const WorkTracker = (() => {
         pointOverrides: saved.cashPointOverrides || {},
         manualAmounts: saved.cashManualAmounts || {}
       };
-      const hasCashOverrides = Object.keys(cashOptions.flatAmounts).length > 0 || Object.keys(cashOptions.pointOverrides).length > 0;
+      const hasCashOverrides = Object.keys(cashOptions.flatAmounts).length > 0 || Object.keys(cashOptions.pointOverrides).length > 0 || Object.keys(cashOptions.manualAmounts).length > 0;
       const result = (hasFixed || hasCashOverrides)
         ? TipRules.calculatePayoutsWithFixed(ccTotal, cashTotal, workers, feePercent, saved.manualFee, cashOptions)
         : TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
@@ -3342,7 +3356,7 @@ const WorkTracker = (() => {
           manualAmounts: saved.cashManualAmounts || {}
         };
         const saveHasFixed = saved.workers.some(w => typeof w.fixedAmount === 'number');
-        const saveHasCashOverrides = Object.keys(saveCashOptions.flatAmounts).length > 0 || Object.keys(saveCashOptions.pointOverrides).length > 0;
+        const saveHasCashOverrides = Object.keys(saveCashOptions.flatAmounts).length > 0 || Object.keys(saveCashOptions.pointOverrides).length > 0 || Object.keys(saveCashOptions.manualAmounts).length > 0;
         const finalResult = (saveHasFixed || saveHasCashOverrides)
           ? TipRules.calculatePayoutsWithFixed(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee, saveCashOptions)
           : TipRules.calculatePayouts(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee);
