@@ -422,7 +422,6 @@
   100% { box-shadow: 0 0 0 1.5px #5E5CE6, 0 0 10px 1px rgba(94,92,230,.5); }
 }
 .wt-glow {
-  border-radius: 12px;
   animation: wt-siri-glow 2.4s ease-in-out infinite;
 }
 .wt-btn-cyan { background: #64D2FF; color: #000; }

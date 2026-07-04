@@ -1373,10 +1373,10 @@ const WorkTracker = (() => {
           <span class="wt-settings-chevron" data-accordion-chevron="profile">▼</span>
         </div>
         <div class="wt-settings-body" data-accordion-body="profile" style="margin-top:14px">
-        <div class="wt-setting-row ${!settings.workProfile ? 'wt-glow' : ''}">
+        <div class="wt-setting-row">
           <label>Work Profile</label>
-          <select class="wt-select-sm" id="wt-work-profile-top">
-            ${!settings.workProfile ? '<option value="" selected disabled>Not set</option>' : ''}
+          <select class="wt-select-sm ${!settings.workProfile ? 'wt-glow' : ''}" id="wt-work-profile-top">
+            <option value="" ${!settings.workProfile ? 'selected' : ''}>Not set</option>
             ${Object.entries(WORK_PROFILES).map(([key, p]) =>
               `<option value="${key}" ${settings.workProfile===key?'selected':''}>${p.label}</option>`
             ).join('')}
@@ -1391,19 +1391,19 @@ const WorkTracker = (() => {
               : 'Define your own shift names.';
           })()}
         </p>
-        <div class="wt-setting-row ${!settings.payPeriod ? 'wt-glow' : ''}">
+        <div class="wt-setting-row">
           <label>Pay Period</label>
-          <select class="wt-select-sm" id="wt-pay-period-top">
-            ${!settings.payPeriod ? '<option value="" selected disabled>Not set</option>' : ''}
+          <select class="wt-select-sm ${!settings.payPeriod ? 'wt-glow' : ''}" id="wt-pay-period-top">
+            <option value="" ${!settings.payPeriod ? 'selected' : ''}>Not set</option>
             <option value="weekly" ${settings.payPeriod==='weekly'?'selected':''}>Weekly</option>
             <option value="event" ${settings.payPeriod==='event'?'selected':''}>Per Event</option>
             <option value="biweekly" ${settings.payPeriod==='biweekly'?'selected':''}>Bi-Weekly</option>
           </select>
         </div>
-        <div class="wt-setting-row ${typeof settings.payDayOfWeek === 'undefined' ? 'wt-glow' : ''}">
+        <div class="wt-setting-row">
           <label>Default Pay Day</label>
-          <select class="wt-select-sm" id="wt-pay-day-top">
-            ${typeof settings.payDayOfWeek === 'undefined' ? '<option value="" selected disabled>Not set</option>' : ''}
+          <select class="wt-select-sm ${typeof settings.payDayOfWeek === 'undefined' ? 'wt-glow' : ''}" id="wt-pay-day-top">
+            <option value="" ${typeof settings.payDayOfWeek === 'undefined' ? 'selected' : ''}>Not set</option>
             ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) =>
               `<option value="${i+1}" ${settings.payDayOfWeek===(i+1)?'selected':''}>${d}</option>`
             ).join('')}
@@ -1449,10 +1449,10 @@ const WorkTracker = (() => {
 
         <div class="wt-settings-block" style="margin-top:12px;background:rgba(255,255,255,0.04)">
           <div class="wt-settings-title">Overtime Rules for this location</div>
-          <div class="wt-setting-row wt-glow">
+          <div class="wt-setting-row">
             <label>Calculate OT by</label>
-            <select class="wt-select-sm" id="wt-ot-calcby">
-              <option value="" selected disabled>Not set</option>
+            <select class="wt-select-sm wt-glow" id="wt-ot-calcby">
+              <option value="" selected>Not set</option>
               <option value="week">Week total</option>
               <option value="day">Day total</option>
               <option value="both">Both (use best for worker)</option>
@@ -1537,10 +1537,10 @@ const WorkTracker = (() => {
       </div>
 
       <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">Rounding</div>
-      <div class="wt-setting-row ${!tipSettings.roundingMode ? 'wt-glow' : ''}">
+      <div class="wt-setting-row">
         <label>Rounding mode</label>
-        <select class="wt-select-sm" id="wt-tip-rounding">
-          ${!tipSettings.roundingMode ? '<option value="" selected disabled>Not set</option>' : ''}
+        <select class="wt-select-sm ${!tipSettings.roundingMode ? 'wt-glow' : ''}" id="wt-tip-rounding">
+          <option value="" ${!tipSettings.roundingMode ? 'selected' : ''}>Not set</option>
           ${TIP_ROUNDING_OPTIONS.map(o =>
             `<option value="${o.value}" ${tipSettings.roundingMode===o.value?'selected':''}>${o.label}</option>`
           ).join('')}
@@ -1579,6 +1579,10 @@ const WorkTracker = (() => {
     w.appendChild(tipBlock);
 
     // Fee stepper
+    tipBlock.querySelector('#wt-tip-rounding')?.addEventListener('change', function() {
+      this.classList.toggle('wt-glow', this.value === '');
+    });
+
     tipBlock.querySelector('#wt-tip-fee-minus').onclick = () => {
       const i = tipBlock.querySelector('#wt-tip-fee');
       i.value = Math.max(0, (parseFloat(i.value)||3) - 0.25).toFixed(2);
@@ -1841,6 +1845,12 @@ const WorkTracker = (() => {
         _go('settings');
       };
       w.querySelector('#wt-work-profile-top').onchange = function() {
+        this.classList.toggle('wt-glow', this.value === '');
+        if (this.value === '') {
+          const note = w.querySelector('#wt-profile-note-top');
+          if (note) note.textContent = 'Choose a profile to see suggested shifts and rate.';
+          return;
+        }
         const p = WORK_PROFILES[this.value] || WORK_PROFILES.restaurant;
         const note = w.querySelector('#wt-profile-note-top');
         if (note) note.textContent = p.shifts.length > 0
@@ -1848,6 +1858,12 @@ const WorkTracker = (() => {
           : 'Define your own shift names.';
       };
     }
+    w.querySelector('#wt-pay-period-top')?.addEventListener('change', function() {
+      this.classList.toggle('wt-glow', this.value === '');
+    });
+    w.querySelector('#wt-pay-day-top')?.addEventListener('change', function() {
+      this.classList.toggle('wt-glow', this.value === '');
+    });
     w.querySelectorAll('.wt-loc-del').forEach(b => { b.onclick = () => { WTDb.deleteLocation(b.dataset.lid); _go('settings'); }; });
     w.querySelectorAll('[data-edit-loc]').forEach(row => {
       row.onclick = (e) => {
@@ -1896,6 +1912,9 @@ const WorkTracker = (() => {
       const visible = row.style.display !== 'none';
       row.style.display = visible ? 'none' : 'flex';
       btn.textContent = visible ? '+ Add Level 2 (double time)' : '− Remove Level 2';
+    });
+    w.querySelector('#wt-ot-calcby')?.addEventListener('change', function() {
+      this.classList.toggle('wt-glow', this.value === '');
     });
 
     w.querySelector('#wt-import-btn').onclick = () => w.querySelector('#wt-import-file').click();
