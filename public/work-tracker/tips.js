@@ -51,6 +51,8 @@ const TipRules = (() => {
       const ccAmount = typeof w.ccManualAmount === 'number'
         ? w.ccManualAmount
         : Math.floor(ccExact);
+      // Cash: real points, independent of CC — same math calculatePayoutsWithFixed uses by default.
+      const cashExact = pts > 0 ? (wpts / pts) * cashTotal : 0;
       return {
         name:         w.name,
         isMe:         w.isMe || false,
@@ -59,7 +61,11 @@ const TipRules = (() => {
         exact,        // CC + cash combined (kept for backward compat)
         amount,       // CC + cash combined (kept for backward compat)
         ccExact,      // CC only — use this for weekly check display
-        ccAmount      // CC only — respects ccManualAmount override
+        ccAmount,     // CC only — respects ccManualAmount override
+        cashPoints:   wpts,               // NEW additive: matches calculatePayoutsWithFixed's interface
+        cashExact,                        // NEW additive: true pre-rounding cash share
+        cashAmount:   Math.floor(cashExact), // NEW additive: floored cash share
+        isCashFixed:  false                // NEW additive: this engine never has cash-fixed workers
       };
     });
 
