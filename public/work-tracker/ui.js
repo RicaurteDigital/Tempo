@@ -250,7 +250,8 @@ const WorkTracker = (() => {
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
               ${result.payouts.map(p => {
-                const isOver = p.amount > p.exact;
+                const poolIsOver = result.remainder < 0;
+                const isOver = poolIsOver && p.amount > p.exact;
                 return `
                 <div style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}">
                   <span style="color:${isOver ? '#FF453A' : (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
