@@ -179,7 +179,5 @@ const TIP_ROUNDING_OPTIONS = [
 
 const DEFAULT_TIP_SETTINGS = {
   positions: DEFAULT_TIP_POSITIONS,
-  processingFeePercent: 3.0,
-  roundingMode: 'down',
   roundIndividual: true
 };

@@ -125,13 +125,7 @@ const WTDb = (() => {
 
   function getSettings() {
     try {
-      return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {
-        payDay: 'friday',
-        payPeriod: 'weekly',
-        defaultHourlyRate: 16.50,
-        workProfile: 'restaurant',
-        customShiftNames: []
-      };
+      return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
     } catch { return {}; }
   }
 
