@@ -230,7 +230,7 @@ const WorkTracker = (() => {
           : (myPayout && result.totalPoints > 0 ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0)) : 0);
         if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
-        if (result.remainder > 0) {
+        if (result.remainder !== 0) {
           hasAnyRemainder = true;
           totalUnallocated += result.remainder;
           if (!firstUnallocatedShiftId) firstUnallocatedShiftId = s.id;
@@ -273,7 +273,7 @@ const WorkTracker = (() => {
             </div>
           </div>
           ${shiftTipRows}
-          ${hasAnyRemainder ? `<div id="wt-home-unallocated" style="font-size:12px;color:#FF9F0A;margin-top:8px;font-weight:600;cursor:pointer;text-decoration:underline">⚠ $${totalUnallocated.toFixed(2)} unallocated across shifts — tap to fix</div>` : ''}
+          ${hasAnyRemainder ? `<div id="wt-home-unallocated" style="font-size:12px;color:${totalUnallocated>=0?'#FF9F0A':'#FF453A'};margin-top:8px;font-weight:600;cursor:pointer;text-decoration:underline">⚠ ${totalUnallocated>=0?`$${totalUnallocated.toFixed(2)} unallocated`:`Over by $${Math.abs(totalUnallocated).toFixed(2)}`} across shifts — tap to fix</div>` : ''}
         </div>`;
       const unallocEl = tipBlock.querySelector('#wt-home-unallocated');
       if (unallocEl && firstUnallocatedShiftId) {
