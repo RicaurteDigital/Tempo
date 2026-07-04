@@ -5,6 +5,7 @@ const WorkTracker = (() => {
   let _view = 'home';
   let _date = null;
   let _heroTimer = null;
+  let _settingsOpenSection = 'profile';
   let _breakStart = localStorage.getItem('wt_break_start') || null;
 
   function mount(el) {
@@ -1354,6 +1355,8 @@ const WorkTracker = (() => {
     return summaryCard + hoursChart + incomeChart + locCards;
   }
 
+  let _settingsOpenSection = null;
+
   function _Settings() {
     const settings = WTDb.getSettings();
     const currentProfile = settings.workProfile || 'restaurant';
@@ -1367,10 +1370,15 @@ const WorkTracker = (() => {
         <div style="width:36px"></div>
       </div>
       <div class="wt-settings-block" id="wt-profile-block">
-        <div class="wt-settings-title">Work Profile & Pay Rules</div>
-        <div class="wt-setting-row">
+        <div class="wt-settings-header" data-accordion-header="profile">
+          <div class="wt-settings-title" style="margin-bottom:0">Work Profile & Pay Rules</div>
+          <span class="wt-settings-chevron" data-accordion-chevron="profile">▼</span>
+        </div>
+        <div class="wt-settings-body" data-accordion-body="profile" style="margin-top:14px">
+        <div class="wt-setting-row ${!settings.workProfile ? 'wt-glow' : ''}">
           <label>Work Profile</label>
           <select class="wt-select-sm" id="wt-work-profile-top">
+            ${!settings.workProfile ? '<option value="" selected disabled>Not set</option>' : ''}
             ${Object.entries(WORK_PROFILES).map(([key, p]) =>
               `<option value="${key}" ${settings.workProfile===key?'selected':''}>${p.label}</option>`
             ).join('')}
@@ -1378,32 +1386,40 @@ const WorkTracker = (() => {
         </div>
         <p class="wt-note" id="wt-profile-note-top" style="margin-bottom:8px">
           ${(() => {
+            if (!settings.workProfile) return 'Choose a profile to see suggested shifts and rate.';
             const p = WORK_PROFILES[settings.workProfile] || WORK_PROFILES.restaurant;
             return p.shifts.length > 0
               ? `Shifts: ${p.shifts.slice(0,3).join(', ')}… · Suggested rate: $${p.suggestedRate}/hr`
               : 'Define your own shift names.';
           })()}
         </p>
-        <div class="wt-setting-row">
+        <div class="wt-setting-row ${!settings.payPeriod ? 'wt-glow' : ''}">
           <label>Pay Period</label>
           <select class="wt-select-sm" id="wt-pay-period-top">
+            ${!settings.payPeriod ? '<option value="" selected disabled>Not set</option>' : ''}
             <option value="weekly" ${settings.payPeriod==='weekly'?'selected':''}>Weekly</option>
             <option value="event" ${settings.payPeriod==='event'?'selected':''}>Per Event</option>
             <option value="biweekly" ${settings.payPeriod==='biweekly'?'selected':''}>Bi-Weekly</option>
           </select>
         </div>
-        <div class="wt-setting-row">
+        <div class="wt-setting-row ${typeof settings.payDayOfWeek === 'undefined' ? 'wt-glow' : ''}">
           <label>Default Pay Day</label>
           <select class="wt-select-sm" id="wt-pay-day-top">
+            ${typeof settings.payDayOfWeek === 'undefined' ? '<option value="" selected disabled>Not set</option>' : ''}
             ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i) =>
-              `<option value="${i+1}" ${(settings.payDayOfWeek||5)===(i+1)?'selected':''}>${d}</option>`
+              `<option value="${i+1}" ${settings.payDayOfWeek===(i+1)?'selected':''}>${d}</option>`
             ).join('')}
           </select>
         </div>
         <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-save-profile-top">Save Profile & Pay Period</button>
+        </div>
       </div>
       <div class="wt-settings-block">
-        <div class="wt-settings-title">Work Locations</div>
+        <div class="wt-settings-header" data-accordion-header="locations">
+          <div class="wt-settings-title" style="margin-bottom:0">Work Locations</div>
+          <span class="wt-settings-chevron" data-accordion-chevron="locations">▼</span>
+        </div>
+        <div class="wt-settings-body" data-accordion-body="locations" style="margin-top:14px">
         <div id="wt-loc-list">
           ${locs.length === 0 ? '<div style="color:#636366;font-size:14px;padding:8px 0">No locations yet.</div>' :
             locs.map(l => {
@@ -1435,9 +1451,10 @@ const WorkTracker = (() => {
 
         <div class="wt-settings-block" style="margin-top:12px;background:rgba(255,255,255,0.04)">
           <div class="wt-settings-title">Overtime Rules for this location</div>
-          <div class="wt-setting-row">
+          <div class="wt-setting-row wt-glow">
             <label>Calculate OT by</label>
             <select class="wt-select-sm" id="wt-ot-calcby">
+              <option value="" selected disabled>Not set</option>
               <option value="week">Week total</option>
               <option value="day">Day total</option>
               <option value="both">Both (use best for worker)</option>
@@ -1474,9 +1491,10 @@ const WorkTracker = (() => {
         </div>
 
         <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-add-loc">Add Location</button>
+        </div>
       </div>
 
-      <div class="wt-settings-block">
+      <div class="wt-settings-block" id="wt-data-backup-legacy-block" style="display:none">
         <div class="wt-settings-title">Data & Backup</div>
         <button class="wt-btn wt-btn-secondary" id="wt-import-btn" style="margin-bottom:10px">📥 Import Backup JSON</button>
         <input type="file" id="wt-import-file" accept=".json" style="display:none">
@@ -1496,10 +1514,14 @@ const WorkTracker = (() => {
         ? currentProfileObj.tipPositions
         : DEFAULT_TIP_POSITIONS);
     tipBlock.innerHTML = `
-      <div class="wt-settings-title">Tip Pool Settings</div>
+      <div class="wt-settings-header" data-accordion-header="tips">
+        <div class="wt-settings-title" style="margin-bottom:0">Tip Pool Settings</div>
+        <span class="wt-settings-chevron" data-accordion-chevron="tips">▼</span>
+      </div>
+      <div class="wt-settings-body" data-accordion-body="tips" style="margin-top:14px">
 
       <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Processing Fee</div>
-      <div class="wt-setting-row">
+      <div class="wt-setting-row ${typeof tipSettings.processingFeePercent === 'undefined' ? 'wt-glow' : ''}">
         <label>Credit card fee % <span style="font-size:11px;color:#636366;font-weight:400">(deducted from CC tips before split)</span></label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:12px;overflow:hidden;border:1px solid #38383A;width:140px;flex-shrink:0">
           <button id="wt-tip-fee-minus" style="width:40px;height:40px;background:none;border:none;color:#98989D;font-size:22px;cursor:pointer"
@@ -1517,9 +1539,10 @@ const WorkTracker = (() => {
       </div>
 
       <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">Rounding</div>
-      <div class="wt-setting-row">
+      <div class="wt-setting-row ${!tipSettings.roundingMode ? 'wt-glow' : ''}">
         <label>Rounding mode</label>
         <select class="wt-select-sm" id="wt-tip-rounding">
+          ${!tipSettings.roundingMode ? '<option value="" selected disabled>Not set</option>' : ''}
           ${TIP_ROUNDING_OPTIONS.map(o =>
             `<option value="${o.value}" ${tipSettings.roundingMode===o.value?'selected':''}>${o.label}</option>`
           ).join('')}
@@ -1553,7 +1576,8 @@ const WorkTracker = (() => {
           </div>`).join('')}
       </div>
       <button class="wt-btn wt-btn-secondary" style="margin-top:10px;width:100%" id="wt-tip-add-pos">+ Add Position</button>
-      <button class="wt-btn wt-btn-primary" style="margin-top:10px;width:100%" id="wt-tip-save">Save Tip Settings</button>`;
+      <button class="wt-btn wt-btn-primary" style="margin-top:10px;width:100%" id="wt-tip-save">Save Tip Settings</button>
+      </div>`;
     w.appendChild(tipBlock);
 
     // Fee stepper
@@ -1606,6 +1630,7 @@ const WorkTracker = (() => {
       tipSettings.roundIndividual      = tipBlock.querySelector('#wt-tip-round-ind').checked;
       WTDb.saveTipSettings(tipSettings);
       alert('Tip settings saved.');
+      openAccordionSection('tax');
     };
 
     tipBlock.querySelectorAll('input').forEach(i => {
@@ -1618,7 +1643,11 @@ const WorkTracker = (() => {
     const taxBlock = document.createElement('div');
     taxBlock.className = 'wt-settings-block';
     taxBlock.innerHTML = `
-      <div class="wt-settings-title">Tax Estimate (${new Date().getFullYear()})</div>
+      <div class="wt-settings-header" data-accordion-header="tax">
+        <div class="wt-settings-title" style="margin-bottom:0">Tax Estimate (${new Date().getFullYear()})</div>
+        <span class="wt-settings-chevron" data-accordion-chevron="tax">▼</span>
+      </div>
+      <div class="wt-settings-body" data-accordion-body="tax" style="margin-top:14px">
       ${(!taxSettings.lastConfirmedYear || taxSettings.lastConfirmedYear < new Date().getFullYear()) ? `
       <div style="background:rgba(255,159,10,.08);border:1px solid rgba(255,159,10,.2);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#FF9F0A">
         ⚠️ These rates are from ${taxSettings.lastConfirmedYear || 'a while ago'}. Check if they changed for ${new Date().getFullYear()} and save again to confirm.
@@ -1670,20 +1699,33 @@ const WorkTracker = (() => {
         <input type="checkbox" id="wt-tax-show" style="width:18px;height:18px;accent-color:#5E5CE6" ${taxSettings.showEstimate?'checked':''}>
       </div>
       <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Estimate only — not tax advice. All rates are editable. Does not account for filing status, dependents, or multi-state situations. Update rates each year as laws change.</div>
-      <button class="wt-btn wt-btn-primary" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>`;
+      <button class="wt-btn wt-btn-primary" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>
+      </div>`;
     w.appendChild(taxBlock);
 
     const backupBlock = document.createElement('div');
     backupBlock.className = 'wt-settings-block';
     backupBlock.innerHTML = `
-      <div class="wt-settings-title">Backup & Restore</div>
+      <div class="wt-settings-header" data-standalone-header="backup">
+        <div class="wt-settings-title" style="margin-bottom:0">Backup & Restore</div>
+        <span class="wt-settings-chevron" data-standalone-chevron="backup">▼</span>
+      </div>
+      <div class="wt-settings-body" data-standalone-body="backup" style="display:none;margin-top:14px">
       <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Export all your shifts, tips, locations, and payment records to a file. Use it to move your data to a new device or a newly installed app, or just to keep a safe copy.</div>
       <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:10px" id="wt-backup-export">⬇️ Export All Data</button>
       <button class="wt-btn wt-btn-secondary" style="width:100%" id="wt-backup-import">⬆️ Import from Backup</button>
       <input type="file" id="wt-backup-file" accept="application/json" style="display:none">
       <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Photos aren't included — they're already saved to your phone's photo gallery separately.</div>
+      </div>
     `;
     w.appendChild(backupBlock);
+    backupBlock.querySelector('[data-standalone-header="backup"]').onclick = () => {
+      const body = backupBlock.querySelector('[data-standalone-body="backup"]');
+      const chev = backupBlock.querySelector('[data-standalone-chevron="backup"]');
+      const isOpen = body.style.display !== 'none';
+      body.style.display = isOpen ? 'none' : 'block';
+      chev.classList.toggle('open', !isOpen);
+    };
 
     backupBlock.querySelector('#wt-backup-export').onclick = () => {
       const blob = new Blob([WTDb.exportData()], { type: 'application/json' });
@@ -1743,14 +1785,11 @@ const WorkTracker = (() => {
     taxBlock.querySelector('#wt-tax-profile').onchange = function() {
       const p = DEFAULT_TAX_PROFILES[this.value];
       if (!p) return;
-      // Federal rates don't auto-fill — user keeps their own federal rate
-      // Only state/local rates update automatically
       taxBlock.querySelector('#wt-tax-state').value       = p.state;
       taxBlock.querySelector('#wt-tax-local').value       = p.local;
       taxBlock.querySelector('#wt-tax-pfl').value         = p.pfl;
       taxBlock.querySelector('#wt-tax-other-label').value = p.otherLabel||'';
       taxBlock.querySelector('#wt-tax-other').value       = p.other||0;
-      // Show note for NYC
       const note = taxBlock.querySelector('#wt-tax-profile-note');
       if (this.value === 'NY_NYC') {
         note.textContent = '📍 NYC workers pay state tax (6.85%) + city tax (3.876%). Select this if your workplace is in any of the 5 boroughs.';
@@ -1780,6 +1819,7 @@ const WorkTracker = (() => {
         lastConfirmedYear: new Date().getFullYear()
       });
       alert('Tax settings saved.');
+      openAccordionSection(null);
     };
 
     taxBlock.querySelectorAll('input').forEach(i => {
@@ -1789,7 +1829,6 @@ const WorkTracker = (() => {
 
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
-    // Top profile & pay period save
     const saveProfileTop = w.querySelector('#wt-save-profile-top');
     if (saveProfileTop) {
       saveProfileTop.onclick = () => {
@@ -1800,9 +1839,9 @@ const WorkTracker = (() => {
         s.payPeriod = newPayPeriod;
         s.payDayOfWeek = parseInt(w.querySelector('#wt-pay-day-top').value) || 5;
         WTDb.saveSettings(s);
+        _settingsOpenSection = 'locations';
         _go('settings');
       };
-      // Update note on profile change
       w.querySelector('#wt-work-profile-top').onchange = function() {
         const p = WORK_PROFILES[this.value] || WORK_PROFILES.restaurant;
         const note = w.querySelector('#wt-profile-note-top');
@@ -1849,10 +1888,10 @@ const WorkTracker = (() => {
       if (!s.locationSettings) s.locationSettings = {};
       s.locationSettings[loc.id] = { paidBreaks };
       WTDb.saveSettings(s);
+      _settingsOpenSection = 'tips';
       _go('settings');
     };
 
-    // Show/hide OT level 2
     w.querySelector('#wt-add-ot2')?.addEventListener('click', () => {
       const row = w.querySelector('#wt-ot2-row');
       const btn = w.querySelector('#wt-add-ot2');
@@ -1860,7 +1899,6 @@ const WorkTracker = (() => {
       row.style.display = visible ? 'none' : 'flex';
       btn.textContent = visible ? '+ Add Level 2 (double time)' : '− Remove Level 2';
     });
-
 
     w.querySelector('#wt-import-btn').onclick = () => w.querySelector('#wt-import-file').click();
     w.querySelector('#wt-import-file').onchange = function() {
@@ -1872,6 +1910,32 @@ const WorkTracker = (() => {
       };
       reader.readAsText(file);
     };
+
+    function openAccordionSection(name) {
+      while (name && !w.querySelector(`[data-accordion-body="${name}"]`)) {
+        const idx = accordionOrder.indexOf(name);
+        name = accordionOrder[idx + 1] || null;
+      }
+      accordionOrder.forEach(n => {
+        const body = w.querySelector(`[data-accordion-body="${n}"]`);
+        const chev = w.querySelector(`[data-accordion-chevron="${n}"]`);
+        if (!body) return;
+        const isOpen = n === name;
+        body.style.display = isOpen ? 'block' : 'none';
+        if (chev) chev.classList.toggle('open', isOpen);
+      });
+      _settingsOpenSection = name;
+    }
+    const accordionOrder = ['profile', 'locations', 'tips', 'tax'];
+    w.querySelectorAll('[data-accordion-header]').forEach(h => {
+      h.onclick = () => {
+        const name = h.dataset.accordionHeader;
+        const body = w.querySelector(`[data-accordion-body="${name}"]`);
+        const isCurrentlyOpen = body.style.display !== 'none';
+        openAccordionSection(isCurrentlyOpen ? null : name);
+      };
+    });
+    openAccordionSection(_settingsOpenSection);
   }
 
   function _suggestShiftType(profile) {

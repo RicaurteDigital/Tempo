@@ -394,7 +394,37 @@
 }
 .wt-btn:active { transform: scale(.97); }
 .wt-btn-primary { background: #5E5CE6; color: #fff; }
-.wt-btn-secondary { background: #1C1C1E; color: #fff; }
+.wt-btn-secondary { background: #2C2C2E; color: #fff; border: 1px solid #3A3A3C; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.wt-btn-secondary:active { background: #38383A; }
+
+/* ── SETTINGS ACCORDION ──────────────────────────────── */
+.wt-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+.wt-settings-chevron {
+  font-size: 12px;
+  color: #636366;
+  transition: transform .2s;
+}
+.wt-settings-chevron.open { transform: rotate(180deg); }
+.wt-settings-body { overflow: hidden; }
+
+/* ── SIRI-STYLE GLOW FOR UNSET FIELDS ───────────────────
+   Pulses through the app's own brand colors — not a generic
+   single-color glow — so it reads as "needs attention", not "error". */
+@keyframes wt-siri-glow {
+  0%   { box-shadow: 0 0 0 1.5px #5E5CE6, 0 0 10px 1px rgba(94,92,230,.5); }
+  33%  { box-shadow: 0 0 0 1.5px #64D2FF, 0 0 10px 1px rgba(100,210,255,.5); }
+  66%  { box-shadow: 0 0 0 1.5px #30D158, 0 0 10px 1px rgba(48,209,88,.5); }
+  100% { box-shadow: 0 0 0 1.5px #5E5CE6, 0 0 10px 1px rgba(94,92,230,.5); }
+}
+.wt-glow {
+  border-radius: 12px;
+  animation: wt-siri-glow 2.4s ease-in-out infinite;
+}
 .wt-btn-cyan { background: #64D2FF; color: #000; }
 
 /* ── WEEK ROWS ───────────────────────────────────────── */
