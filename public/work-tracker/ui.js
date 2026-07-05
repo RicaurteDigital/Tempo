@@ -3168,7 +3168,7 @@ const WorkTracker = (() => {
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
             <div style="font-size:14px;font-weight:700;flex:1">Workers (${workers.length})</div>
             ${locationId ? `<button id="wt-tp-roster" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:7px 12px;cursor:pointer">👥 Roster</button>` : ''}
-            <button id="wt-tp-add" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">+ Add</button>
+            <button id="wt-tp-add" class="${workers.length === 0 ? 'wt-glow' : ''}" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">+ Add</button>
           </div>
 
           <div id="wt-tp-workers-list">
