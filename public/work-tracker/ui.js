@@ -213,9 +213,6 @@ const WorkTracker = (() => {
     if (shiftsWithTips.length > 0) {
       let totalMyCCCut = 0;
       let totalMyCash = 0;
-      let totalUnallocated = 0;
-      let hasAnyRemainder = false;
-      let firstUnallocatedShiftId = null;
 
       const shiftTipRows = shiftsWithTips.map(s => {
         const t = WTDb.getTipsForShift(s.id);
@@ -232,11 +229,6 @@ const WorkTracker = (() => {
           : (myPayout && result.totalPoints > 0 ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0)) : 0);
         if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
-        if (result.remainder !== 0) {
-          hasAnyRemainder = true;
-          totalUnallocated += result.remainder;
-          if (!firstUnallocatedShiftId) firstUnallocatedShiftId = s.id;
-        }
 
         return `
           <div style="border-top:1px solid rgba(255,149,0,.15);margin-top:8px;padding-top:8px">
