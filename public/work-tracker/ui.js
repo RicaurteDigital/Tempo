@@ -3238,7 +3238,6 @@ const WorkTracker = (() => {
 
       const __modalAfter = ov.querySelector('.wt-modal');
       if (__modalAfter && __scrollTop) requestAnimationFrame(() => { __modalAfter.scrollTop = __scrollTop; });
-      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
       ov.querySelectorAll('input').forEach(i => {
         i.addEventListener('focus', () => {
           i.select && i.select();
@@ -3482,6 +3481,23 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
+    // Tap outside to close — saves directly first, since relying on the input's blur
+    // event to fire before this click (as a timing race) isn't reliable on iOS.
+    ov.addEventListener('click', e => {
+      if (e.target !== ov) return;
+      const ccInput = ov.querySelector('#wt-tp-cc');
+      const cashInput = ov.querySelector('#wt-tp-cash');
+      if (ccInput && ccInput.value) {
+        const parsed = parseFloat(ccInput.value.replace(',','.'));
+        if (!isNaN(parsed)) saved.creditCardTotal = parsed;
+      }
+      if (cashInput && cashInput.value) {
+        const parsed = parseFloat(cashInput.value.replace(',','.'));
+        if (!isNaN(parsed)) saved.cashTotal = parsed;
+      }
+      WTDb.saveTipsForShift(dayKey, saved);
+      ov.remove();
+    });
     // iOS keyboard fix: adjust overlay and modal max-height to visible viewport
     if (window.visualViewport) {
       const __vvHandler = () => {
