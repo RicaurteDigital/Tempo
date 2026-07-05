@@ -3511,6 +3511,7 @@ const WorkTracker = (() => {
       }
       WTDb.saveTipsForShift(dayKey, saved);
       ov.remove();
+      _go('home');
     });
     // iOS keyboard fix: adjust overlay and modal max-height to visible viewport
     if (window.visualViewport) {
