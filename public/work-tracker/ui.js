@@ -565,7 +565,12 @@ const WorkTracker = (() => {
       const earnEl = top.querySelector(`#wt-live-earn-${shift.id}`);
       const liveTick = setInterval(() => {
         if (!document.body.contains(hrsEl)) { clearInterval(liveTick); return; }
-        const liveHrs = WTRules.shiftHours(shift);
+        const completedSecs = (shift.entries || [])
+          .filter(e => e.clockOut)
+          .reduce((sum, e) => sum + (new Date(e.clockOut) - new Date(e.clockIn)) / 1000, 0);
+        const openEntry = (shift.entries || []).find(e => !e.clockOut);
+        const currentSecs = openEntry ? (Date.now() - new Date(openEntry.clockIn)) / 1000 : 0;
+        const liveHrs = (completedSecs + currentSecs) / 3600;
         hrsEl.textContent = WTRules.fmtHours(liveHrs);
         earnEl.textContent = WTRules.fmtMoney(liveHrs * (shift.hourlyRate || NYC_MIN_WAGE));
       }, 1000);
