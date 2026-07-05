@@ -45,14 +45,19 @@ const TipRules = (() => {
       const wpts = parseFloat(w.points) || 0;
       const exact = wpts * perPoint;
       const ccExact = wpts * ccPerPoint;
-      const amount = typeof w.manualAmount === 'number'
-        ? w.manualAmount
-        : Math.floor(exact);
       const ccAmount = typeof w.ccManualAmount === 'number'
         ? w.ccManualAmount
         : Math.floor(ccExact);
       // Cash: real points, independent of CC — same math calculatePayoutsWithFixed uses by default.
       const cashExact = pts > 0 ? (wpts / pts) * cashTotal : 0;
+      const cashAmount = Math.floor(cashExact);
+      // amount is always the true sum of what this person actually receives — never an
+      // independently pooled figure, so it can never silently drift from ccAmount+cashAmount
+      // when only one side has a manual override. Legacy combined-override records (from
+      // before CC/cash were tracked separately) still take priority for backward compat.
+      const amount = typeof w.manualAmount === 'number'
+        ? w.manualAmount
+        : ccAmount + cashAmount;
       return {
         name:         w.name,
         isMe:         w.isMe || false,
@@ -64,7 +69,7 @@ const TipRules = (() => {
         ccAmount,     // CC only — respects ccManualAmount override
         cashPoints:   wpts,               // NEW additive: matches calculatePayoutsWithFixed's interface
         cashExact,                        // NEW additive: true pre-rounding cash share
-        cashAmount:   Math.floor(cashExact), // NEW additive: floored cash share
+        cashAmount,                       // NEW additive: floored cash share
         isCashFixed:  false                // NEW additive: this engine never has cash-fixed workers
       };
     });
