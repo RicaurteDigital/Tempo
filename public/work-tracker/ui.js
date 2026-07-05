@@ -120,7 +120,7 @@ const WorkTracker = (() => {
           ${onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn)}
         </div>
         <div class="wt-hero-accumulated" id="wt-accumulated">
-          Total shift: ${WTRules.fmtHours(WTRules.shiftHours(run.shift))}
+          Total shift: ${WTRules.fmtHours(WTRules.shiftHours(run.shift))} · ${WTRules.fmtMoney(WTRules.shiftHours(run.shift) * (run.shift.hourlyRate || NYC_MIN_WAGE))}
         </div>
         <div class="wt-hero-since">
           ${onBreak ? 'Break since ' + _fmtTime(_breakStart) : 'Since ' + _fmtTime(run.entry.clockIn)}
@@ -146,7 +146,9 @@ const WorkTracker = (() => {
             .filter(e => e.clockOut)
             .reduce((sum, e) => sum + (new Date(e.clockOut) - new Date(e.clockIn)) / 1000, 0);
           const currentSecs = (Date.now() - new Date(run.entry.clockIn)) / 1000;
-          acc.textContent = 'Total shift: ' + WTRules.fmtHours((completedSecs + currentSecs) / 3600);
+          const liveHrs = (completedSecs + currentSecs) / 3600;
+          const livePay = liveHrs * (run.shift.hourlyRate || NYC_MIN_WAGE);
+          acc.textContent = 'Total shift: ' + WTRules.fmtHours(liveHrs) + ' · ' + WTRules.fmtMoney(livePay);
         }
       }, 1000);
     } else if (isToday) {
@@ -552,11 +554,22 @@ const WorkTracker = (() => {
         <div class="wt-shift-meta">${shift.shiftType} · $${shift.hourlyRate}/hr</div>
       </div>
       <div class="wt-shift-right">
-        <div class="wt-shift-hrs">${WTRules.fmtHours(hrs)}</div>
-        <div class="wt-shift-earn">${WTRules.fmtMoney(earn)}</div>
+        <div class="wt-shift-hrs" ${isRunning ? `id="wt-live-hrs-${shift.id}"` : ''}>${WTRules.fmtHours(hrs)}</div>
+        <div class="wt-shift-earn" ${isRunning ? `id="wt-live-earn-${shift.id}"` : ''}>${WTRules.fmtMoney(earn)}</div>
         ${!isRunning ? `<div class="wt-shift-chevron">${isExpanded ? '▲' : '▼'}</div>` : ''}
       </div>`;
     card.appendChild(top);
+
+    if (isRunning) {
+      const hrsEl = top.querySelector(`#wt-live-hrs-${shift.id}`);
+      const earnEl = top.querySelector(`#wt-live-earn-${shift.id}`);
+      const liveTick = setInterval(() => {
+        if (!document.body.contains(hrsEl)) { clearInterval(liveTick); return; }
+        const liveHrs = WTRules.shiftHours(shift);
+        hrsEl.textContent = WTRules.fmtHours(liveHrs);
+        earnEl.textContent = WTRules.fmtMoney(liveHrs * (shift.hourlyRate || NYC_MIN_WAGE));
+      }, 1000);
+    }
 
     // ── BODY (collapsible) ──
     const body = document.createElement('div');
