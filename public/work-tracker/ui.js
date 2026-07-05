@@ -2201,6 +2201,10 @@ const WorkTracker = (() => {
       photoCount++;
       const key = `payment_${locId}_${weekStart}_${photoCount}`;
       _doPhotoThenRefresh(locId, key, () => {
+        // Commit the photo count now, merged with whatever's already saved for this payment —
+        // so the photo isn't orphaned if the user closes without hitting the main Save button.
+        const existingPayment = WTDb.getPayment(locId, weekStart) || {};
+        WTDb.savePayment(locId, weekStart, { ...existingPayment, photoCount });
         const addBtn = ov.querySelector('#wt-rp-add-photo');
         const newBtn = document.createElement('button');
         newBtn.className = 'wt-photo-btn has-photo';
@@ -2560,6 +2564,31 @@ const WorkTracker = (() => {
     });
   }
 
+  // Tries the native share sheet (one tap → Save to Photos, right where the user already looks).
+  // Falls back to the existing download-to-Files behavior if share isn't supported or fails.
+  // If the user explicitly cancels the share sheet, respects that — no fallback, no message.
+  async function _saveOrShareImage(dataUrl, filename) {
+    if (navigator.canShare) {
+      try {
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file] });
+          return 'shared';
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return 'cancelled';
+        // any other failure falls through to the download fallback below
+      }
+    }
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    return 'downloaded';
+  }
+
   async function _doPhotoThenRefresh(shiftId, photoKey, onDone) {
     const hint = document.createElement('div');
     hint.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;z-index:9999;pointer-events:none;text-align:center';
@@ -2574,11 +2603,9 @@ const WorkTracker = (() => {
       reader.onload = async ev => {
         const compressed = await _compressImage(ev.target.result, 1024, 0.75);
         await WTDb.savePhoto(shiftId, photoKey, compressed);
-        const a = document.createElement('a');
-        a.href = compressed;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
-        a.download = `Tempo_report_${now}.jpg`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        const result = await _saveOrShareImage(compressed, `Tempo_report_${now}.jpg`);
+        if (result === 'downloaded') alert('📷 Saved — find it in Files > Downloads.');
         if (onDone) onDone();
       };
       reader.readAsDataURL(file);
@@ -2844,11 +2871,9 @@ const WorkTracker = (() => {
       const reader = new FileReader();
       reader.onload = async ev => {
         await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
-        const a = document.createElement('a');
-        a.href = ev.target.result;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
-        a.download = 'Tempo_clockin_' + now + '.jpg';
-        a.click();
+        const result = await _saveOrShareImage(ev.target.result, 'Tempo_clockin_' + now + '.jpg');
+        if (result === 'downloaded') alert('📷 Saved — find it in Files > Downloads.');
         _go('home');
       };
       reader.readAsDataURL(file);
