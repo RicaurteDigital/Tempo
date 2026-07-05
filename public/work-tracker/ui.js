@@ -253,10 +253,15 @@ const WorkTracker = (() => {
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
               ${result.payouts.map(p => {
                 const poolIsOver = result.remainder < 0;
-                const isOver = poolIsOver && p.amount > p.exact;
+                const isCCOver = poolIsOver && p.ccAmount > p.ccExact;
+                const isCashOver = poolIsOver && p.cashAmount > p.cashExact;
+                const isOver = isCCOver || isCashOver;
                 const isClickable = isOver || p.isMe;
+                // If this person is over on cash specifically, route there — otherwise the CC row
+                // (which is also where "this is me" lands by default, since it's the primary row).
+                const gotoType = isCashOver && !isCCOver ? 'cash' : 'cc';
                 return `
-                <div ${isClickable ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
+                <div ${isClickable ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" data-goto-type="${gotoType}" style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
                   <span style="color:${isOver ? '#FF453A' : (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
                   <span style="color:#636366"> · </span>
                   <span style="color:${isOver ? '#FF453A' : '#fff'};font-weight:800${isOver ? ';font-size:12px' : ''}">$${p.amount}</span>
@@ -286,7 +291,7 @@ const WorkTracker = (() => {
         el.onclick = () => _showTipPool(el.dataset.tipWarn);
       });
       tipBlock.querySelectorAll('[data-goto-worker]').forEach(el => {
-        el.onclick = () => _showTipPool(el.dataset.gotoShift, el.dataset.gotoWorker);
+        el.onclick = () => _showTipPool(el.dataset.gotoShift, el.dataset.gotoWorker, el.dataset.gotoType);
       });
     } else if (homeProfile.hasTips) {
       tipBlock.innerHTML = `
@@ -2974,7 +2979,7 @@ const WorkTracker = (() => {
     ov.querySelector('#wt-ss-cancel').onclick = () => ov.remove();
   }
 
-  function _showTipPool(dayKey, highlightName) {
+  function _showTipPool(dayKey, highlightName, highlightType) {
     const __shifts = WTDb.getShifts();
     const __shift = __shifts.find(s => s.id === dayKey);
     const locationId = __shift ? __shift.locationId : null;
@@ -3127,7 +3132,7 @@ const WorkTracker = (() => {
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
               <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
               ${cashRows.map(r => `
-                <div style="padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
+                <div data-cash-row="${r.name}" style="padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                     <span style="color:#98989D;font-weight:600">${r.name} · <span style="color:#FF9F0A">$${r.exactCashShare.toFixed(2)}</span></span>
                     <span style="font-size:11px;color:${r.diff>0?'#FF9F0A':r.diff<0?'#64D2FF':'#636366'}">
@@ -3485,7 +3490,8 @@ const WorkTracker = (() => {
     render();
     document.body.appendChild(ov);
     if (highlightName) {
-      const targetRow = ov.querySelector(`[data-worker-name="${highlightName}"]`);
+      const selector = highlightType === 'cash' ? `[data-cash-row="${highlightName}"]` : `[data-worker-name="${highlightName}"]`;
+      const targetRow = ov.querySelector(selector);
       if (targetRow) {
         requestAnimationFrame(() => {
           targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
