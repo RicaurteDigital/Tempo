@@ -2977,7 +2977,11 @@ const WorkTracker = (() => {
     const locationId = __shift ? __shift.locationId : null;
     const tipSettings = WTDb.getTipSettings();
     const feePercent = tipSettings.processingFeePercent || 3;
-    const saved = WTDb.getTipsForShift(dayKey) || {
+    const __originalTips = WTDb.getTipsForShift(dayKey);
+    // Snapshot taken before any edits — Cancel restores exactly this, or deletes the
+    // record entirely if it never existed before this session opened it.
+    const __originalSnapshot = __originalTips ? JSON.parse(JSON.stringify(__originalTips)) : null;
+    const saved = __originalTips || {
       creditCardTotal: 0, cashTotal: 0, workers: []
     };
 
@@ -3445,8 +3449,15 @@ const WorkTracker = (() => {
       const __rosterBtn = ov.querySelector('#wt-tp-roster');
       if (__rosterBtn) __rosterBtn.onclick = () => _showRosterPicker(locationId, saved, render);
       ov.querySelector('#wt-tp-cancel').onclick = () => {
+        if (!confirm('This will permanently discard everything you entered here. This cannot be undone. Continue?')) return;
         if (ov._cleanupVV) ov._cleanupVV();
+        if (__originalSnapshot) {
+          WTDb.saveTipsForShift(dayKey, __originalSnapshot);
+        } else {
+          WTDb.deleteTipsForShift(dayKey);
+        }
         ov.remove();
+        _go('home');
       };
       ov.querySelector('#wt-tp-save').onclick = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
