@@ -2397,7 +2397,10 @@ const WorkTracker = (() => {
     mrInput.addEventListener('click', () => mrInput.select());
 
     ov.querySelector('#wt-cancel').onclick = () => ov.remove();
-    ov.querySelector('#wt-clockin-now').onclick = () => {
+    ov.querySelector('#wt-clockin-now').onclick = (e) => {
+      if (e.currentTarget.disabled) return;
+      if (_running()) { alert('You already have an active shift running.'); ov.remove(); return; }
+      e.currentTarget.disabled = true;
       const locId = ov.querySelector('#wt-ml').value;
       const loc = locs.find(l => l.id === locId);
       const sSel = ov.querySelector('#wt-ms');
@@ -3604,6 +3607,11 @@ const WorkTracker = (() => {
         const i = parseInt(btn.dataset.rosterAdd);
         const member = roster[i];
         if (!member || TipRules.isAlreadyInWorkers(member.name, saved.workers || [])) return;
+        // Sync CC/cash from the live inputs first — in case they were typed but the field never lost focus
+        const ccInput = document.querySelector('#wt-tp-cc');
+        const cashInput = document.querySelector('#wt-tp-cash');
+        if (ccInput) saved.creditCardTotal = parseFloat(ccInput.value.replace(',','.')) || saved.creditCardTotal;
+        if (cashInput) saved.cashTotal = parseFloat(cashInput.value.replace(',','.')) || saved.cashTotal;
         if (!saved.workers) saved.workers = [];
         saved.workers.push(TipRules.rosterMemberToWorker(member));
         // Same sort as manual add: isMe first, then by points descending
@@ -3611,8 +3619,13 @@ const WorkTracker = (() => {
           ...saved.workers.filter(w => w.isMe),
           ...saved.workers.filter(w => !w.isMe).sort((a, b) => (b.points || 0) - (a.points || 0))
         ];
-        ov.remove();
         onSave();
+        btn.disabled = true;
+        btn.textContent = 'Added';
+        btn.style.background = 'rgba(255,255,255,0.05)';
+        btn.style.color = '#636366';
+        btn.style.cursor = 'default';
+        btn.parentElement.style.opacity = '0.4';
       };
     });
   }
@@ -3722,6 +3735,11 @@ const WorkTracker = (() => {
     addOv.querySelector('#wt-aw-add').onclick = () => {
       const name = addOv.querySelector('#wt-aw-name').value.trim();
       if (!name) { alert('Enter a name.'); return; }
+      // Sync CC/cash from the live inputs first — in case they were typed but the field never lost focus
+      const ccInput = document.querySelector('#wt-tp-cc');
+      const cashInput = document.querySelector('#wt-tp-cash');
+      if (ccInput) saved.creditCardTotal = parseFloat(ccInput.value.replace(',','.')) || saved.creditCardTotal;
+      if (cashInput) saved.cashTotal = parseFloat(cashInput.value.replace(',','.')) || saved.cashTotal;
       const posEl = addOv.querySelector('#wt-aw-pos');
       const posLabel = posEl.options[posEl.selectedIndex].text.split(' (')[0];
       const workerData = {
