@@ -3672,13 +3672,13 @@ const WorkTracker = (() => {
           : roster.map((m, i) => {
               const already = TipRules.isAlreadyInWorkers(m.name, saved.workers || []);
               return `
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px;${already?'opacity:0.4':''}">
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px;${already?'opacity:0.6':''}">
                 <div>
                   <div style="font-size:15px;font-weight:700;color:${m.isMe?'#64D2FF':'#fff'}">${m.name} ${m.isMe?'⭐':''}</div>
                   <div style="font-size:12px;color:#636366;margin-top:2px">${m.position || ''} · ${m.points || 1} pts</div>
                 </div>
-                <button data-roster-add="${i}" ${already?'disabled':''} style="background:${already?'rgba(255,255,255,0.05)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#636366':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:${already?'default':'pointer'}">
-                  ${already ? 'Added' : '+ Add'}
+                <button data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
+                  ${already ? '✓ Added — tap to remove' : '+ Add'}
                 </button>
               </div>`;
             }).join('')
@@ -3695,7 +3695,20 @@ const WorkTracker = (() => {
       btn.onclick = () => {
         const i = parseInt(btn.dataset.rosterAdd);
         const member = roster[i];
-        if (!member || TipRules.isAlreadyInWorkers(member.name, saved.workers || [])) return;
+        if (!member) return;
+        const isCurrentlyAdded = TipRules.isAlreadyInWorkers(member.name, saved.workers || []);
+
+        if (isCurrentlyAdded) {
+          // Undo: they were added by mistake, or the user changed their mind
+          saved.workers = (saved.workers || []).filter(w => w.name !== member.name);
+          onSave();
+          btn.textContent = '+ Add';
+          btn.style.background = 'rgba(48,209,88,.15)';
+          btn.style.color = '#30D158';
+          btn.parentElement.style.opacity = '1';
+          return;
+        }
+
         // Sync CC/cash from the live inputs first — in case they were typed but the field never lost focus
         const ccInput = document.querySelector('#wt-tp-cc');
         const cashInput = document.querySelector('#wt-tp-cash');
@@ -3709,12 +3722,10 @@ const WorkTracker = (() => {
           ...saved.workers.filter(w => !w.isMe).sort((a, b) => (b.points || 0) - (a.points || 0))
         ];
         onSave();
-        btn.disabled = true;
-        btn.textContent = 'Added';
-        btn.style.background = 'rgba(255,255,255,0.05)';
-        btn.style.color = '#636366';
-        btn.style.cursor = 'default';
-        btn.parentElement.style.opacity = '0.4';
+        btn.textContent = '✓ Added — tap to remove';
+        btn.style.background = 'rgba(255,69,58,.12)';
+        btn.style.color = '#FF453A';
+        btn.parentElement.style.opacity = '0.6';
       };
     });
   }
