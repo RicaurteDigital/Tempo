@@ -12,7 +12,11 @@ const WTRules = (() => {
   }
 
   function shiftHours(shift) {
-    return (shift.entries || []).reduce((sum, e) => sum + entryHours(e), 0);
+    const worked = (shift.entries || []).reduce((sum, e) => sum + entryHours(e), 0);
+    // Paid break time is tracked as its own field and added on top — kept separate from
+    // clocked hours so it's always traceable (worked vs. paid-break never gets blended).
+    const paidBreak = (shift.entries || []).reduce((sum, e) => sum + ((e.paidBreakMinutes || 0) / 60), 0);
+    return worked + paidBreak;
   }
 
   function shiftEarnings(shift) {

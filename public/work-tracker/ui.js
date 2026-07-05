@@ -439,45 +439,72 @@ const WorkTracker = (() => {
           activateBreakUI();
         };
       } else {
-        // END BREAK: open new entry, record break duration as note
+        // END BREAK: open new entry. Paid break minutes are tracked separately from breakMinutes
+        // (which is a deduction) — this is an addition, kept traceable, never blended into clock math.
         const breakEnd = new Date().toISOString();
         const breakMins = Math.round((new Date(breakEnd) - new Date(_breakStart)) / 60000);
         const shift = WTDb.getShifts().find(s => s.id === run.shift.id);
         const newEntryId = generateId();
-        if (shift) {
-          const s = WTDb.getSettings();
-          const locSettings = (s.locationSettings || {})[shift.locationId] || {};
-          const paidBreak = locSettings.paidBreaks || false;
-          shift.entries.push({
-            id: newEntryId,
-            clockIn: breakEnd,
-            clockOut: null,
-            breakMinutes: 0,
-            note: paidBreak
-              ? `${run.shift.shiftType} break · ${breakMins}m · +$${((breakMins/60)*(run.shift.hourlyRate||NYC_MIN_WAGE)).toFixed(2)} paid`
-              : `${run.shift.shiftType} break · ${breakMins}m unpaid · missed $${((breakMins/60)*(run.shift.hourlyRate||NYC_MIN_WAGE)).toFixed(2)}`
-          });
+        const s = WTDb.getSettings();
+        const locSettings = (s.locationSettings || {})[shift.locationId] || {};
+        let paidBreak = locSettings.paidBreaks || false;
+
+        function saveBreakEntry(isPaid) {
+          if (!shift) return;
+          const noteText = isPaid
+            ? `${run.shift.shiftType} break · ${breakMins}m · +$${((breakMins/60)*(run.shift.hourlyRate||NYC_MIN_WAGE)).toFixed(2)} paid`
+            : `${run.shift.shiftType} break · ${breakMins}m unpaid · missed $${((breakMins/60)*(run.shift.hourlyRate||NYC_MIN_WAGE)).toFixed(2)}`;
+          const existing = shift.entries.find(e => e.id === newEntryId);
+          if (existing) {
+            existing.paidBreakMinutes = isPaid ? breakMins : 0;
+            existing.note = noteText;
+          } else {
+            shift.entries.push({
+              id: newEntryId, clockIn: breakEnd, clockOut: null, breakMinutes: 0,
+              paidBreakMinutes: isPaid ? breakMins : 0, note: noteText
+            });
+          }
           WTDb.saveShift(shift);
         }
+        saveBreakEntry(paidBreak);
+
         _breakStart = null;
         localStorage.removeItem('wt_break_start');
 
-        // Show immediate photo prompt for break end proof
+        // Show immediate photo prompt for break end proof, plus a quick correction if the
+        // location default doesn't match this specific break.
         const photoOv = document.createElement('div');
         photoOv.className = 'wt-overlay';
         photoOv.innerHTML = `
           <div class="wt-modal">
             <div class="wt-modal-handle"></div>
             <div class="wt-modal-title">📷 Back from break</div>
-            <p style="color:#98989D;font-size:14px;margin-bottom:18px">
+            <p style="color:#98989D;font-size:14px;margin-bottom:14px">
               ${breakMins}m break ended at ${_fmtTime(breakEnd)}. Take a photo as proof you're back on the clock.
             </p>
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+              <button class="wt-btn" id="wt-break-paid" style="flex:1;border:1px solid ${paidBreak?'#30D158':'#38383A'};background:${paidBreak?'rgba(48,209,88,.15)':'none'};color:${paidBreak?'#30D158':'#98989D'}">Paid</button>
+              <button class="wt-btn" id="wt-break-unpaid" style="flex:1;border:1px solid ${!paidBreak?'#FF453A':'#38383A'};background:${!paidBreak?'rgba(255,69,58,.15)':'none'};color:${!paidBreak?'#FF453A':'#98989D'}">Unpaid</button>
+            </div>
             <div style="display:flex;gap:10px">
               <button class="wt-btn wt-btn-primary" id="wt-take-photo-break" style="flex:2">📷 Take Photo</button>
               <button class="wt-btn wt-btn-secondary" id="wt-skip-photo-break" style="flex:1">Skip (<span id="wt-skip-count-break">5</span>)</button>
             </div>
           </div>`;
         document.body.appendChild(photoOv);
+
+        const paidBtn = photoOv.querySelector('#wt-break-paid');
+        const unpaidBtn = photoOv.querySelector('#wt-break-unpaid');
+        function refreshBreakToggle() {
+          paidBtn.style.borderColor = paidBreak ? '#30D158' : '#38383A';
+          paidBtn.style.background = paidBreak ? 'rgba(48,209,88,.15)' : 'none';
+          paidBtn.style.color = paidBreak ? '#30D158' : '#98989D';
+          unpaidBtn.style.borderColor = !paidBreak ? '#FF453A' : '#38383A';
+          unpaidBtn.style.background = !paidBreak ? 'rgba(255,69,58,.15)' : 'none';
+          unpaidBtn.style.color = !paidBreak ? '#FF453A' : '#98989D';
+        }
+        paidBtn.onclick = () => { paidBreak = true; saveBreakEntry(true); refreshBreakToggle(); };
+        unpaidBtn.onclick = () => { paidBreak = false; saveBreakEntry(false); refreshBreakToggle(); };
 
         let count = 5;
         const countdown = setInterval(() => {
