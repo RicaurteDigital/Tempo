@@ -1105,6 +1105,8 @@ const WorkTracker = (() => {
               lines.push(`<div style="display:flex;justify-content:space-between"><span>${s.locationName||'Shift'} · ${WTRules.fmtHours(shiftPay.totalHours)}</span><span style="color:#fff">${WTRules.fmtMoney(shiftPay.total)}</span></div>`);
               if (shiftPay.regularHours > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span>Regular ${WTRules.fmtHours(shiftPay.regularHours)} × $${rate}/hr</span><span>${WTRules.fmtMoney(shiftPay.regularPay)}</span></div>`);
               if (shiftPay.overtimePay > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF9F0A">OT ${WTRules.fmtHours(shiftPay.overtimeHours)} × ${shiftPay.otMultiplier}×</span><span style="color:#FF9F0A">${WTRules.fmtMoney(shiftPay.overtimePay)}</span></div>`);
+              const paidBreakMins = (s.entries||[]).reduce((a,e) => a + (e.paidBreakMinutes||0), 0);
+              if (paidBreakMins > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#30D158">Paid break ${WTRules.fmtHours(paidBreakMins/60)}</span><span style="color:#30D158">+${WTRules.fmtMoney((paidBreakMins/60)*rate)}</span></div>`);
               if (!paidBreaks) {
                 const breakMins = (s.entries||[]).reduce((a,e) => a + (e.breakMinutes||0), 0);
                 if (breakMins > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF453A">Breaks deducted ${WTRules.fmtHours(breakMins/60)}</span><span style="color:#FF453A">−${WTRules.fmtMoney((breakMins/60)*rate)}</span></div>`);
