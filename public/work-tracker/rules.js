@@ -13,9 +13,14 @@ const WTRules = (() => {
 
   function shiftHours(shift) {
     const worked = (shift.entries || []).reduce((sum, e) => sum + entryHours(e), 0);
-    // Paid break time is tracked as its own field and added on top — kept separate from
-    // clocked hours so it's always traceable (worked vs. paid-break never gets blended).
-    const paidBreak = (shift.entries || []).reduce((sum, e) => sum + ((e.paidBreakMinutes || 0) / 60), 0);
+    // Paid break time is tracked separately from clocked hours — always traceable.
+    // breakDurationMinutes (the real length) is kept even when unpaid, so a worker can
+    // change their mind later without losing the original duration. Falls back to the
+    // older paidBreakMinutes field for anything saved before this change.
+    const paidBreak = (shift.entries || []).reduce((sum, e) => {
+      if (typeof e.breakDurationMinutes === 'number') return sum + (e.breakPaid ? e.breakDurationMinutes / 60 : 0);
+      return sum + ((e.paidBreakMinutes || 0) / 60);
+    }, 0);
     return worked + paidBreak;
   }
 

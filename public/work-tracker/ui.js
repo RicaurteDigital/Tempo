@@ -456,12 +456,13 @@ const WorkTracker = (() => {
             : `${run.shift.shiftType} break · ${breakMins}m unpaid · missed $${((breakMins/60)*(run.shift.hourlyRate||NYC_MIN_WAGE)).toFixed(2)}`;
           const existing = shift.entries.find(e => e.id === newEntryId);
           if (existing) {
-            existing.paidBreakMinutes = isPaid ? breakMins : 0;
+            existing.breakDurationMinutes = breakMins;
+            existing.breakPaid = isPaid;
             existing.note = noteText;
           } else {
             shift.entries.push({
               id: newEntryId, clockIn: breakEnd, clockOut: null, breakMinutes: 0,
-              paidBreakMinutes: isPaid ? breakMins : 0, note: noteText
+              breakDurationMinutes: breakMins, breakPaid: isPaid, note: noteText
             });
           }
           WTDb.saveShift(shift);
@@ -668,10 +669,28 @@ const WorkTracker = (() => {
       <button class="wt-entry-del" data-sid="${shift.id}" data-eid="${e.id}">✕</button>`;
 
     if (e.note) {
-      const noteEl = document.createElement('div');
-      noteEl.style.cssText = 'font-size:11px;color:#636366;padding:2px 0 6px;';
-      noteEl.textContent = e.note;
-      row.appendChild(noteEl);
+      const isBreakEntry = typeof e.breakDurationMinutes === 'number';
+      if (isBreakEntry) {
+        const breakToggle = document.createElement('button');
+        breakToggle.style.cssText = 'display:block;width:100%;text-align:left;background:none;border:none;padding:2px 0 6px;cursor:pointer;font-size:11px;color:' + (e.breakPaid ? '#30D158' : '#636366');
+        breakToggle.textContent = e.note + '  ✎ tap to change';
+        breakToggle.onclick = () => {
+          e.breakPaid = !e.breakPaid;
+          const mins = e.breakDurationMinutes;
+          const rate = shift.hourlyRate || NYC_MIN_WAGE;
+          e.note = e.breakPaid
+            ? `Break · ${mins}m · +$${((mins/60)*rate).toFixed(2)} paid`
+            : `Break · ${mins}m unpaid · missed $${((mins/60)*rate).toFixed(2)}`;
+          WTDb.saveShift(shift);
+          _go(_view);
+        };
+        row.appendChild(breakToggle);
+      } else {
+        const noteEl = document.createElement('div');
+        noteEl.style.cssText = 'font-size:11px;color:#636366;padding:2px 0 6px;';
+        noteEl.textContent = e.note;
+        row.appendChild(noteEl);
+      }
     }
 
     row.querySelectorAll('.wt-time-val').forEach(b => {
@@ -1105,7 +1124,10 @@ const WorkTracker = (() => {
               lines.push(`<div style="display:flex;justify-content:space-between"><span>${s.locationName||'Shift'} · ${WTRules.fmtHours(shiftPay.totalHours)}</span><span style="color:#fff">${WTRules.fmtMoney(shiftPay.total)}</span></div>`);
               if (shiftPay.regularHours > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span>Regular ${WTRules.fmtHours(shiftPay.regularHours)} × $${rate}/hr</span><span>${WTRules.fmtMoney(shiftPay.regularPay)}</span></div>`);
               if (shiftPay.overtimePay > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF9F0A">OT ${WTRules.fmtHours(shiftPay.overtimeHours)} × ${shiftPay.otMultiplier}×</span><span style="color:#FF9F0A">${WTRules.fmtMoney(shiftPay.overtimePay)}</span></div>`);
-              const paidBreakMins = (s.entries||[]).reduce((a,e) => a + (e.paidBreakMinutes||0), 0);
+              const paidBreakMins = (s.entries||[]).reduce((a,e) => {
+                if (typeof e.breakDurationMinutes === 'number') return a + (e.breakPaid ? e.breakDurationMinutes : 0);
+                return a + (e.paidBreakMinutes||0);
+              }, 0);
               if (paidBreakMins > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#30D158">Paid break ${WTRules.fmtHours(paidBreakMins/60)}</span><span style="color:#30D158">+${WTRules.fmtMoney((paidBreakMins/60)*rate)}</span></div>`);
               if (!paidBreaks) {
                 const breakMins = (s.entries||[]).reduce((a,e) => a + (e.breakMinutes||0), 0);
