@@ -254,8 +254,9 @@ const WorkTracker = (() => {
               ${result.payouts.map(p => {
                 const poolIsOver = result.remainder < 0;
                 const isOver = poolIsOver && p.amount > p.exact;
+                const isClickable = isOver || p.isMe;
                 return `
-                <div style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}">
+                <div ${isClickable ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
                   <span style="color:${isOver ? '#FF453A' : (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
                   <span style="color:#636366"> · </span>
                   <span style="color:${isOver ? '#FF453A' : '#fff'};font-weight:800${isOver ? ';font-size:12px' : ''}">$${p.amount}</span>
@@ -283,6 +284,9 @@ const WorkTracker = (() => {
         </div>`;
       tipBlock.querySelectorAll('[data-tip-warn]').forEach(el => {
         el.onclick = () => _showTipPool(el.dataset.tipWarn);
+      });
+      tipBlock.querySelectorAll('[data-goto-worker]').forEach(el => {
+        el.onclick = () => _showTipPool(el.dataset.gotoShift, el.dataset.gotoWorker);
       });
     } else if (homeProfile.hasTips) {
       tipBlock.innerHTML = `
@@ -2970,7 +2974,7 @@ const WorkTracker = (() => {
     ov.querySelector('#wt-ss-cancel').onclick = () => ov.remove();
   }
 
-  function _showTipPool(dayKey) {
+  function _showTipPool(dayKey, highlightName) {
     const __shifts = WTDb.getShifts();
     const __shift = __shifts.find(s => s.id === dayKey);
     const locationId = __shift ? __shift.locationId : null;
@@ -3480,6 +3484,17 @@ const WorkTracker = (() => {
 
     render();
     document.body.appendChild(ov);
+    if (highlightName) {
+      const targetRow = ov.querySelector(`[data-worker-name="${highlightName}"]`);
+      if (targetRow) {
+        requestAnimationFrame(() => {
+          targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetRow.style.transition = 'box-shadow .3s';
+          targetRow.style.boxShadow = '0 0 0 2px #5E5CE6';
+          setTimeout(() => { targetRow.style.boxShadow = 'none'; }, 2000);
+        });
+      }
+    }
     // Tap outside to close — saves directly first, since relying on the input's blur
     // event to fire before this click (as a timing race) isn't reliable on iOS.
     ov.addEventListener('click', e => {
