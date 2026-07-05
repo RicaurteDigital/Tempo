@@ -3767,7 +3767,7 @@ const WorkTracker = (() => {
             return positions.map(p => `<option value="${p.id}" data-points="${p.points}" ${curPos && p.label === curPos ? 'selected' : ''}>${p.label} (${p.points} pts)</option>`).join('');
           })()}
         </select>
-        <label class="wt-modal-label">Points</label>
+        <label class="wt-modal-label">This person's points</label>
         <div style="display:flex;align-items:center;gap:0;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
           <button id="wt-aw-minus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:28px;font-weight:200;cursor:pointer"
             onpointerdown="this.style.background='rgba(255,255,255,0.12)'"
@@ -3781,6 +3781,7 @@ const WorkTracker = (() => {
             onpointerup="this.style.background='none'"
             onpointerleave="this.style.background='none'">+</button>
         </div>
+        <p style="font-size:12px;color:#636366;margin-top:8px;line-height:1.5">Just for this one person — not the group's total. Each position is weighted on its own; the app adds everyone up automatically.</p>
         <div class="wt-modal-actions" style="margin-top:20px">
           <button class="wt-btn wt-btn-secondary" id="wt-aw-cancel">Cancel</button>
           <button class="wt-btn wt-btn-primary" id="wt-aw-add">${typeof editIndex === 'number' ? 'Save Changes' : 'Add Worker'}</button>
