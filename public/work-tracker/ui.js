@@ -145,8 +145,12 @@ const WorkTracker = (() => {
           const completedSecs = (run.shift.entries || [])
             .filter(e => e.clockOut)
             .reduce((sum, e) => sum + (new Date(e.clockOut) - new Date(e.clockIn)) / 1000, 0);
+          const paidBreakSecs = (run.shift.entries || []).reduce((sum, e) => {
+            if (typeof e.breakDurationMinutes === 'number') return sum + (e.breakPaid ? e.breakDurationMinutes * 60 : 0);
+            return sum + ((e.paidBreakMinutes || 0) * 60);
+          }, 0);
           const currentSecs = (Date.now() - new Date(run.entry.clockIn)) / 1000;
-          const liveHrs = (completedSecs + currentSecs) / 3600;
+          const liveHrs = (completedSecs + paidBreakSecs + currentSecs) / 3600;
           const livePay = liveHrs * (run.shift.hourlyRate || NYC_MIN_WAGE);
           acc.textContent = 'Total shift: ' + WTRules.fmtHours(liveHrs) + ' · ' + WTRules.fmtMoney(livePay);
         }
@@ -568,9 +572,13 @@ const WorkTracker = (() => {
         const completedSecs = (shift.entries || [])
           .filter(e => e.clockOut)
           .reduce((sum, e) => sum + (new Date(e.clockOut) - new Date(e.clockIn)) / 1000, 0);
+        const paidBreakSecs = (shift.entries || []).reduce((sum, e) => {
+          if (typeof e.breakDurationMinutes === 'number') return sum + (e.breakPaid ? e.breakDurationMinutes * 60 : 0);
+          return sum + ((e.paidBreakMinutes || 0) * 60);
+        }, 0);
         const openEntry = (shift.entries || []).find(e => !e.clockOut);
         const currentSecs = openEntry ? (Date.now() - new Date(openEntry.clockIn)) / 1000 : 0;
-        const liveHrs = (completedSecs + currentSecs) / 3600;
+        const liveHrs = (completedSecs + paidBreakSecs + currentSecs) / 3600;
         hrsEl.textContent = WTRules.fmtHours(liveHrs);
         earnEl.textContent = WTRules.fmtMoney(liveHrs * (shift.hourlyRate || NYC_MIN_WAGE));
       }, 1000);
