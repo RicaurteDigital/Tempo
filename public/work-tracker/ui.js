@@ -252,6 +252,12 @@ const WorkTracker = (() => {
           : (myPayout && result.totalPoints > 0 ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0)) : 0);
         if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
+        // Each pool's over/balanced state is independent — fixing cash shouldn't leave a
+        // stale cash warning if CC still has its own separate issue, and vice versa.
+        const ccPoolIsOver = result.ccRemainder < 0;
+        const cashDistributed = result.payouts.reduce((sum, pp) => sum + pp.cashAmount, 0);
+        const cashRemainder = parseFloat((result.cash - cashDistributed).toFixed(2));
+        const cashPoolIsOver = cashRemainder < 0;
 
         return `
           <div style="border-top:1px solid rgba(255,149,0,.15);margin-top:8px;padding-top:8px">
@@ -267,9 +273,10 @@ const WorkTracker = (() => {
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
               ${result.payouts.map(p => {
-                const poolIsOver = result.remainder < 0;
-                const isCCOver = poolIsOver && p.ccAmount > p.ccExact;
-                const isCashOver = poolIsOver && p.cashAmount > p.cashExact;
+                // "Over" means exceeding the normal round-up ceiling — rounding 104.80 up to
+                // 105 is expected and fine; only going beyond that (e.g. to 106) is a genuine excess.
+                const isCCOver = ccPoolIsOver && p.ccAmount > Math.ceil(p.ccExact);
+                const isCashOver = cashPoolIsOver && p.cashAmount > Math.ceil(p.cashExact);
                 const isOver = isCCOver || isCashOver;
                 const isClickable = isOver || p.isMe;
                 // If this person is over on cash specifically, route there — otherwise the CC row
