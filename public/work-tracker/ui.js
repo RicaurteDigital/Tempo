@@ -57,6 +57,25 @@ const WorkTracker = (() => {
       : `${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`;
   }
 
+  // Basic word-list filter for names — catches obvious/casual offensive entries in
+  // English, Spanish, and (limited coverage) Albanian. Not foolproof: creative
+  // misspellings or spaced-out letters can still slip through a list like this.
+  function _containsProfanity(text) {
+    if (!text) return false;
+    const normalized = text.toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z]/g, '');
+    const blocked = [
+      // English
+      'fuck','shit','bitch','cunt','nigger','nigga','faggot','fag','whore','slut','asshole','retard','bastard','pussy',
+      // Spanish
+      'puta','puto','mierda','pendejo','cabron','maricon','marica','verga','cono','joder','gilipollas','chingar','chinga',
+      // Albanian (limited confidence — best-effort only)
+      'kurva','pidh'
+    ];
+    return blocked.some(term => normalized.includes(term));
+  }
+
   function _Home() {
     const realToday = _today();
     const today = _date || realToday;
@@ -3889,6 +3908,7 @@ const WorkTracker = (() => {
     addOv.querySelector('#wt-aw-add').onclick = () => {
       const name = addOv.querySelector('#wt-aw-name').value.trim();
       if (!name) { alert('Enter a name.'); return; }
+      if (_containsProfanity(name)) { alert('Please use an appropriate name.'); return; }
       // Sync CC/cash from the live inputs first — in case they were typed but the field never lost focus
       const ccInput = document.querySelector('#wt-tp-cc');
       const cashInput = document.querySelector('#wt-tp-cash');
