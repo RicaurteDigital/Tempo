@@ -274,7 +274,7 @@ const WorkTracker = (() => {
                 const isClickable = isOver || p.isMe;
                 // If this person is over on cash specifically, route there — otherwise the CC row
                 // (which is also where "this is me" lands by default, since it's the primary row).
-                const gotoType = isCashOver && !isCCOver ? 'cash' : 'cc';
+                const gotoType = isCCOver && isCashOver ? 'both' : (isCashOver ? 'cash' : 'cc');
                 return `
                 <div ${isClickable ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" data-goto-type="${gotoType}" style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
                   <span style="color:${isOver ? '#FF453A' : (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
@@ -3509,14 +3509,23 @@ const WorkTracker = (() => {
     render();
     document.body.appendChild(ov);
     if (highlightName) {
-      const selector = highlightType === 'cash' ? `[data-cash-row="${highlightName}"]` : `[data-worker-name="${highlightName}"]`;
-      const targetRow = ov.querySelector(selector);
-      if (targetRow) {
+      const targets = [];
+      if (highlightType === 'both' || highlightType === 'cash') {
+        const cashRow = ov.querySelector(`[data-cash-row="${highlightName}"]`);
+        if (cashRow) targets.push(cashRow);
+      }
+      if (highlightType === 'both' || highlightType === 'cc') {
+        const ccRow = ov.querySelector(`[data-worker-name="${highlightName}"]`);
+        if (ccRow) targets.push(ccRow);
+      }
+      if (targets.length > 0) {
         requestAnimationFrame(() => {
-          targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          targetRow.style.transition = 'box-shadow .3s';
-          targetRow.style.boxShadow = '0 0 0 2px #5E5CE6';
-          setTimeout(() => { targetRow.style.boxShadow = 'none'; }, 2000);
+          targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targets.forEach(t => {
+            t.style.transition = 'box-shadow .3s';
+            t.style.boxShadow = '0 0 0 2px #5E5CE6';
+            setTimeout(() => { t.style.boxShadow = 'none'; }, 2000);
+          });
         });
       }
     }
