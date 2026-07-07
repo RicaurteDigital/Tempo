@@ -176,7 +176,7 @@ const WorkTracker = (() => {
       }, 1000);
     } else if (isToday) {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:10px';
+      row.style.cssText = 'display:flex;gap:10px;align-items:stretch';
       const cta = document.createElement('button');
       cta.className = 'wt-clockin-cta';
       cta.id = 'wt-clockin-main';
@@ -187,7 +187,7 @@ const WorkTracker = (() => {
         const dayOffReason = WTDb.getDayOffReason(today);
         const dayOffBtn = document.createElement('button');
         dayOffBtn.id = 'wt-dayoff-today';
-        dayOffBtn.style.cssText = 'flex:1;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:20px 8px;text-align:center;transition:transform .1s,background .1s';
+        dayOffBtn.style.cssText = 'flex:1;align-self:stretch;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 8px;text-align:center;transition:transform .1s,background .1s';
         dayOffBtn.innerHTML = dayOffReason
           ? `<span style="font-size:12px;color:#fff">Day off</span><span style="font-size:10px;color:#636366">${_dayOffLabel(dayOffReason)}</span>`
           : `<span>Day off?</span>`;
@@ -869,8 +869,8 @@ const WorkTracker = (() => {
         if (isPast && !has) {
           const reason = WTDb.getDayOffReason(ds);
           offHtml = reason
-            ? `<div data-dayoff-nav="${ds}" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer">Off</div>`
-            : `<div data-dayoff-nav="${ds}" class="wt-glow" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px">Off?</div>`;
+            ? `<div data-dayoff-nav="${ds}" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off</div>`
+            : `<div data-dayoff-nav="${ds}" class="wt-glow" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off?</div>`;
         }
         return `<div style="display:flex;flex-direction:column;align-items:center">${dotHtml}${offHtml}</div>`;
       }).join('');
@@ -1262,9 +1262,11 @@ const WorkTracker = (() => {
       emp.className = 'wt-empty';
       const dayOffReason = WTDb.getDayOffReason(dateStr);
       if (dayOffReason) {
-        emp.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer">Edit</button>`;
+        emp.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+          onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Edit</button>`;
       } else {
-        emp.innerHTML = `<strong>No shifts</strong>Nothing recorded for this day.<button id="wt-dayoff-add" style="display:block;margin:10px auto 0;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer">Mark day off</button>`;
+        emp.innerHTML = `<strong>No shifts</strong>Nothing recorded for this day.<button id="wt-dayoff-add" style="display:block;margin:10px auto 0;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+          onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>`;
       }
       w.appendChild(emp);
     }
@@ -3914,7 +3916,8 @@ const WorkTracker = (() => {
         <div class="wt-modal-title">Why no shift on ${_fmtDate(date)}?</div>
         <div id="wt-do-types" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
           ${DAY_OFF_REASONS.map(r => `
-            <button data-do-type="${r.type}" style="text-align:left;background:${existing && existing.type===r.type ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.6)'};border:1px solid ${existing && existing.type===r.type ? '#5E5CE6' : 'transparent'};border-radius:12px;padding:12px 14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">${r.label}</button>
+            <button data-do-type="${r.type}" style="text-align:left;background:${existing && existing.type===r.type ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.6)'};border:1px solid ${existing && existing.type===r.type ? '#5E5CE6' : 'transparent'};border-radius:12px;padding:12px 14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:transform .1s"
+              onpointerdown="this.style.transform='scale(.97)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${r.label}</button>
           `).join('')}
         </div>
         <div id="wt-do-sub" style="display:${existing && existing.type==='weather' ? 'flex' : 'none'};gap:8px;flex-wrap:wrap;margin-top:10px"></div>
@@ -3925,7 +3928,8 @@ const WorkTracker = (() => {
           <button class="wt-btn wt-btn-secondary" id="wt-do-cancel">Cancel</button>
           <button class="wt-btn wt-btn-primary" id="wt-do-save">Save</button>
         </div>
-        ${existing ? `<button id="wt-do-remove" style="width:100%;margin-top:10px;background:none;border:none;color:#FF453A;font-size:13px;font-weight:600;cursor:pointer;padding:8px">Remove</button>` : ''}
+        ${existing ? `<button id="wt-do-remove" style="width:100%;margin-top:10px;background:none;border:none;color:#FF453A;font-size:13px;font-weight:600;cursor:pointer;padding:8px;transition:opacity .1s"
+          onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Remove</button>` : ''}
       </div>`;
     document.body.appendChild(ov);
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
@@ -3940,7 +3944,8 @@ const WorkTracker = (() => {
       if (def && def.subtypes) {
         subWrap.style.display = 'flex';
         subWrap.innerHTML = def.subtypes.map(s => `
-          <button data-do-sub="${s.id}" style="background:${selectedSubtype===s.id?'rgba(94,92,230,.2)':'rgba(28,28,30,0.6)'};border:1px solid ${selectedSubtype===s.id?'#5E5CE6':'transparent'};border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer">${s.label}</button>
+          <button data-do-sub="${s.id}" style="background:${selectedSubtype===s.id?'rgba(94,92,230,.2)':'rgba(28,28,30,0.6)'};border:1px solid ${selectedSubtype===s.id?'#5E5CE6':'transparent'};border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:transform .1s"
+            onpointerdown="this.style.transform='scale(.95)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${s.label}</button>
         `).join('');
         subWrap.querySelectorAll('[data-do-sub]').forEach(btn => {
           btn.onclick = () => { selectedSubtype = btn.dataset.doSub; renderSub(); };
