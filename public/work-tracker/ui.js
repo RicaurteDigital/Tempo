@@ -76,6 +76,22 @@ const WorkTracker = (() => {
     return blocked.some(term => normalized.includes(term));
   }
 
+  // Shared by every place that computes a tip payout: picks calculatePayoutsWithFixed
+  // when anyone has a fixed amount or a cash-side override, otherwise the plain engine.
+  // Consolidates 5 previously-identical copies of this exact decision.
+  function _computeTipResult(creditCardTotal, cashTotal, workers, feePercent, manualFee, cashFlatAmounts, cashPointOverrides, cashManualAmounts) {
+    const hasFixed = (workers || []).some(w => typeof w.fixedAmount === 'number');
+    const cashOptions = {
+      flatAmounts: cashFlatAmounts || {},
+      pointOverrides: cashPointOverrides || {},
+      manualAmounts: cashManualAmounts || {}
+    };
+    const hasCashOverrides = Object.keys(cashOptions.flatAmounts).length > 0 || Object.keys(cashOptions.pointOverrides).length > 0 || Object.keys(cashOptions.manualAmounts).length > 0;
+    return (hasFixed || hasCashOverrides)
+      ? TipRules.calculatePayoutsWithFixed(creditCardTotal || 0, cashTotal || 0, workers, feePercent, manualFee, cashOptions)
+      : TipRules.calculatePayouts(creditCardTotal || 0, cashTotal || 0, workers, feePercent, manualFee);
+  }
+
   function _Home() {
     const realToday = _today();
     const today = _date || realToday;
@@ -286,12 +302,7 @@ const WorkTracker = (() => {
       const shiftTipRows = shiftsWithTips.map(s => {
         const t = WTDb.getTipsForShift(s.id);
         const tWorkers = t.workers || [];
-        const hasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
-        const tCashOptions = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
-        const tHasCashOverrides = Object.keys(tCashOptions.flatAmounts).length > 0 || Object.keys(tCashOptions.pointOverrides).length > 0 || Object.keys(tCashOptions.manualAmounts).length > 0;
-        const result = (hasFixed || tHasCashOverrides)
-          ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee, tCashOptions)
-          : TipRules.calculatePayouts(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, feePercent, t.manualFee);
+        const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, feePercent, t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
         const myPayout = result.payouts.find(p => p.isMe) || null;
         const myCash = myPayout && typeof myPayout.cashExact === 'number'
           ? Math.floor(myPayout.cashExact)
@@ -865,6 +876,7 @@ const WorkTracker = (() => {
     const w = document.createElement('div');
     w.className = 'wt-screen';
     const settings = WTDb.getSettings();
+    const weekFeePercent = WTDb.getTipSettings().processingFeePercent || 3;
     const curMs = getWeekStart(new Date()).getTime();
     const weeks = WTRules.getRecentWeeks(12);
 
@@ -942,12 +954,7 @@ const WorkTracker = (() => {
               const t = WTDb.getTipsForShift(s.id);
               if (!t) return;
               const tWorkers = t.workers || [];
-              const tHasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
-              const tCashOpts = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
-              const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0 || Object.keys(tCashOpts.manualAmounts).length > 0;
-              const result = (tHasFixed || tHasCashOv)
-                ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, t.feePercent || 3, t.manualFee, tCashOpts)
-                : TipRules.calculatePayouts(t.creditCardTotal || 0, t.cashTotal || 0, tWorkers, t.feePercent || 3, t.manualFee);
+              const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, weekFeePercent, t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
               const meIdx = (result.payouts || []).findIndex(p => p.isMe);
               if (meIdx >= 0) {
                 const mp = result.payouts[meIdx];
@@ -1120,12 +1127,7 @@ const WorkTracker = (() => {
                 const shiftRows = shiftsWithTips.map(s => {
                   const t = WTDb.getTipsForShift(s.id);
                   const tWorkers = t.workers || [];
-                  const tHasFixed = tWorkers.some(w => typeof w.fixedAmount === 'number');
-                  const tCashOpts = { flatAmounts: t.cashFlatAmounts || {}, pointOverrides: t.cashPointOverrides || {}, manualAmounts: t.cashManualAmounts || {} };
-                  const tHasCashOv = Object.keys(tCashOpts.flatAmounts).length > 0 || Object.keys(tCashOpts.pointOverrides).length > 0 || Object.keys(tCashOpts.manualAmounts).length > 0;
-                  const tipResult = (tHasFixed || tHasCashOv)
-                    ? TipRules.calculatePayoutsWithFixed(t.creditCardTotal||0, t.cashTotal||0, tWorkers, feePercent, t.manualFee, tCashOpts)
-                    : TipRules.calculatePayouts(t.creditCardTotal||0, t.cashTotal||0, tWorkers, feePercent, t.manualFee);
+                  const tipResult = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, feePercent, t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
                   const meIdx = tWorkers.findIndex(w => w.isMe);
                   const myPayout = meIdx >= 0 ? tipResult.payouts[meIdx] : null;
                   const myCash = myPayout && typeof myPayout.cashExact === 'number'
@@ -3242,16 +3244,7 @@ const WorkTracker = (() => {
       });
       const ccTotal = parseFloat(saved.creditCardTotal) || 0;
       const cashTotal = parseFloat(saved.cashTotal) || 0;
-      const hasFixed = workers.some(w => typeof w.fixedAmount === 'number');
-      const cashOptions = {
-        flatAmounts: saved.cashFlatAmounts || {},
-        pointOverrides: saved.cashPointOverrides || {},
-        manualAmounts: saved.cashManualAmounts || {}
-      };
-      const hasCashOverrides = Object.keys(cashOptions.flatAmounts).length > 0 || Object.keys(cashOptions.pointOverrides).length > 0 || Object.keys(cashOptions.manualAmounts).length > 0;
-      const result = (hasFixed || hasCashOverrides)
-        ? TipRules.calculatePayoutsWithFixed(ccTotal, cashTotal, workers, feePercent, saved.manualFee, cashOptions)
-        : TipRules.calculatePayouts(ccTotal, cashTotal, workers, feePercent, saved.manualFee);
+      const result = _computeTipResult(ccTotal, cashTotal, workers, feePercent, saved.manualFee, saved.cashFlatAmounts, saved.cashPointOverrides, saved.cashManualAmounts);
       const hasSplit = saved.ccBreakdown && saved.ccBreakdown.length > 1;
       // Ensure exactFee is always calculated correctly:
       // if split, only fee-applicable amounts count toward the exact fee.
@@ -3692,16 +3685,7 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-save').onclick = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
-        const saveCashOptions = {
-          flatAmounts: saved.cashFlatAmounts || {},
-          pointOverrides: saved.cashPointOverrides || {},
-          manualAmounts: saved.cashManualAmounts || {}
-        };
-        const saveHasFixed = saved.workers.some(w => typeof w.fixedAmount === 'number');
-        const saveHasCashOverrides = Object.keys(saveCashOptions.flatAmounts).length > 0 || Object.keys(saveCashOptions.pointOverrides).length > 0 || Object.keys(saveCashOptions.manualAmounts).length > 0;
-        const finalResult = (saveHasFixed || saveHasCashOverrides)
-          ? TipRules.calculatePayoutsWithFixed(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee, saveCashOptions)
-          : TipRules.calculatePayouts(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee);
+        const finalResult = _computeTipResult(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee, saved.cashFlatAmounts, saved.cashPointOverrides, saved.cashManualAmounts);
         const me = finalResult.payouts.find((p, i) => saved.workers[i] && saved.workers[i].isMe);
         saved.myPayout = me ? me.amount : 0;
         WTDb.saveTipsForShift(dayKey, saved);
