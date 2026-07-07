@@ -1225,7 +1225,12 @@ const WorkTracker = (() => {
     } else {
       const emp = document.createElement('div');
       emp.className = 'wt-empty';
-      emp.innerHTML = '<strong>No shifts</strong>Nothing recorded for this day.';
+      const dayOffReason = WTDb.getDayOffReason(dateStr);
+      if (dayOffReason) {
+        emp.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer">Edit</button>`;
+      } else {
+        emp.innerHTML = `<strong>No shifts</strong>Nothing recorded for this day.<button id="wt-dayoff-add" style="display:block;margin:10px auto 0;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer">Mark day off</button>`;
+      }
       w.appendChild(emp);
     }
     _root.appendChild(w);
@@ -1233,6 +1238,10 @@ const WorkTracker = (() => {
     w.querySelector('#wt-add-shift-day').onclick = () => _showAddShift(dateStr);
     if (prevDate) w.querySelector('#wt-day-prev').onclick = () => _go('day', { date: prevDate });
     if (nextDate) w.querySelector('#wt-day-next').onclick = () => _go('day', { date: nextDate });
+    const dayOffAddBtn = w.querySelector('#wt-dayoff-add');
+    if (dayOffAddBtn) dayOffAddBtn.onclick = () => _showDayOffPicker(dateStr, () => _go('day', { date: dateStr }));
+    const dayOffEditBtn = w.querySelector('#wt-dayoff-edit');
+    if (dayOffEditBtn) dayOffEditBtn.onclick = () => _showDayOffPicker(dateStr, () => _go('day', { date: dateStr }));
   }
 
   function _Preview() {
