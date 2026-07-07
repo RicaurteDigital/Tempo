@@ -395,8 +395,8 @@ const WorkTracker = (() => {
     const acts = document.createElement('div');
     acts.className = 'wt-actions';
     acts.innerHTML = `
-      <button class="wt-btn wt-btn-secondary" id="wt-week-btn">📅 History</button>
-      <button class="wt-btn wt-btn-secondary" id="wt-stats-btn">📈 Stats</button>
+      <button class="wt-btn wt-btn-secondary" id="wt-week-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7 3.5V7L9.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>History</button>
+      <button class="wt-btn wt-btn-secondary" id="wt-stats-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><rect x="1.5" y="8" width="2.5" height="4.5" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="5.75" y="4.5" width="2.5" height="8" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="1.5" width="2.5" height="11" rx="0.5" stroke="currentColor" stroke-width="1.2"/></svg>Stats</button>
       <button class="wt-btn wt-btn-primary" id="wt-export-btn">📊 Export</button>`;
     w.appendChild(acts);
 
@@ -1461,7 +1461,12 @@ const WorkTracker = (() => {
         <input type="date" class="wt-input" id="wt-stats-end" style="flex:1">
         <button class="wt-btn wt-btn-primary" id="wt-stats-apply" style="flex-shrink:0">Go</button>
       </div>
-      <div id="wt-stats-range-label" style="font-size:12px;color:#636366;margin-bottom:12px"></div>
+      <div id="wt-stats-range-label" style="font-size:12px;color:#636366;margin-bottom:4px"></div>
+      <div id="wt-stats-week-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:12px">
+        <button id="wt-stats-week-prev" style="background:none;border:none;color:#5E5CE6;font-size:20px;cursor:pointer;padding:4px 14px">‹</button>
+        <span id="wt-stats-week-label" style="font-size:13px;font-weight:700;color:#fff;min-width:120px;text-align:center"></span>
+        <button id="wt-stats-week-next" style="background:none;border:none;color:${'#3a3a3c'};font-size:20px;cursor:pointer;padding:4px 14px;opacity:0.3;pointer-events:none">›</button>
+      </div>
       <div id="wt-stats-results"></div>`;
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
@@ -1472,6 +1477,15 @@ const WorkTracker = (() => {
     const yearSel = w.querySelector('#wt-stats-year-sel');
     const rangeLabelEl = w.querySelector('#wt-stats-range-label');
     const resultsEl = w.querySelector('#wt-stats-results');
+    const weekNavEl = w.querySelector('#wt-stats-week-nav');
+    const weekLabelEl = w.querySelector('#wt-stats-week-label');
+    const weekPrevBtn = w.querySelector('#wt-stats-week-prev');
+    const weekNextBtn = w.querySelector('#wt-stats-week-next');
+    let weekOffset = 0;
+
+    function fmtStatDate(dateStr) {
+      return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
 
     function setActivePill(name) {
       pillsEl.querySelectorAll('.wt-stats-pill').forEach(btn => {
@@ -1483,10 +1497,22 @@ const WorkTracker = (() => {
     }
 
     function loadRange(start, end, label) {
-      rangeLabelEl.textContent = `${label} · ${start} → ${end}`;
+      rangeLabelEl.textContent = `${label} · ${fmtStatDate(start)} → ${fmtStatDate(end)}`;
       const stats = StatsRules.computeAllStats(start, end);
       resultsEl.innerHTML = _renderStatsResults(stats);
     }
+
+    function loadWeek() {
+      const r = StatsRules.weekRange(weekOffset);
+      weekLabelEl.textContent = formatWeekLabel(r.weekStart);
+      weekNextBtn.style.color = weekOffset >= 0 ? '#3a3a3c' : '#5E5CE6';
+      weekNextBtn.style.opacity = weekOffset >= 0 ? '0.3' : '1';
+      weekNextBtn.style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
+      loadRange(r.start, r.end, weekOffset === 0 ? 'This week' : 'Week of');
+    }
+
+    weekPrevBtn.onclick = () => { weekOffset--; loadWeek(); };
+    weekNextBtn.onclick = () => { if (weekOffset < 0) { weekOffset++; loadWeek(); } };
 
     pillsEl.querySelectorAll('.wt-stats-pill').forEach(btn => {
       btn.onclick = () => {
@@ -1494,7 +1520,8 @@ const WorkTracker = (() => {
         setActivePill(p);
         yearPicker.style.display = p === 'Year' ? 'block' : 'none';
         customPicker.style.display = p === 'Custom' ? 'flex' : 'none';
-        if (p === '7D') { const r = StatsRules.rollingRange(7); loadRange(r.start, r.end, 'Last 7 days'); }
+        weekNavEl.style.display = p === '7D' ? 'flex' : 'none';
+        if (p === '7D') { weekOffset = 0; loadWeek(); }
         else if (p === '30D') { const r = StatsRules.rollingRange(30); loadRange(r.start, r.end, 'Last 30 days'); }
         else if (p === '3M') { const r = StatsRules.rollingRange(90); loadRange(r.start, r.end, 'Last 3 months'); }
         else if (p === '6M') { const r = StatsRules.rollingRange(180); loadRange(r.start, r.end, 'Last 6 months'); }
@@ -1541,6 +1568,20 @@ const WorkTracker = (() => {
         ${t.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(t.receivedNet), '#64D2FF') : ''}
       </div>`;
 
+    const activityCard = `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">Activity</div>
+        ${_statRow('Days worked', `${t.daysWorked} of ${t.totalDaysInRange}`)}
+        ${_statRow('Avg hours per worked day', WTRules.fmtHours(t.avgHoursPerWorkedDay))}
+        ${_statRow('Shifts tracked', String(t.shiftsCount))}
+      </div>`;
+
+    const positionsCard = stats.positionBreakdown.length > 0 ? `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">Positions worked</div>
+        ${stats.positionBreakdown.map(p => _statRow(p.position, `${p.days} day${p.days !== 1 ? 's' : ''}`)).join('')}
+      </div>` : '';
+
     const hoursChart = stats.perLocation.length > 1 ? `
       <div class="wt-settings-block" style="margin-bottom:16px">
         <div class="wt-settings-title">Hours by location</div>
@@ -1571,7 +1612,7 @@ const WorkTracker = (() => {
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
       </div>`).join('');
 
-    return summaryCard + hoursChart + incomeChart + locCards;
+    return summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
   }
 
   function _Settings() {
