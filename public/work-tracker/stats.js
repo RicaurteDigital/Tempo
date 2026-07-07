@@ -173,12 +173,17 @@ const StatsRules = (() => {
     // Days actually worked (distinct dates with any shift) within the range.
     const workedDates = new Set(shifts.map(s => s.date));
     const daysWorked = workedDates.size;
+    // Separate count for the hours average: excludes tips-only backfilled days
+    // (shifts with no entries at all, from "Log Past Data" without an hours value),
+    // so those days don't silently pull the average down with a phantom zero.
+    const datesWithHours = new Set(shifts.filter(s => (s.entries || []).length > 0).map(s => s.date));
+    const daysWithHours = datesWithHours.size;
     const rangeStart = new Date(startDate + 'T12:00:00');
     const rangeEnd = new Date(endDate + 'T12:00:00');
     const totalDaysInRange = Math.round((rangeEnd - rangeStart) / 86400000) + 1;
     totals.daysWorked = daysWorked;
     totals.totalDaysInRange = totalDaysInRange;
-    totals.avgHoursPerWorkedDay = daysWorked > 0 ? totals.hours / daysWorked : 0;
+    totals.avgHoursPerWorkedDay = daysWithHours > 0 ? totals.hours / daysWithHours : 0;
     totals.shiftsCount = perLocation.reduce((sum, l) => sum + l.shiftsCount, 0);
 
     // "This is me" position breakdown — counts distinct DAYS per position (not shifts,

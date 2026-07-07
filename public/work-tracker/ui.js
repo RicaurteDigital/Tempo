@@ -246,8 +246,13 @@ const WorkTracker = (() => {
         card.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit-nav" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
           onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Edit</button>`;
       } else {
-        card.innerHTML = `<strong>No shift</strong>Nothing recorded for this day.<button id="wt-dayoff-add-nav" style="display:block;margin:10px auto 0;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
-          onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>`;
+        card.innerHTML = `<strong>No shift</strong>Nothing recorded for this day.
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+            <button id="wt-log-past-nav" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+              onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Log past data</button>
+            <button id="wt-dayoff-add-nav" style="background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+              onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>
+          </div>`;
       }
       w.appendChild(card);
     }
@@ -453,6 +458,8 @@ const WorkTracker = (() => {
     if (dayOffAddNavBtn) dayOffAddNavBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
     const dayOffEditNavBtn = w.querySelector('#wt-dayoff-edit-nav');
     if (dayOffEditNavBtn) dayOffEditNavBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    const logPastNavBtn = w.querySelector('#wt-log-past-nav');
+    if (logPastNavBtn) logPastNavBtn.onclick = () => _showLogPastData(today);
     const outBtn = w.querySelector('#wt-hero-out');
     if (outBtn) outBtn.onclick = () => _doClockOut(run.shift.id, run.entry.id);
     const shiftEditBtn = w.querySelector('#wt-hero-shift-edit');
@@ -697,6 +704,11 @@ const WorkTracker = (() => {
       entriesDiv.appendChild(built.row);
       entriesDiv.appendChild(built.photoRow);
       entriesDiv.appendChild(built.reportRow);
+    } else {
+      const noHours = document.createElement('div');
+      noHours.style.cssText = 'color:#636366;font-size:13px;padding:4px 0 8px';
+      noHours.textContent = 'No hours logged — tips only. Tap "+ Add period" below if you remember the times.';
+      entriesDiv.appendChild(noHours);
     }
 
     if (older.length > 0) {
@@ -1311,8 +1323,13 @@ const WorkTracker = (() => {
         emp.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
           onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Edit</button>`;
       } else {
-        emp.innerHTML = `<strong>No shifts</strong>Nothing recorded for this day.<button id="wt-dayoff-add" style="display:block;margin:10px auto 0;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
-          onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>`;
+        emp.innerHTML = `<strong>No shifts</strong>Nothing recorded for this day.
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+            <button id="wt-log-past" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+              onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Log past data</button>
+            <button id="wt-dayoff-add" style="background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+              onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>
+          </div>`;
       }
       w.appendChild(emp);
     }
@@ -1325,6 +1342,8 @@ const WorkTracker = (() => {
     if (dayOffAddBtn) dayOffAddBtn.onclick = () => _showDayOffPicker(dateStr, () => _go('day', { date: dateStr }));
     const dayOffEditBtn = w.querySelector('#wt-dayoff-edit');
     if (dayOffEditBtn) dayOffEditBtn.onclick = () => _showDayOffPicker(dateStr, () => _go('day', { date: dateStr }));
+    const logPastBtn = w.querySelector('#wt-log-past');
+    if (logPastBtn) logPastBtn.onclick = () => _showLogPastData(dateStr);
   }
 
   function _Preview() {
@@ -2755,6 +2774,88 @@ const WorkTracker = (() => {
       photoOv.querySelector('#wt-skip-photo').onclick = () => {
         clearInterval(countdown); photoOv.remove(); _go('home');
       };
+    };
+  }
+
+  // Backfill flow for past dates: unlike "Clock In Now" (which always uses the current
+  // real-world timestamp), this creates a shift dated exactly as given, with hours as a
+  // simple optional total instead of live clock times — or no hours at all if genuinely
+  // unknown, so the person can still log tips for that day.
+  function _showLogPastData(dateStr) {
+    const settings = WTDb.getSettings();
+    const currentProfile = settings.workProfile || 'restaurant';
+    const locs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
+    if (!locs.length) { _showQuickAddLocation((newLocId) => _showLogPastData(dateStr)); return; }
+    const profileShifts = (WORK_PROFILES[currentProfile]||WORK_PROFILES.restaurant).shifts;
+    const firstLoc = locs[0];
+    const initialRate = firstLoc ? firstLoc.hourlyRate : 16.50;
+
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">Log Past Data · ${_fmtDate(dateStr)}</div>
+        <label class="wt-modal-label">Location</label>
+        <select class="wt-input" id="wt-lp-loc">
+          ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}">${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
+        </select>
+        <label class="wt-modal-label">Shift Type</label>
+        <select class="wt-input" id="wt-lp-type">
+          ${profileShifts.map(s => `<option>${s}</option>`).join('')}
+          <option value="__custom">Custom…</option>
+        </select>
+        <div id="wt-lp-custom-wrap" style="display:none;margin-top:8px">
+          <input id="wt-lp-custom" class="wt-input" placeholder="Shift name" type="text">
+        </div>
+        <label class="wt-modal-label">Hourly Rate ($/hr)</label>
+        <input id="wt-lp-rate" class="wt-input" type="text" inputmode="decimal" value="${initialRate}">
+        <label class="wt-modal-label">Hours worked <span style="font-size:11px;color:#636366;font-weight:400">(optional — leave blank if you don't remember; you can still log tips)</span></label>
+        <input id="wt-lp-hours" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 7.5">
+        <div class="wt-modal-actions">
+          <button class="wt-btn wt-btn-secondary" id="wt-lp-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-lp-save">Continue to Tips</button>
+        </div>
+      </div>`;
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+    ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
+
+    ov.querySelector('#wt-lp-loc').onchange = function() {
+      const rate = this.options[this.selectedIndex].dataset.rate;
+      if (rate) ov.querySelector('#wt-lp-rate').value = rate;
+    };
+    ov.querySelector('#wt-lp-type').onchange = function() {
+      ov.querySelector('#wt-lp-custom-wrap').style.display = this.value === '__custom' ? 'block' : 'none';
+    };
+    ov.querySelector('#wt-lp-cancel').onclick = () => ov.remove();
+    ov.querySelector('#wt-lp-save').onclick = () => {
+      const locId = ov.querySelector('#wt-lp-loc').value;
+      const loc = locs.find(l => l.id === locId);
+      const typeSel = ov.querySelector('#wt-lp-type');
+      const shiftType = typeSel.value === '__custom'
+        ? (ov.querySelector('#wt-lp-custom').value.trim() || 'Custom') : typeSel.value;
+      const rate = parseFloat(ov.querySelector('#wt-lp-rate').value.replace(',','.'));
+      if (!rate || rate <= 0) { alert('Enter a valid hourly rate.'); return; }
+      const hoursVal = ov.querySelector('#wt-lp-hours').value.trim();
+      const hours = hoursVal !== '' ? parseFloat(hoursVal.replace(',','.')) : null;
+      if (hoursVal !== '' && (isNaN(hours) || hours <= 0)) { alert('Enter a valid number of hours, or leave it blank.'); return; }
+      const shiftId = generateId();
+      let entries = [];
+      if (hours) {
+        const clockIn = new Date(dateStr + 'T12:00:00');
+        const clockOut = new Date(clockIn.getTime() + hours * 3600000);
+        entries = [{ id: generateId(), clockIn: clockIn.toISOString(), clockOut: clockOut.toISOString(), breakMinutes: 0 }];
+      }
+      WTDb.saveShift({
+        id: shiftId, date: dateStr,
+        locationId: locId, locationName: loc.name,
+        hourlyRate: rate, shiftType,
+        workProfile: currentProfile,
+        entries
+      });
+      ov.remove();
+      _showTipPool(shiftId);
     };
   }
 
