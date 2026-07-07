@@ -1144,12 +1144,24 @@ const WorkTracker = (() => {
     const activeProf2 = (WTDb.getSettings().workProfile || 'restaurant');
     const shifts = WTDb.getShiftsForDate(dateStr).filter(s => (s.workProfile || 'restaurant') === activeProf2);
     const summary = WTRules.dailySummary(shifts);
+
+    // Find active (has shifts) days within this date's week, so ‹ › can skip between them
+    const weekStart = getWeekStart(new Date(dateStr + 'T12:00:00'));
+    const weekShifts = WTDb.getShiftsForWeek(weekStart).filter(s => (s.workProfile || 'restaurant') === activeProf2);
+    const activeDates = [...new Set(weekShifts.map(s => s.date))].sort();
+    const prevDate = activeDates.filter(d => d < dateStr).pop();
+    const nextDate = activeDates.filter(d => d > dateStr).shift();
+
     const w = document.createElement('div');
     w.className = 'wt-screen';
     w.innerHTML = `
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
-        <div style="font-size:18px;font-weight:800">${_fmtDate(dateStr)}</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="wt-day-prev" ${!prevDate ? 'disabled style="opacity:.3"' : ''} style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px">‹</button>
+          <div style="font-size:18px;font-weight:800">${_fmtDate(dateStr)}</div>
+          <button id="wt-day-next" ${!nextDate ? 'disabled style="opacity:.3"' : ''} style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px">›</button>
+        </div>
         <button class="wt-sec-action" id="wt-add-shift-day">+ Shift</button>
       </div>`;
     if (shifts.length > 0) {
@@ -1214,6 +1226,8 @@ const WorkTracker = (() => {
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('week');
     w.querySelector('#wt-add-shift-day').onclick = () => _showAddShift(dateStr);
+    if (prevDate) w.querySelector('#wt-day-prev').onclick = () => _go('day', { date: prevDate });
+    if (nextDate) w.querySelector('#wt-day-next').onclick = () => _go('day', { date: nextDate });
   }
 
   function _Preview() {
