@@ -175,19 +175,25 @@ const WorkTracker = (() => {
         }
       }, 1000);
     } else if (isToday) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:10px';
       const cta = document.createElement('button');
       cta.className = 'wt-clockin-cta';
       cta.id = 'wt-clockin-main';
+      cta.style.cssText = todayShifts.length === 0 ? 'width:auto;flex:2' : 'width:auto;flex:1';
       cta.innerHTML = `<div class="wt-clockin-dot"></div> Clock In`;
-      w.appendChild(cta);
+      row.appendChild(cta);
       if (todayShifts.length === 0) {
         const dayOffReason = WTDb.getDayOffReason(today);
         const dayOffBtn = document.createElement('button');
         dayOffBtn.id = 'wt-dayoff-today';
-        dayOffBtn.style.cssText = 'display:block;width:100%;background:none;border:none;color:#636366;font-size:13px;font-weight:600;cursor:pointer;padding:10px 0 0';
-        dayOffBtn.textContent = dayOffReason ? `Day off: ${_dayOffLabel(dayOffReason)} · tap to change` : 'Day off?';
-        w.appendChild(dayOffBtn);
+        dayOffBtn.style.cssText = 'flex:1;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px;text-align:center';
+        dayOffBtn.innerHTML = dayOffReason
+          ? `<span style="font-size:12px;color:#fff">Day off</span><span style="font-size:10px;color:#636366">${_dayOffLabel(dayOffReason)}</span>`
+          : `<span>Day off?</span>`;
+        row.appendChild(dayOffBtn);
       }
+      w.appendChild(row);
     }
 
     const stats = document.createElement('div');
