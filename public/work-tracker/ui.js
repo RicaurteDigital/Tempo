@@ -3973,7 +3973,17 @@ const WorkTracker = (() => {
           onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Remove</button>` : ''}
       </div>`;
     document.body.appendChild(ov);
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    ov.addEventListener('click', e => {
+      if (e.target !== ov) return;
+      if (selectedType && !(selectedType === 'weather' && !selectedSubtype)) {
+        const data = { type: selectedType };
+        if (selectedType === 'weather') data.subtype = selectedSubtype;
+        if (selectedType === 'custom') data.note = ov.querySelector('#wt-do-note').value.trim();
+        WTDb.saveDayOffReason(date, data);
+        onSave();
+      }
+      ov.remove();
+    });
 
     let selectedType = existing ? existing.type : null;
     let selectedSubtype = existing ? existing.subtype : null;
