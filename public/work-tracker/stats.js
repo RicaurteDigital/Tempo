@@ -36,6 +36,18 @@ const StatsRules = (() => {
     return { start: _ds(start), end: _ds(end) };
   }
 
+  // Calendar week (Mon–Sun), same definition used everywhere else in the app (Pay History).
+  // offsetWeeks=0 is the current week; negative values go to past weeks. Caps at "now" so
+  // the current week never claims data for days that haven't happened yet.
+  function weekRange(offsetWeeks) {
+    const ws = getWeekStart(new Date());
+    ws.setDate(ws.getDate() + offsetWeeks * 7);
+    const we = getWeekEnd(ws);
+    const now = new Date();
+    const end = we > now ? now : we;
+    return { start: _ds(ws), end: _ds(end), weekStart: new Date(ws) };
+  }
+
   // List of years that have any tracked activity (shifts or payments) — for the "by year" picker.
   function activeYears() {
     const years = new Set();
@@ -170,11 +182,39 @@ const StatsRules = (() => {
     delete totals._hasGross;
     delete totals._hasNet;
 
-    return { perLocation, totals, startDate, endDate };
+    // Days actually worked (distinct dates with any shift) within the range.
+    const workedDates = new Set(shifts.map(s => s.date));
+    const daysWorked = workedDates.size;
+    const rangeStart = new Date(startDate + 'T12:00:00');
+    const rangeEnd = new Date(endDate + 'T12:00:00');
+    const totalDaysInRange = Math.round((rangeEnd - rangeStart) / 86400000) + 1;
+    totals.daysWorked = daysWorked;
+    totals.totalDaysInRange = totalDaysInRange;
+    totals.avgHoursPerWorkedDay = daysWorked > 0 ? totals.hours / daysWorked : 0;
+    totals.shiftsCount = perLocation.reduce((sum, l) => sum + l.shiftsCount, 0);
+
+    // "This is me" position breakdown — counts distinct DAYS per position (not shifts,
+    // so two shifts in one day at the same position only count once). Only reflects shifts
+    // that had tips entered with "this is me" set, since position currently lives only
+    // inside Tip Pool worker records, not on the shift itself — a real, known limitation.
+    const positionDaysMap = {};
+    shifts.forEach(s => {
+      const t = WTDb.getTipsForShift(s.id);
+      const me = t && t.workers ? t.workers.find(w => w.isMe) : null;
+      if (me && me.position) {
+        if (!positionDaysMap[me.position]) positionDaysMap[me.position] = new Set();
+        positionDaysMap[me.position].add(s.date);
+      }
+    });
+    const positionBreakdown = Object.entries(positionDaysMap)
+      .map(([position, dates]) => ({ position, days: dates.size }))
+      .sort((a, b) => b.days - a.days);
+
+    return { perLocation, totals, positionBreakdown, startDate, endDate };
   }
 
   return {
-    rollingRange, previousPeriod, yearRange, activeYears,
+    rollingRange, previousPeriod, yearRange, weekRange, activeYears,
     computeLocationStats, computeAllStats
   };
 })();
