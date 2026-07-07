@@ -92,6 +92,14 @@ const WorkTracker = (() => {
       : TipRules.calculatePayouts(creditCardTotal || 0, cashTotal || 0, workers, feePercent, manualFee);
   }
 
+  // Each location can set its own CC processing fee %; falls back to the global
+  // Tip Pool Settings default when a location hasn't set one.
+  function _getLocationFeePercent(locationId) {
+    const loc = WTDb.getLocations().find(l => l.id === locationId);
+    if (loc && typeof loc.processingFeePercent === 'number') return loc.processingFeePercent;
+    return WTDb.getTipSettings().processingFeePercent || 3;
+  }
+
   function _Home() {
     const realToday = _today();
     const today = _date || realToday;
@@ -283,8 +291,6 @@ const WorkTracker = (() => {
     w.appendChild(stats);
 
     // ── DAILY TIP BLOCK ──────────────────────────────────
-    const tipSettings = WTDb.getTipSettings();
-    const feePercent = tipSettings.processingFeePercent || 3;
     const tipBlock = document.createElement('div');
     tipBlock.style.cssText = 'margin-bottom:14px';
 
@@ -302,7 +308,7 @@ const WorkTracker = (() => {
       const shiftTipRows = shiftsWithTips.map(s => {
         const t = WTDb.getTipsForShift(s.id);
         const tWorkers = t.workers || [];
-        const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, feePercent, t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
+        const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(s.locationId), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
         const myPayout = result.payouts.find(p => p.isMe) || null;
         const myCash = myPayout && typeof myPayout.cashExact === 'number'
           ? Math.floor(myPayout.cashExact)
@@ -876,7 +882,6 @@ const WorkTracker = (() => {
     const w = document.createElement('div');
     w.className = 'wt-screen';
     const settings = WTDb.getSettings();
-    const weekFeePercent = WTDb.getTipSettings().processingFeePercent || 3;
     const curMs = getWeekStart(new Date()).getTime();
     const weeks = WTRules.getRecentWeeks(12);
 
@@ -954,7 +959,7 @@ const WorkTracker = (() => {
               const t = WTDb.getTipsForShift(s.id);
               if (!t) return;
               const tWorkers = t.workers || [];
-              const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, weekFeePercent, t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
+              const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(l.id), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
               const meIdx = (result.payouts || []).findIndex(p => p.isMe);
               if (meIdx >= 0) {
                 const mp = result.payouts[meIdx];
@@ -1113,8 +1118,6 @@ const WorkTracker = (() => {
               detailEl.style.cssText = 'display:none;background:rgba(28,28,30,0.6);border-radius:12px;padding:10px 12px;margin-bottom:6px;font-size:13px';
               
               // Tips data for this day — aggregate all shifts
-              const tipSettings = WTDb.getTipSettings();
-              const feePercent = tipSettings.processingFeePercent || 3;
               const dayShiftsAll = WTDb.getShiftsForDate(ds);
               const shiftsWithTips = dayShiftsAll.filter(s => {
                 const t = WTDb.getTipsForShift(s.id);
@@ -1127,7 +1130,7 @@ const WorkTracker = (() => {
                 const shiftRows = shiftsWithTips.map(s => {
                   const t = WTDb.getTipsForShift(s.id);
                   const tWorkers = t.workers || [];
-                  const tipResult = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, feePercent, t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
+                  const tipResult = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(s.locationId), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
                   const meIdx = tWorkers.findIndex(w => w.isMe);
                   const myPayout = meIdx >= 0 ? tipResult.payouts[meIdx] : null;
                   const myCash = myPayout && typeof myPayout.cashExact === 'number'
@@ -3209,7 +3212,7 @@ const WorkTracker = (() => {
     const __shift = __shifts.find(s => s.id === dayKey);
     const locationId = __shift ? __shift.locationId : null;
     const tipSettings = WTDb.getTipSettings();
-    const feePercent = tipSettings.processingFeePercent || 3;
+    const feePercent = _getLocationFeePercent(locationId);
     const __originalTips = WTDb.getTipsForShift(dayKey);
     // Snapshot taken before any edits — Cancel restores exactly this, or deletes the
     // record entirely if it never existed before this session opened it.
@@ -4276,6 +4279,7 @@ const WorkTracker = (() => {
     const loc = locs.find(l => l.id === locId);
     if (!loc) return;
     const settings = WTDb.getSettings();
+    const globalFeePercent = WTDb.getTipSettings().processingFeePercent || 3;
     const locS = ((settings.locationSettings||{})[loc.id]||{});
     const ot = loc.overtimeRules || DEFAULT_OT_RULES.restaurant;
     const level1 = (ot.levels && ot.levels[0]) ? ot.levels[0] : { after: 40, per: 'week', multiplier: 1.5 };
@@ -4309,6 +4313,14 @@ const WorkTracker = (() => {
             onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'"
             onpointerup="this.style.background='none';this.style.color='#98989D'"
             onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
+        </div>
+        <label class="wt-modal-label">Credit card fee % <span style="font-size:11px;color:#636366;font-weight:400">(optional — blank uses the ${globalFeePercent}% default from Settings)</span></label>
+        <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:4px">
+          <input id="wt-el-fee" type="text" inputmode="decimal" placeholder="Default: ${globalFeePercent}%"
+            value="${typeof loc.processingFeePercent === 'number' ? loc.processingFeePercent : ''}"
+            style="flex:1;background:none;border:none;color:#fff;font-size:16px;font-weight:700;padding:12px 14px;outline:none"
+            onclick="this.select()" onfocus="this.select()">
+          <span style="padding:0 14px;color:#98989D;font-size:15px">%</span>
         </div>
         <label class="wt-modal-label">Pay Day</label>
         <select class="wt-input" id="wt-el-payday">
@@ -4415,6 +4427,8 @@ const WorkTracker = (() => {
       loc.startDate = ov.querySelector('#wt-el-startdate').value || null;
       loc.workProfile = ov.querySelector('#wt-el-profile').value;
       loc.overtimeRules = { calculateBy: calcBy, levels };
+      const feeVal = ov.querySelector('#wt-el-fee').value.trim();
+      loc.processingFeePercent = feeVal !== '' && !isNaN(parseFloat(feeVal)) ? parseFloat(feeVal) : null;
       const pdVal = ov.querySelector('#wt-el-payday').value;
       loc.payDayOfWeek = pdVal ? parseInt(pdVal) : null;
       WTDb.saveLocation(loc);
