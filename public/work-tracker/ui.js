@@ -187,10 +187,13 @@ const WorkTracker = (() => {
         const dayOffReason = WTDb.getDayOffReason(today);
         const dayOffBtn = document.createElement('button');
         dayOffBtn.id = 'wt-dayoff-today';
-        dayOffBtn.style.cssText = 'flex:1;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px;text-align:center';
+        dayOffBtn.style.cssText = 'flex:1;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:20px 8px;text-align:center;transition:transform .1s,background .1s';
         dayOffBtn.innerHTML = dayOffReason
           ? `<span style="font-size:12px;color:#fff">Day off</span><span style="font-size:10px;color:#636366">${_dayOffLabel(dayOffReason)}</span>`
           : `<span>Day off?</span>`;
+        dayOffBtn.addEventListener('pointerdown', () => { dayOffBtn.style.transform = 'scale(.97)'; dayOffBtn.style.background = '#3A3A3C'; });
+        dayOffBtn.addEventListener('pointerup', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
+        dayOffBtn.addEventListener('pointerleave', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
         row.appendChild(dayOffBtn);
       }
       w.appendChild(row);
