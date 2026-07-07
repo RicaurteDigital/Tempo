@@ -1145,10 +1145,12 @@ const WorkTracker = (() => {
     const shifts = WTDb.getShiftsForDate(dateStr).filter(s => (s.workProfile || 'restaurant') === activeProf2);
     const summary = WTRules.dailySummary(shifts);
 
-    // Find active (has shifts) days within this date's week, so ‹ › can skip between them
+    // Active (has shifts) days across ALL history — ‹ › keep working across week boundaries,
+    // not just within the current week.
     const weekStart = getWeekStart(new Date(dateStr + 'T12:00:00'));
-    const weekShifts = WTDb.getShiftsForWeek(weekStart).filter(s => (s.workProfile || 'restaurant') === activeProf2);
-    const activeDates = [...new Set(weekShifts.map(s => s.date))].sort();
+    const weekLabel = formatWeekLabel(weekStart);
+    const allShiftsForNav = WTDb.getShifts().filter(s => (s.workProfile || 'restaurant') === activeProf2);
+    const activeDates = [...new Set(allShiftsForNav.map(s => s.date))].sort();
     const prevDate = activeDates.filter(d => d < dateStr).pop();
     const nextDate = activeDates.filter(d => d > dateStr).shift();
 
@@ -1157,12 +1159,15 @@ const WorkTracker = (() => {
     w.innerHTML = `
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
-        <div style="display:flex;align-items:center;gap:10px">
-          <button id="wt-day-prev" ${!prevDate ? 'disabled style="opacity:.3"' : ''} style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px">‹</button>
-          <div style="font-size:18px;font-weight:800">${_fmtDate(dateStr)}</div>
-          <button id="wt-day-next" ${!nextDate ? 'disabled style="opacity:.3"' : ''} style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px 8px">›</button>
-        </div>
+        <div style="font-size:13px;color:#98989D">${weekLabel}</div>
         <button class="wt-sec-action" id="wt-add-shift-day">+ Shift</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;gap:12px">
+        <button id="wt-day-prev" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${!prevDate ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!prevDate ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">‹</button>
+        <div style="flex:1;text-align:center;font-size:18px;font-weight:800">${_fmtDate(dateStr)}</div>
+        <button id="wt-day-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${!nextDate ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!nextDate ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">›</button>
       </div>`;
     if (shifts.length > 0) {
       const sumCard = document.createElement('div');
