@@ -88,6 +88,33 @@ const WTDb = (() => {
     localStorage.removeItem('wt_tips_' + shiftId);
   }
 
+  function getDayOffReason(date) {
+    try {
+      const all = JSON.parse(localStorage.getItem('wt_dayoff') || '{}');
+      return all[date] || null;
+    } catch { return null; }
+  }
+
+  function saveDayOffReason(date, data) {
+    try {
+      const all = JSON.parse(localStorage.getItem('wt_dayoff') || '{}');
+      all[date] = data;
+      localStorage.setItem('wt_dayoff', JSON.stringify(all));
+    } catch {}
+  }
+
+  function deleteDayOffReason(date) {
+    try {
+      const all = JSON.parse(localStorage.getItem('wt_dayoff') || '{}');
+      delete all[date];
+      localStorage.setItem('wt_dayoff', JSON.stringify(all));
+    } catch {}
+  }
+
+  function getAllDayOffReasons() {
+    try { return JSON.parse(localStorage.getItem('wt_dayoff') || '{}'); } catch { return {}; }
+  }
+
   async function deletePhoto(shiftId, photoKey) {
     const db = await openPhotoDB();
     return new Promise((res, rej) => {
@@ -291,6 +318,7 @@ const WTDb = (() => {
     getTaxSettings, saveTaxSettings,
     getTipSettings, saveTipSettings,
     getTipsForShift, saveTipsForShift, deleteTipsForShift,
+    getDayOffReason, saveDayOffReason, deleteDayOffReason, getAllDayOffReasons,
     getRoster, saveRosterMember, deleteRosterMember,
     deletePhoto,
     getPayment, savePayment, deletePayment,
