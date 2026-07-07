@@ -854,7 +854,16 @@ const WorkTracker = (() => {
         const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const has = shifts.some(s => s.date === ds);
         const isT = ds === _today();
-        return `<div class="wt-dot ${has?'wt-dot-on':''} ${isT?'wt-dot-today':''}" data-date="${ds}">${['M','T','W','T','F','S','S'][i]}${has?'<span class="wt-dot-pip"></span>':''}</div>`;
+        const isPast = ds < _today();
+        const dotHtml = `<div class="wt-dot ${has?'wt-dot-on':''} ${isT?'wt-dot-today':''}" data-date="${ds}">${['M','T','W','T','F','S','S'][i]}${has?'<span class="wt-dot-pip"></span>':''}</div>`;
+        let offHtml = '';
+        if (isPast && !has) {
+          const reason = WTDb.getDayOffReason(ds);
+          offHtml = reason
+            ? `<div data-dayoff-nav="${ds}" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer">Off</div>`
+            : `<div data-dayoff-nav="${ds}" class="wt-glow" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px">Off?</div>`;
+        }
+        return `<div style="display:flex;flex-direction:column;align-items:center">${dotHtml}${offHtml}</div>`;
       }).join('');
       row.innerHTML = `
         ${isCur ? '<div class="wt-week-badge">Current Week</div>' : ''}
@@ -971,6 +980,12 @@ const WorkTracker = (() => {
         dot.onclick = (e) => {
           e.stopPropagation();
           _go('day', { date: dot.dataset.date });
+        };
+      });
+      row.querySelectorAll('[data-dayoff-nav]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          _go('day', { date: el.dataset.dayoffNav });
         };
       });
       row.querySelectorAll('.wt-pd-row').forEach(el => {
@@ -1160,7 +1175,8 @@ const WorkTracker = (() => {
     const weekStart = getWeekStart(new Date(dateStr + 'T12:00:00'));
     const weekLabel = formatWeekLabel(weekStart);
     const allShiftsForNav = WTDb.getShifts().filter(s => (s.workProfile || 'restaurant') === activeProf2);
-    const activeDates = [...new Set(allShiftsForNav.map(s => s.date))].sort();
+    const dayOffDates = Object.keys(WTDb.getAllDayOffReasons());
+    const activeDates = [...new Set([...allShiftsForNav.map(s => s.date), ...dayOffDates])].sort();
     const prevDate = activeDates.filter(d => d < dateStr).pop();
     const nextDate = activeDates.filter(d => d > dateStr).shift();
 
