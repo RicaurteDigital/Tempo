@@ -1500,6 +1500,9 @@ const WorkTracker = (() => {
       rangeLabelEl.textContent = `${label} · ${fmtStatDate(start)} → ${fmtStatDate(end)}`;
       const stats = StatsRules.computeAllStats(start, end);
       resultsEl.innerHTML = _renderStatsResults(stats);
+      resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
+        el.onclick = () => _go('day', { date: el.dataset.chartDate });
+      });
     }
 
     function loadWeek() {
@@ -1550,12 +1553,62 @@ const WorkTracker = (() => {
     loadRange(r0.start, r0.end, 'Last 30 days');
   }
 
+  function _svgLineChart(points) {
+    if (!points.length) return '<div style="color:#636366;font-size:13px;padding:8px 0">No data</div>';
+    const w = 300, h = 110, padding = 10;
+    const maxVal = Math.max(...points.map(p => p.total), 0.01);
+    const stepX = points.length > 1 ? (w - padding * 2) / (points.length - 1) : 0;
+    const coords = points.map((p, i) => ({
+      x: padding + i * stepX,
+      y: h - padding - (p.total / maxVal) * (h - padding * 2),
+      date: p.date,
+      total: p.total
+    }));
+    const pathD = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1)).join(' ');
+    const last = coords[coords.length - 1], first = coords[0];
+    const areaD = `${pathD} L${last.x.toFixed(1)},${h - padding} L${first.x.toFixed(1)},${h - padding} Z`;
+    const dots = coords.map(c =>
+      `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="9" fill="transparent" data-chart-date="${c.date}" style="cursor:pointer"/>
+       <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="#5E5CE6" data-chart-date="${c.date}" style="cursor:pointer;pointer-events:none"/>`
+    ).join('');
+    return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" xmlns="http://www.w3.org/2000/svg">
+      <path d="${areaD}" fill="rgba(94,92,230,.12)"/>
+      <path d="${pathD}" fill="none" stroke="#5E5CE6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+    </svg>`;
+  }
+
   function _renderStatsResults(stats) {
     if (!stats.perLocation.length) {
       return '<div class="wt-empty"><strong>No data</strong>No shifts or payments in this period.</div>';
     }
     const t = stats.totals;
     const colors = ['#5E5CE6', '#30D158', '#64D2FF', '#FF9F0A', '#FF453A', '#BF5AF2'];
+
+    const ts = StatsRules.timeSeries(stats.startDate, stats.endDate);
+    const lineChartCard = `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">Earnings over time</div>
+        ${_svgLineChart(ts.points)}
+      </div>`;
+
+    const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate)
+      .filter(d => d.count > 0)
+      .sort((a, b) => b.avg - a.avg);
+    const dowCard = dowData.length > 0 ? `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">Best days to work</div>
+        ${_svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v))}
+      </div>` : '';
+
+    const daysOff = StatsRules.daysOffInRange(stats.startDate, stats.endDate);
+    const dayOffLabels = { not_scheduled: 'Not scheduled', weather: 'Weather', cancelled: 'Shift cancelled', sick: 'Sick', requested_off: 'Requested off', custom: 'Custom' };
+    const daysOffCard = daysOff.total > 0 ? `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">Days off</div>
+        ${_statRow('Total', String(daysOff.total))}
+        ${Object.entries(daysOff.byType).map(([type, count]) => _statRow(dayOffLabels[type] || type, String(count))).join('')}
+      </div>` : '';
 
     const summaryCard = `
       <div class="wt-summary" style="margin-bottom:16px">
@@ -1612,7 +1665,7 @@ const WorkTracker = (() => {
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
       </div>`).join('');
 
-    return summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
+    return lineChartCard + dowCard + daysOffCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
   }
 
   function _Settings() {
