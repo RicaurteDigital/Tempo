@@ -3834,6 +3834,114 @@ const WorkTracker = (() => {
     });
   }
 
+  const DAY_OFF_REASONS = [
+    { type: 'not_scheduled', label: 'Not scheduled' },
+    { type: 'weather', label: 'Weather', subtypes: [
+      { id: 'hot', label: 'Extreme heat' },
+      { id: 'cold', label: 'Cold' },
+      { id: 'rain', label: 'Rain' },
+      { id: 'storm', label: 'Storm' }
+    ]},
+    { type: 'cancelled', label: 'Shift cancelled' },
+    { type: 'sick', label: 'Sick' },
+    { type: 'requested_off', label: 'Requested off (unpaid)' },
+    { type: 'custom', label: 'Custom' }
+  ];
+
+  function _dayOffLabel(reason) {
+    if (!reason) return '';
+    const def = DAY_OFF_REASONS.find(r => r.type === reason.type);
+    if (!def) return '';
+    if (reason.type === 'weather') {
+      const sub = def.subtypes.find(s => s.id === reason.subtype);
+      return `Weather${sub ? ' · ' + sub.label : ''}`;
+    }
+    if (reason.type === 'custom') return reason.note ? `Custom: ${reason.note}` : 'Custom';
+    return def.label;
+  }
+
+  function _showDayOffPicker(date, onSave) {
+    const existing = WTDb.getDayOffReason(date);
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">Why no shift on ${_fmtDate(date)}?</div>
+        <div id="wt-do-types" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+          ${DAY_OFF_REASONS.map(r => `
+            <button data-do-type="${r.type}" style="text-align:left;background:${existing && existing.type===r.type ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.6)'};border:1px solid ${existing && existing.type===r.type ? '#5E5CE6' : 'transparent'};border-radius:12px;padding:12px 14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer">${r.label}</button>
+          `).join('')}
+        </div>
+        <div id="wt-do-sub" style="display:${existing && existing.type==='weather' ? 'flex' : 'none'};gap:8px;flex-wrap:wrap;margin-top:10px"></div>
+        <div id="wt-do-note-wrap" style="display:${existing && existing.type==='custom' ? 'block' : 'none'};margin-top:10px">
+          <input id="wt-do-note" class="wt-input" type="text" placeholder="What happened?" value="${existing && existing.note ? existing.note : ''}" onclick="this.select()" onfocus="this.select()">
+        </div>
+        <div class="wt-modal-actions" style="margin-top:20px">
+          <button class="wt-btn wt-btn-secondary" id="wt-do-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-do-save">Save</button>
+        </div>
+        ${existing ? `<button id="wt-do-remove" style="width:100%;margin-top:10px;background:none;border:none;color:#FF453A;font-size:13px;font-weight:600;cursor:pointer;padding:8px">Remove</button>` : ''}
+      </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+
+    let selectedType = existing ? existing.type : null;
+    let selectedSubtype = existing ? existing.subtype : null;
+
+    function renderSub() {
+      const subWrap = ov.querySelector('#wt-do-sub');
+      const noteWrap = ov.querySelector('#wt-do-note-wrap');
+      const def = DAY_OFF_REASONS.find(r => r.type === selectedType);
+      if (def && def.subtypes) {
+        subWrap.style.display = 'flex';
+        subWrap.innerHTML = def.subtypes.map(s => `
+          <button data-do-sub="${s.id}" style="background:${selectedSubtype===s.id?'rgba(94,92,230,.2)':'rgba(28,28,30,0.6)'};border:1px solid ${selectedSubtype===s.id?'#5E5CE6':'transparent'};border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;font-weight:600;cursor:pointer">${s.label}</button>
+        `).join('');
+        subWrap.querySelectorAll('[data-do-sub]').forEach(btn => {
+          btn.onclick = () => { selectedSubtype = btn.dataset.doSub; renderSub(); };
+        });
+      } else {
+        subWrap.style.display = 'none';
+      }
+      noteWrap.style.display = selectedType === 'custom' ? 'block' : 'none';
+    }
+
+    ov.querySelectorAll('[data-do-type]').forEach(btn => {
+      btn.onclick = () => {
+        selectedType = btn.dataset.doType;
+        selectedSubtype = null;
+        ov.querySelectorAll('[data-do-type]').forEach(b => {
+          const on = b.dataset.doType === selectedType;
+          b.style.background = on ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.6)';
+          b.style.borderColor = on ? '#5E5CE6' : 'transparent';
+        });
+        renderSub();
+      };
+    });
+    renderSub();
+
+    ov.querySelector('#wt-do-cancel').onclick = () => ov.remove();
+    ov.querySelector('#wt-do-save').onclick = () => {
+      if (!selectedType) { alert('Pick a reason.'); return; }
+      const data = { type: selectedType };
+      if (selectedType === 'weather') {
+        if (!selectedSubtype) { alert('Pick the type of weather.'); return; }
+        data.subtype = selectedSubtype;
+      }
+      if (selectedType === 'custom') data.note = ov.querySelector('#wt-do-note').value.trim();
+      WTDb.saveDayOffReason(date, data);
+      ov.remove();
+      onSave();
+    };
+    const removeBtn = ov.querySelector('#wt-do-remove');
+    if (removeBtn) removeBtn.onclick = () => {
+      WTDb.deleteDayOffReason(date);
+      ov.remove();
+      onSave();
+    };
+  }
+
   function _showAddWorker(saved, tipSettings, onSave, editIndex, locationId) {
     const positions = tipSettings.positions || DEFAULT_TIP_POSITIONS;
     const addOv = document.createElement('div');
