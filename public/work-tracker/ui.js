@@ -176,28 +176,56 @@ const WorkTracker = (() => {
         }
       }, 1000);
     } else if (isToday) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;gap:10px;align-items:stretch';
-      const cta = document.createElement('button');
-      cta.className = 'wt-clockin-cta';
-      cta.id = 'wt-clockin-main';
-      cta.style.cssText = todayShifts.length === 0 ? 'width:auto;flex:2' : 'width:auto;flex:1';
-      cta.innerHTML = `<div class="wt-clockin-dot"></div> Clock In`;
-      row.appendChild(cta);
       if (todayShifts.length === 0) {
         const dayOffReason = WTDb.getDayOffReason(today);
-        const dayOffBtn = document.createElement('button');
-        dayOffBtn.id = 'wt-dayoff-today';
-        dayOffBtn.style.cssText = 'flex:1;align-self:stretch;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 8px;text-align:center;transition:transform .1s,background .1s';
-        dayOffBtn.innerHTML = dayOffReason
-          ? `<span style="font-size:12px;color:#fff">Day off</span><span style="font-size:10px;color:#636366">${_dayOffLabel(dayOffReason)}</span>`
-          : `<span>Day off?</span>`;
-        dayOffBtn.addEventListener('pointerdown', () => { dayOffBtn.style.transform = 'scale(.97)'; dayOffBtn.style.background = '#3A3A3C'; });
-        dayOffBtn.addEventListener('pointerup', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
-        dayOffBtn.addEventListener('pointerleave', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
-        row.appendChild(dayOffBtn);
+        if (dayOffReason) {
+          const card = document.createElement('div');
+          card.className = 'wt-empty';
+          card.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit-home" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+            onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Edit</button>`;
+          w.appendChild(card);
+        } else {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;gap:10px';
+          const cta = document.createElement('button');
+          cta.className = 'wt-clockin-cta';
+          cta.id = 'wt-clockin-main';
+          cta.style.cssText = 'width:auto;flex:2';
+          cta.innerHTML = `<div class="wt-clockin-dot"></div> Clock In`;
+          row.appendChild(cta);
+          const dayOffBtn = document.createElement('button');
+          dayOffBtn.id = 'wt-dayoff-today';
+          dayOffBtn.style.cssText = 'flex:1;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s,background .1s';
+          dayOffBtn.textContent = 'Day off?';
+          dayOffBtn.addEventListener('pointerdown', () => { dayOffBtn.style.transform = 'scale(.97)'; dayOffBtn.style.background = '#3A3A3C'; });
+          dayOffBtn.addEventListener('pointerup', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
+          dayOffBtn.addEventListener('pointerleave', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
+          row.appendChild(dayOffBtn);
+          w.appendChild(row);
+          requestAnimationFrame(() => {
+            const h = cta.getBoundingClientRect().height;
+            if (h) dayOffBtn.style.height = h + 'px';
+          });
+        }
+      } else {
+        const cta = document.createElement('button');
+        cta.className = 'wt-clockin-cta';
+        cta.id = 'wt-clockin-main';
+        cta.innerHTML = `<div class="wt-clockin-dot"></div> Clock In`;
+        w.appendChild(cta);
       }
-      w.appendChild(row);
+    } else if (today < realToday && todayShifts.length === 0) {
+      const dayOffReason = WTDb.getDayOffReason(today);
+      const card = document.createElement('div');
+      card.className = 'wt-empty';
+      if (dayOffReason) {
+        card.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit-nav" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+          onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Edit</button>`;
+      } else {
+        card.innerHTML = `<strong>No shift</strong>Nothing recorded for this day.<button id="wt-dayoff-add-nav" style="display:block;margin:10px auto 0;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+          onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>`;
+      }
+      w.appendChild(card);
     }
 
     const stats = document.createElement('div');
@@ -402,6 +430,12 @@ const WorkTracker = (() => {
     }
     const dayOffTodayBtn = w.querySelector('#wt-dayoff-today');
     if (dayOffTodayBtn) dayOffTodayBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    const dayOffEditHomeBtn = w.querySelector('#wt-dayoff-edit-home');
+    if (dayOffEditHomeBtn) dayOffEditHomeBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    const dayOffAddNavBtn = w.querySelector('#wt-dayoff-add-nav');
+    if (dayOffAddNavBtn) dayOffAddNavBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    const dayOffEditNavBtn = w.querySelector('#wt-dayoff-edit-nav');
+    if (dayOffEditNavBtn) dayOffEditNavBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
     const outBtn = w.querySelector('#wt-hero-out');
     if (outBtn) outBtn.onclick = () => _doClockOut(run.shift.id, run.entry.id);
     const shiftEditBtn = w.querySelector('#wt-hero-shift-edit');
@@ -871,9 +905,13 @@ const WorkTracker = (() => {
         let offHtml = '';
         if (isPast && !has) {
           const reason = WTDb.getDayOffReason(ds);
-          offHtml = reason
-            ? `<div data-dayoff-nav="${ds}" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off</div>`
-            : `<div data-dayoff-nav="${ds}" class="wt-glow" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off?</div>`;
+          if (reason) {
+            offHtml = `<div data-dayoff-nav="${ds}" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off</div>`;
+          } else if (isCur) {
+            // Only nudge within the current, still-in-progress week — once a week ends,
+            // stop asking about days you likely won't remember; still fully clickable though.
+            offHtml = `<div data-dayoff-nav="${ds}" class="wt-glow" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off?</div>`;
+          }
         }
         return `<div style="display:flex;flex-direction:column;align-items:center">${dotHtml}${offHtml}</div>`;
       }).join('');
