@@ -21,17 +21,6 @@ const TipRules = (() => {
     return workers.reduce((sum, w) => sum + (parseFloat(w.points) || 0), 0);
   }
 
-  // ── BASE PAYOUTS (EXISTING — UNCHANGED) ──────────────
-  function basePayouts(totalNet, workers) {
-    const pts = totalPoints(workers);
-    if (pts === 0) return workers.map(w => ({ ...w, exact: 0, amount: 0 }));
-    const perPoint = totalNet / pts;
-    return workers.map(w => {
-      const exact = (parseFloat(w.points) || 0) * perPoint;
-      return { ...w, exact, amount: Math.floor(exact) };
-    });
-  }
-
   // ── CALCULATE WITH MANUAL ADJUSTMENTS (EXISTING — UNCHANGED) ──
   function calculatePayouts(creditCardTotal, cashTotal, workers, feePercent, manualFee) {
     const ccBreakdown = applyProcessingFee(creditCardTotal, feePercent, manualFee);
@@ -105,11 +94,6 @@ const TipRules = (() => {
     if (isNaN(n) || n === null) return '$0.00';
     const abs = Math.abs(n);
     return (n < 0 ? '−$' : '$') + abs.toFixed(2);
-  }
-
-  function fmtMoneyInt(n) {
-    if (isNaN(n) || n === null) return '$0';
-    return '$' + Math.round(n);
   }
 
   // ════════════════════════════════════════════════════
@@ -289,10 +273,8 @@ const TipRules = (() => {
   return {
     applyProcessingFee,
     totalPoints,
-    basePayouts,
     calculatePayouts,
     fmtMoney,
-    fmtMoneyInt,
     // new, additive:
     applyProcessingFeeMulti,
     calculatePayoutsWithFixed,

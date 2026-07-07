@@ -16,18 +16,6 @@ const StatsRules = (() => {
     return { start: _ds(start), end: _ds(end) };
   }
 
-  // Same-length window immediately before the given range — for "vs previous period" comparisons.
-  function previousPeriod(startDate, endDate) {
-    const start = new Date(startDate + 'T12:00:00');
-    const end = new Date(endDate + 'T12:00:00');
-    const lengthDays = Math.round((end - start) / 86400000) + 1;
-    const prevEnd = new Date(start);
-    prevEnd.setDate(prevEnd.getDate() - 1);
-    const prevStart = new Date(prevEnd);
-    prevStart.setDate(prevStart.getDate() - (lengthDays - 1));
-    return { start: _ds(prevStart), end: _ds(prevEnd) };
-  }
-
   // Calendar year — Jan 1 to Dec 31, or Jan 1 to today if it's the current year.
   function yearRange(year) {
     const now = new Date();
@@ -301,7 +289,7 @@ const StatsRules = (() => {
   }
 
   return {
-    rollingRange, previousPeriod, yearRange, weekRange, activeYears,
+    rollingRange, yearRange, weekRange, activeYears,
     computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange
   };
 })();

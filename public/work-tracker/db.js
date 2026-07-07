@@ -268,17 +268,6 @@ const WTDb = (() => {
     return member;
   }
 
-  function deleteRosterMember(locationId, name) {
-    try {
-      const all = JSON.parse(localStorage.getItem(ROSTER_KEY)) || {};
-      if (!all[locationId]) return;
-      all[locationId] = all[locationId].filter(m =>
-        (m.name || '').trim().toLowerCase() !== (name || '').trim().toLowerCase()
-      );
-      localStorage.setItem(ROSTER_KEY, JSON.stringify(all));
-    } catch {}
-  }
-
   function exportData() {
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -319,7 +308,7 @@ const WTDb = (() => {
     getTipSettings, saveTipSettings,
     getTipsForShift, saveTipsForShift, deleteTipsForShift,
     getDayOffReason, saveDayOffReason, deleteDayOffReason, getAllDayOffReasons,
-    getRoster, saveRosterMember, deleteRosterMember,
+    getRoster, saveRosterMember,
     deletePhoto,
     getPayment, savePayment, deletePayment,
     getShiftsInRange, getAllPayments
