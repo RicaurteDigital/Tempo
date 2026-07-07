@@ -180,6 +180,14 @@ const WorkTracker = (() => {
       cta.id = 'wt-clockin-main';
       cta.innerHTML = `<div class="wt-clockin-dot"></div> Clock In`;
       w.appendChild(cta);
+      if (todayShifts.length === 0) {
+        const dayOffReason = WTDb.getDayOffReason(today);
+        const dayOffBtn = document.createElement('button');
+        dayOffBtn.id = 'wt-dayoff-today';
+        dayOffBtn.style.cssText = 'display:block;width:100%;background:none;border:none;color:#636366;font-size:13px;font-weight:600;cursor:pointer;padding:10px 0 0';
+        dayOffBtn.textContent = dayOffReason ? `Day off: ${_dayOffLabel(dayOffReason)} · tap to change` : 'Day off?';
+        w.appendChild(dayOffBtn);
+      }
     }
 
     const stats = document.createElement('div');
@@ -380,6 +388,8 @@ const WorkTracker = (() => {
         ? () => { alert('Add a work location in Settings first.'); _go('settings'); }
         : () => _showAddShift(today);
     }
+    const dayOffTodayBtn = w.querySelector('#wt-dayoff-today');
+    if (dayOffTodayBtn) dayOffTodayBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
     const outBtn = w.querySelector('#wt-hero-out');
     if (outBtn) outBtn.onclick = () => _doClockOut(run.shift.id, run.entry.id);
     const shiftEditBtn = w.querySelector('#wt-hero-shift-edit');
