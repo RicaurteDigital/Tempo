@@ -86,6 +86,7 @@ const WorkTracker = (() => {
     const currentProfile = settings.workProfile || 'restaurant';
     const weekShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === currentProfile);
     const todayShifts = WTDb.getShiftsForDate(today).filter(s => (s.workProfile || 'restaurant') === currentProfile);
+    const todayMarkedOff = todayShifts.length === 0 && !!WTDb.getDayOffReason(today);
     const pay = WTRules.weeklyPay(weekShifts);
     const run = _running();
     const locs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
@@ -329,7 +330,7 @@ const WorkTracker = (() => {
       tipBlock.querySelectorAll('[data-goto-worker]').forEach(el => {
         el.onclick = () => _showTipPool(el.dataset.gotoShift, el.dataset.gotoWorker, el.dataset.gotoType);
       });
-    } else if (homeProfile.hasTips) {
+    } else if (homeProfile.hasTips && !todayMarkedOff) {
       tipBlock.innerHTML = `
         <button id="wt-tip-new" style="width:100%;background:rgba(255,149,0,.08);border:1px dashed rgba(255,149,0,.3);border-radius:20px;padding:16px;color:#FF9F0A;font-size:15px;font-weight:700;cursor:pointer;text-align:center">
           💰 Add Today's Tips
@@ -344,21 +345,23 @@ const WorkTracker = (() => {
     }
     w.appendChild(tipBlock);
 
-    const secHdr = document.createElement('div');
-    secHdr.className = 'wt-sec-hdr';
-    secHdr.innerHTML = `
-      <span class="wt-sec-title">${isToday ? 'Today' : dayLabel} · ${_fmtDate(today)}</span>
-      <button class="wt-sec-action" id="wt-add-shift">+ Shift</button>`;
-    w.appendChild(secHdr);
+    if (!todayMarkedOff) {
+      const secHdr = document.createElement('div');
+      secHdr.className = 'wt-sec-hdr';
+      secHdr.innerHTML = `
+        <span class="wt-sec-title">${isToday ? 'Today' : dayLabel} · ${_fmtDate(today)}</span>
+        <button class="wt-sec-action" id="wt-add-shift">+ Shift</button>`;
+      w.appendChild(secHdr);
 
-    todayShifts.reverse();
-    if (todayShifts.length === 0) {
-      const emp = document.createElement('div');
-      emp.className = 'wt-empty';
-      emp.innerHTML = `<strong>No shifts yet</strong>${locs.length === 0 ? 'Add a location in Settings first.' : 'Tap Clock In or + Shift to start.'}`;
-      w.appendChild(emp);
-    } else {
-      todayShifts.forEach(s => w.appendChild(_ShiftCard(s)));
+      todayShifts.reverse();
+      if (todayShifts.length === 0) {
+        const emp = document.createElement('div');
+        emp.className = 'wt-empty';
+        emp.innerHTML = `<strong>No shifts yet</strong>${locs.length === 0 ? 'Add a location in Settings first.' : 'Tap Clock In or + Shift to start.'}`;
+        w.appendChild(emp);
+      } else {
+        todayShifts.forEach(s => w.appendChild(_ShiftCard(s)));
+      }
     }
 
     const acts = document.createElement('div');
