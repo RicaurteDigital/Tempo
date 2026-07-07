@@ -740,3 +740,10 @@ input:focus {
   user-select: text;
   -webkit-user-select: text;
 }
+.wt-scroll-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.wt-scroll-hide::-webkit-scrollbar {
+  display: none;
+}

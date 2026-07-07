@@ -1446,7 +1446,7 @@ const WorkTracker = (() => {
         <div style="font-size:18px;font-weight:800">Stats</div>
         <div style="width:36px"></div>
       </div>
-      <div id="wt-stats-pills" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px">
+      <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px">
         ${['7D','30D','3M','6M','1A','Year','Custom'].map(p =>
           `<button class="wt-stats-pill" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
