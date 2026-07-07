@@ -213,8 +213,95 @@ const StatsRules = (() => {
     return { perLocation, totals, positionBreakdown, startDate, endDate };
   }
 
+  // Per-shift earnings using the same simple straight-rate math ShiftCard already shows
+  // (hours × rate, no OT premium) — kept consistent with how individual shifts display
+  // elsewhere, rather than trying to attribute weekly OT premium to a single day.
+  function _dayEarningsMap(shifts, feePercent) {
+    const byDate = {};
+    shifts.forEach(s => {
+      if (!byDate[s.date]) byDate[s.date] = 0;
+      const hrs = WTRules.shiftHours(s);
+      const cut = _myTipCut(s, feePercent);
+      byDate[s.date] += hrs * (s.hourlyRate || NYC_MIN_WAGE) + cut.cc + cut.cash;
+    });
+    return byDate;
+  }
+
+  // Earnings over time, bucketed daily for ranges up to a month, or weekly for longer
+  // ranges so a chart never has to plot more than ~52 points. Every bucket in range is
+  // included (even zero-earning ones) so the line stays continuous, not just connect-the-dots
+  // between worked days.
+  function timeSeries(startDate, endDate) {
+    const shifts = WTDb.getShiftsInRange(startDate, endDate);
+    const tipSettings = WTDb.getTipSettings();
+    const feePercent = tipSettings.processingFeePercent || 3;
+    const rangeStart = new Date(startDate + 'T12:00:00');
+    const rangeEnd = new Date(endDate + 'T12:00:00');
+    const totalDays = Math.round((rangeEnd - rangeStart) / 86400000) + 1;
+    const useWeekly = totalDays > 31;
+    const byDate = _dayEarningsMap(shifts, feePercent);
+
+    if (!useWeekly) {
+      const points = [];
+      for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+        const ds = _ds(d);
+        points.push({ date: ds, total: byDate[ds] || 0 });
+      }
+      return { points, bucketType: 'day' };
+    } else {
+      const byWeek = {};
+      Object.keys(byDate).forEach(ds => {
+        const wsKey = _ds(getWeekStart(new Date(ds + 'T12:00:00')));
+        byWeek[wsKey] = (byWeek[wsKey] || 0) + byDate[ds];
+      });
+      const points = [];
+      let wsIter = getWeekStart(new Date(rangeStart));
+      while (wsIter <= rangeEnd) {
+        const key = _ds(wsIter);
+        points.push({ date: key, total: byWeek[key] || 0 });
+        wsIter = new Date(wsIter);
+        wsIter.setDate(wsIter.getDate() + 7);
+      }
+      return { points, bucketType: 'week' };
+    }
+  }
+
+  // Average earnings by day of week (Sun–Sat) within the range — surfaces which days
+  // tend to be worth the most, so "which days should I work" has an actual answer.
+  function dayOfWeekPattern(startDate, endDate) {
+    const shifts = WTDb.getShiftsInRange(startDate, endDate);
+    const tipSettings = WTDb.getTipSettings();
+    const feePercent = tipSettings.processingFeePercent || 3;
+    const byDate = _dayEarningsMap(shifts, feePercent);
+    const dowTotals = [0, 0, 0, 0, 0, 0, 0];
+    const dowCounts = [0, 0, 0, 0, 0, 0, 0];
+    Object.entries(byDate).forEach(([ds, total]) => {
+      const dow = new Date(ds + 'T12:00:00').getDay();
+      dowTotals[dow] += total;
+      dowCounts[dow]++;
+    });
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return dayNames.map((name, i) => ({
+      day: name,
+      avg: dowCounts[i] > 0 ? dowTotals[i] / dowCounts[i] : 0,
+      count: dowCounts[i]
+    }));
+  }
+
+  // Days marked off within the range, broken down by reason — reuses the Day Off feature's
+  // own storage, no new data collected.
+  function daysOffInRange(startDate, endDate) {
+    const all = WTDb.getAllDayOffReasons();
+    const inRange = Object.entries(all).filter(([date]) => date >= startDate && date <= endDate);
+    const byType = {};
+    inRange.forEach(([, reason]) => {
+      byType[reason.type] = (byType[reason.type] || 0) + 1;
+    });
+    return { total: inRange.length, byType };
+  }
+
   return {
     rollingRange, previousPeriod, yearRange, weekRange, activeYears,
-    computeLocationStats, computeAllStats
+    computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange
   };
 })();
