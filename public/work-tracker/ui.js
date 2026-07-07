@@ -3959,11 +3959,11 @@ const WorkTracker = (() => {
           ${DAY_OFF_REASONS.map(r => `
             <button data-do-type="${r.type}" style="text-align:left;background:${existing && existing.type===r.type ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.6)'};border:1px solid ${existing && existing.type===r.type ? '#5E5CE6' : 'transparent'};border-radius:12px;padding:12px 14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:transform .1s"
               onpointerdown="this.style.transform='scale(.97)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${r.label}</button>
+            ${r.type === 'weather' ? `<div id="wt-do-sub" style="display:${existing && existing.type==='weather' ? 'flex' : 'none'};gap:8px;flex-wrap:wrap"></div>` : ''}
+            ${r.type === 'custom' ? `<div id="wt-do-note-wrap" style="display:${existing && existing.type==='custom' ? 'block' : 'none'}">
+              <input id="wt-do-note" class="wt-input" type="text" placeholder="What happened?" value="${existing && existing.note ? existing.note : ''}" onclick="this.select()" onfocus="this.select()">
+            </div>` : ''}
           `).join('')}
-        </div>
-        <div id="wt-do-sub" style="display:${existing && existing.type==='weather' ? 'flex' : 'none'};gap:8px;flex-wrap:wrap;margin-top:10px"></div>
-        <div id="wt-do-note-wrap" style="display:${existing && existing.type==='custom' ? 'block' : 'none'};margin-top:10px">
-          <input id="wt-do-note" class="wt-input" type="text" placeholder="What happened?" value="${existing && existing.note ? existing.note : ''}" onclick="this.select()" onfocus="this.select()">
         </div>
         <div class="wt-modal-actions" style="margin-top:20px">
           <button class="wt-btn wt-btn-secondary" id="wt-do-cancel">Cancel</button>
