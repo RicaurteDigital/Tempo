@@ -242,22 +242,57 @@ const WTRules = (() => {
     };
   }
 
+  const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  // Single source of truth for "which pay period does this date belong to" — returns that
+  // period's start date as a string. Weekly locations bucket one date per week (unchanged
+  // behavior, byte-identical to the old logic). Biweekly needs an explicit anchor (a known
+  // past pay-period start) to fix the 2-week parity; without one it falls back to weekly so
+  // it never silently guesses wrong. Semimonthly splits each month at two configurable dates
+  // (default the 1st and 16th, i.e. 1–15 and 16–end).
+  function payPeriodStart(date, location, settings) {
+    const period = (location && location.payPeriod) || (settings && settings.payPeriod) || 'weekly';
+    if (period === 'biweekly' && location && location.biweeklyAnchor) {
+      const anchorStart = getWeekStart(new Date(location.biweeklyAnchor + 'T12:00:00'));
+      const thisStart = getWeekStart(date);
+      const periodIdx = Math.floor(Math.round((thisStart - anchorStart) / 604800000) / 2);
+      const result = new Date(anchorStart);
+      result.setDate(result.getDate() + periodIdx * 14);
+      return _ds(result);
+    }
+    if (period === 'semimonthly') {
+      const [c1, c2] = (location && location.semimonthlyDates) || [1, 16];
+      const d = date.getDate();
+      if (d < c1) return _ds(new Date(date.getFullYear(), date.getMonth() - 1, c2));
+      return _ds(new Date(date.getFullYear(), date.getMonth(), d < c2 ? c1 : c2));
+    }
+    return _ds(getWeekStart(date)); // weekly, event, custom, or biweekly-without-anchor
+  }
+
+  // Converts a fixed salary into what a single pay period is worth. Hours still get logged
+  // for the person's own record, but pay for a salaried location comes from here, not
+  // hours × rate.
+  function salaryPerPeriod(salaryAmount, salaryPeriod, payPeriod) {
+    const annual = (parseFloat(salaryAmount) || 0) * (salaryPeriod === 'monthly' ? 12 : 1);
+    return annual / (payPeriod === 'biweekly' ? 26 : payPeriod === 'semimonthly' ? 24 : 52);
+  }
+
   function getPayDate(weekStart, settings, location) {
-    if (!settings || settings.payPeriod === 'event') return 'Same day (event)';
-    if (settings.payPeriod === 'custom' && settings.customPayDate) {
+    if (!settings) return 'Same day (event)';
+    const payPeriod = (location && location.payPeriod) || settings.payPeriod || 'weekly';
+    if (payPeriod === 'event') return 'Same day (event)';
+    if (payPeriod === 'custom' && settings.customPayDate) {
       return new Date(settings.customPayDate).toLocaleDateString('en-US',
         { weekday: 'long', month: 'short', day: 'numeric' });
     }
     // Use location-specific payDay if set, otherwise fall back to global setting (default: Friday=5)
     const targetDay = (location && location.payDayOfWeek) || settings.payDayOfWeek || 5;
-    const ws = new Date(weekStart);
-    ws.setDate(ws.getDate() + 7);
-    const day = ws.getDay();
-    // Convert 1-7 (Mon-Sun) to 0-6 (Sun-Sat) for JS Date
     const targetJS = targetDay === 7 ? 0 : targetDay;
-    const daysTo = (targetJS - day + 7) % 7;
-    ws.setDate(ws.getDate() + daysTo);
-    return ws.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const curStart = payPeriodStart(weekStart, location, settings);
+    const d = new Date(curStart + 'T12:00:00');
+    do { d.setDate(d.getDate() + 1); } while (payPeriodStart(d, location, settings) === curStart);
+    d.setDate(d.getDate() + (targetJS - d.getDay() + 7) % 7);
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   }
 
   function paymentAmounts(payment) {
@@ -285,6 +320,6 @@ const WTRules = (() => {
   return {
     entryHours, shiftHours, shiftEarnings, weeklyPay,
     dailySummary, fmtHours, fmtMoney, getPayDate, getRecentWeeks,
-    estimateNet, paymentAmounts
+    estimateNet, paymentAmounts, payPeriodStart, salaryPerPeriod
   };
 })();
