@@ -95,31 +95,58 @@ const WTDb = (() => {
     localStorage.removeItem('wt_tips_' + shiftId);
   }
 
-  function getDayOffReason(date) {
+  // Day Off reasons are scoped per work profile (being off from one job says nothing about
+  // another). wt_dayoff (v1) was flat by date only, predating work profiles — migrated once,
+  // untouched, into wt_dayoff_v2 under 'restaurant' (the app's original, sole profile) so no
+  // existing record is ever lost or silently reinterpreted.
+  const DAYOFF_KEY_V1 = 'wt_dayoff';
+  const DAYOFF_KEY_V2 = 'wt_dayoff_v2';
+
+  function _migrateDayOffToV2() {
     try {
-      const all = JSON.parse(localStorage.getItem('wt_dayoff') || '{}');
-      return all[date] || null;
+      if (localStorage.getItem(DAYOFF_KEY_V2)) return;
+      const old = JSON.parse(localStorage.getItem(DAYOFF_KEY_V1) || '{}');
+      localStorage.setItem(DAYOFF_KEY_V2, JSON.stringify(Object.keys(old).length ? { restaurant: old } : {}));
+    } catch {}
+  }
+
+  function getDayOffReason(date, profile) {
+    _migrateDayOffToV2();
+    const p = profile || 'restaurant';
+    try {
+      const all = JSON.parse(localStorage.getItem(DAYOFF_KEY_V2) || '{}');
+      return (all[p] && all[p][date]) || null;
     } catch { return null; }
   }
 
-  function saveDayOffReason(date, data) {
+  function saveDayOffReason(date, profile, data) {
+    _migrateDayOffToV2();
+    const p = profile || 'restaurant';
     try {
-      const all = JSON.parse(localStorage.getItem('wt_dayoff') || '{}');
-      all[date] = data;
-      localStorage.setItem('wt_dayoff', JSON.stringify(all));
+      const all = JSON.parse(localStorage.getItem(DAYOFF_KEY_V2) || '{}');
+      if (!all[p]) all[p] = {};
+      all[p][date] = data;
+      localStorage.setItem(DAYOFF_KEY_V2, JSON.stringify(all));
     } catch {}
   }
 
-  function deleteDayOffReason(date) {
+  function deleteDayOffReason(date, profile) {
+    _migrateDayOffToV2();
+    const p = profile || 'restaurant';
     try {
-      const all = JSON.parse(localStorage.getItem('wt_dayoff') || '{}');
-      delete all[date];
-      localStorage.setItem('wt_dayoff', JSON.stringify(all));
+      const all = JSON.parse(localStorage.getItem(DAYOFF_KEY_V2) || '{}');
+      if (all[p]) delete all[p][date];
+      localStorage.setItem(DAYOFF_KEY_V2, JSON.stringify(all));
     } catch {}
   }
 
-  function getAllDayOffReasons() {
-    try { return JSON.parse(localStorage.getItem('wt_dayoff') || '{}'); } catch { return {}; }
+  function getAllDayOffReasons(profile) {
+    _migrateDayOffToV2();
+    const p = profile || 'restaurant';
+    try {
+      const all = JSON.parse(localStorage.getItem(DAYOFF_KEY_V2) || '{}');
+      return all[p] || {};
+    } catch { return {}; }
   }
 
   async function deletePhoto(shiftId, photoKey) {
