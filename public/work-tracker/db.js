@@ -3,6 +3,13 @@
 // Photos also auto-download to phone gallery as backup
 
 const WTDb = (() => {
+  // KEY VERSIONING CONVENTION: every new localStorage key gets a "_vN" suffix so a future
+  // incompatible schema change can move to "_vN+1" and migrate, without ever touching or
+  // renaming a key real user data already lives under. SHIFTS/LOCATIONS/SETTINGS/ROSTER/
+  // PAYMENTS already follow this. wt_tip_settings, wt_tips_<shiftId>, wt_dayoff, and
+  // wt_tax_settings predate the convention and are intentionally left unrenamed — renaming
+  // them now would require a data migration for zero functional benefit, purely cosmetic
+  // risk for real user data. Any brand-new key going forward should use "_v1" from the start.
   const SHIFTS_KEY = 'wt_shifts_v1';
   const LOCATIONS_KEY = 'wt_locations_v1';
   const SETTINGS_KEY = 'wt_settings_v1';
