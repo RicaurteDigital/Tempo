@@ -92,6 +92,11 @@ const WorkTracker = (() => {
       : TipRules.calculatePayouts(creditCardTotal || 0, cashTotal || 0, workers, feePercent, manualFee);
   }
 
+  // A worker's exact cash share before flooring — reused wherever cash rows are built.
+  function _exactCashShare(p) {
+    return typeof p.cashExact === 'number' ? p.cashExact : (p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0));
+  }
+
   // Each location can set its own CC processing fee %; falls back to the global
   // Tip Pool Settings default when a location hasn't set one.
   function _getLocationFeePercent(locationId) {
@@ -1522,7 +1527,8 @@ const WorkTracker = (() => {
 
     function loadRange(start, end, label) {
       rangeLabelEl.textContent = `${label} · ${fmtStatDate(start)} → ${fmtStatDate(end)}`;
-      const stats = StatsRules.computeAllStats(start, end);
+      const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
+      const stats = StatsRules.computeAllStats(start, end, currentProfile);
       resultsEl.innerHTML = _renderStatsResults(stats);
       resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
         el.onclick = () => _go('day', { date: el.dataset.chartDate });
@@ -1608,15 +1614,16 @@ const WorkTracker = (() => {
     }
     const t = stats.totals;
     const colors = ['#5E5CE6', '#30D158', '#64D2FF', '#FF9F0A', '#FF453A', '#BF5AF2'];
+    const statsProfile = WTDb.getSettings().workProfile || 'restaurant';
 
-    const ts = StatsRules.timeSeries(stats.startDate, stats.endDate);
+    const ts = StatsRules.timeSeries(stats.startDate, stats.endDate, statsProfile);
     const lineChartCard = `
       <div class="wt-settings-block" style="margin-bottom:16px">
         <div class="wt-settings-title">Earnings over time</div>
         ${_svgLineChart(ts.points)}
       </div>`;
 
-    const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate)
+    const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile)
       .filter(d => d.count > 0)
       .sort((a, b) => b.avg - a.avg);
     const dowCard = dowData.length > 0 ? `
@@ -2855,7 +2862,12 @@ const WorkTracker = (() => {
         entries
       });
       ov.remove();
-      _showTipPool(shiftId);
+      const profileDef = WORK_PROFILES[currentProfile] || WORK_PROFILES.restaurant;
+      if (profileDef.hasTips) {
+        _showTipPool(shiftId);
+      } else {
+        _go('day', { date: dateStr });
+      }
     };
   }
 
@@ -3363,7 +3375,7 @@ const WorkTracker = (() => {
 
       // Single source of truth for cash display — reused by render + balance check below
       const cashRows = result.payouts.map(p => {
-        const exactCashShare = typeof p.cashExact === 'number' ? p.cashExact : (p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0));
+        const exactCashShare = _exactCashShare(p);
         const cashShare = saved.cashManualAmounts && saved.cashManualAmounts[p.name] !== undefined
           ? saved.cashManualAmounts[p.name]
           : Math.floor(exactCashShare);
@@ -3741,7 +3753,7 @@ const WorkTracker = (() => {
           const name = btn.dataset.cashMinus;
           const p = result.payouts.find(p => p.name === name);
           if (!p) return;
-          const exactCashShare = typeof p.cashExact === 'number' ? p.cashExact : (p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0));
+          const exactCashShare = _exactCashShare(p);
           const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
           saved.cashManualAmounts[name] = Math.max(0, cur - 1);
           render();
@@ -3753,7 +3765,7 @@ const WorkTracker = (() => {
           const name = btn.dataset.cashPlus;
           const p = result.payouts.find(p => p.name === name);
           if (!p) return;
-          const exactCashShare = typeof p.cashExact === 'number' ? p.cashExact : (p.amount - (p.ccAmount !== undefined ? p.ccAmount : 0));
+          const exactCashShare = _exactCashShare(p);
           const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
           saved.cashManualAmounts[name] = cur + 1;
           render();
