@@ -105,6 +105,19 @@ const WorkTracker = (() => {
     return WTDb.getTipSettings().processingFeePercent || 3;
   }
 
+  // This shift's own tip cut (CC + cash), for reports/exports. Reuses the same engine as
+  // everywhere else so a report never disagrees with what the Tip Pool itself shows.
+  function _shiftTipCut(shift) {
+    const t = WTDb.getTipsForShift(shift.id);
+    const tWorkers = t ? (t.workers || []) : [];
+    const meIdx = tWorkers.findIndex(w => w.isMe);
+    if (!t || meIdx < 0) return { cc: 0, cash: 0 };
+    const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(shift.locationId), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
+    const mp = result.payouts[meIdx];
+    const cc = mp.ccAmount || 0;
+    return { cc, cash: typeof mp.cashAmount === 'number' ? mp.cashAmount : (mp.amount - cc) };
+  }
+
   function _Home() {
     const realToday = _today();
     const today = _date || realToday;
@@ -1354,6 +1367,8 @@ const WorkTracker = (() => {
   function _Preview() {
     const w = document.createElement('div');
     w.className = 'wt-screen';
+    const previewProfile = WTDb.getSettings().workProfile || 'restaurant';
+    const previewLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === previewProfile);
     w.innerHTML = `
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
@@ -1366,7 +1381,18 @@ const WorkTracker = (() => {
         <option value="quarter">This Quarter</option>
         <option value="semester">This Semester</option>
         <option value="year">This Year</option>
+        <option value="all">All Time</option>
+        <option value="custom">Custom Range</option>
       </select>
+      <div id="wt-custom-wrap" style="display:none;gap:8px;margin:0 16px 10px">
+        <input type="date" class="wt-input" id="wt-custom-start" style="flex:1">
+        <input type="date" class="wt-input" id="wt-custom-end" style="flex:1">
+      </div>
+      ${previewLocs.length > 1 ? `
+      <select class="wt-range-sel" id="wt-loc-filter">
+        <option value="">All Locations</option>
+        ${previewLocs.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+      </select>` : ''}
       <div class="wt-table-wrap" id="wt-tbl"></div>
       <div class="wt-actions">
         <button class="wt-btn wt-btn-secondary" id="wt-backup">💾 Backup</button>
@@ -1374,9 +1400,30 @@ const WorkTracker = (() => {
       </div>`;
     _root.appendChild(w);
     const tbl = w.querySelector('#wt-tbl');
+    const locFilterEl = w.querySelector('#wt-loc-filter');
+
+    function currentParams() {
+      const range = w.querySelector('#wt-range').value;
+      const cs = w.querySelector('#wt-custom-start').value;
+      const ce = w.querySelector('#wt-custom-end').value;
+      const locId = locFilterEl ? locFilterEl.value : '';
+      return { range, cs, ce, locId };
+    }
+    function refresh() {
+      const { range, cs, ce, locId } = currentParams();
+      if (range === 'custom' && (!cs || !ce)) { tbl.innerHTML = '<div class="wt-empty"><strong>Pick both dates</strong>Choose a start and end date.</div>'; return; }
+      _buildTable(range, tbl, cs, ce, locId);
+    }
+
     _buildTable('week', tbl);
     w.querySelector('#wt-back').onclick = () => _go('home');
-    w.querySelector('#wt-range').onchange = function() { _buildTable(this.value, tbl); };
+    w.querySelector('#wt-range').onchange = function() {
+      w.querySelector('#wt-custom-wrap').style.display = this.value === 'custom' ? 'flex' : 'none';
+      refresh();
+    };
+    w.querySelector('#wt-custom-start').onchange = refresh;
+    w.querySelector('#wt-custom-end').onchange = refresh;
+    if (locFilterEl) locFilterEl.onchange = refresh;
     w.querySelector('#wt-backup').onclick = () => {
       const b = new Blob([WTDb.exportData()], { type: 'application/json' });
       const a = document.createElement('a');
@@ -1384,14 +1431,22 @@ const WorkTracker = (() => {
       a.download = `Tempo_WorkBackup_${_today()}.json`;
       a.click();
     };
-    w.querySelector('#wt-pdf').onclick = () => _exportPDF(w.querySelector('#wt-range').value);
+    w.querySelector('#wt-pdf').onclick = () => {
+      const { range, cs, ce, locId } = currentParams();
+      if (range === 'custom' && (!cs || !ce)) { alert('Pick both a start and end date.'); return; }
+      _exportPDF(range, cs, ce, locId);
+    };
   }
 
-  function _rangeShifts(range) {
+  function _rangeShifts(range, customStart, customEnd) {
     const now = new Date();
-    let start;
-    const end = new Date(now); end.setHours(23,59,59,999);
-    if (range === 'week') start = getWeekStart(now);
+    let start, end = new Date(now); end.setHours(23,59,59,999);
+    if (range === 'custom' && customStart && customEnd) {
+      start = new Date(customStart + 'T00:00:00');
+      end = new Date(customEnd + 'T23:59:59');
+    }
+    else if (range === 'all') start = new Date(2000, 0, 1);
+    else if (range === 'week') start = getWeekStart(now);
     else if (range === 'month') start = new Date(now.getFullYear(), now.getMonth(), 1);
     else if (range === 'quarter') start = new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3, 1);
     else if (range === 'semester') start = new Date(now.getFullYear(), now.getMonth() < 6 ? 0 : 6, 1);
@@ -1404,18 +1459,19 @@ const WorkTracker = (() => {
       .sort((a,b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
   }
 
-  function _buildTable(range, container) {
-    const shifts = _rangeShifts(range);
+  function _buildTable(range, container, customStart, customEnd, filterLocId) {
+    let shifts = _rangeShifts(range, customStart, customEnd);
+    if (filterLocId) shifts = shifts.filter(s => s.locationId === filterLocId);
     if (!shifts.length) { container.innerHTML = '<div class="wt-empty"><strong>No data</strong>No shifts in this period.</div>'; return; }
     const byDate = {};
     shifts.forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s); });
-    let rows = '', gHrs = 0;
+    let rows = '', gHrs = 0, gPay = 0, gCC = 0, gCash = 0;
     Object.entries(byDate).forEach(([date, ds]) => {
-      const daySumm = WTRules.dailySummary(ds);
-      let first = true;
+      let first = true, dHrs = 0, dPay = 0, dCC = 0, dCash = 0;
       ds.forEach(shift => {
         const hrs = WTRules.shiftHours(shift);
         const pay = hrs * (shift.hourlyRate || NYC_MIN_WAGE);
+        const cut = _shiftTipCut(shift);
         const ins = (shift.entries||[]).map(e => _fmtTime(e.clockIn)).join('<br>');
         const outs = (shift.entries||[]).map(e => e.clockOut ? _fmtTime(e.clockOut) : '—').join('<br>');
         rows += `<tr>
@@ -1423,21 +1479,22 @@ const WorkTracker = (() => {
           <td>${shift.locationName}</td><td>${shift.shiftType}</td>
           <td class="wt-td-mono">${ins}</td><td class="wt-td-mono">${outs}</td>
           <td class="wt-td-num">${WTRules.fmtHours(hrs)}</td>
-          <td class="wt-td-num">$${(shift.hourlyRate||NYC_MIN_WAGE).toFixed(2)}</td>
-          <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(pay)}</td>
+          <td class="wt-td-num">${WTRules.fmtMoney(pay)}</td>
+          <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(cut.cc)}</td>
+          <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(cut.cash)}</td>
         </tr>`;
-        first = false; gHrs += hrs;
+        first = false; dHrs += hrs; dPay += pay; dCC += cut.cc; dCash += cut.cash;
       });
       rows += `<tr class="wt-row-sub">
         <td colspan="5" class="wt-td-right">Day Total</td>
-        <td class="wt-td-num">${WTRules.fmtHours(daySumm.totalHrs)}</td>
-        <td></td><td class="wt-td-num wt-td-green">${WTRules.fmtMoney(daySumm.totalEarnings)}</td>
+        <td class="wt-td-num">${WTRules.fmtMoney(dPay)}</td>
+        <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(dCC)}</td>
+        <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(dCash)}</td>
       </tr>`;
+      gHrs += dHrs; gPay += dPay; gCC += dCC; gCash += dCash;
     });
-    const wp = WTRules.weeklyPay(shifts);
-    if (wp.isOvertime) rows += `<tr class="wt-row-ot"><td colspan="8">⚠️ OT: ${WTRules.fmtHours(wp.overtimeHours)} × 1.5 = +${WTRules.fmtMoney(wp.overtimePay)}</td></tr>`;
-    rows += `<tr class="wt-row-total"><td colspan="5"><strong>TOTAL</strong></td><td class="wt-td-num"><strong>${WTRules.fmtHours(gHrs)}</strong></td><td></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(wp.total)}</strong></td></tr>`;
-    container.innerHTML = `<table class="wt-table"><thead><tr><th>Date</th><th>Location</th><th>Shift</th><th>In</th><th>Out</th><th>Hrs</th><th>Rate</th><th>Pay</th></tr></thead><tbody>${rows}</tbody></table>`;
+    rows += `<tr class="wt-row-total"><td colspan="4"><strong>TOTAL</strong></td><td class="wt-td-num"><strong>${WTRules.fmtHours(gHrs)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gPay)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gCC)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gCash)}</strong></td></tr>`;
+    container.innerHTML = `<table class="wt-table"><thead><tr><th>Date</th><th>Location</th><th>Shift</th><th>In</th><th>Out</th><th>Hrs</th><th>Pay</th><th>CC Tips</th><th>Cash Tips</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   function _svgBarRow(items, fmtFn) {
@@ -3066,7 +3123,7 @@ const WorkTracker = (() => {
     input.click();
   }
 
-  async function _exportPDF(range) {
+  async function _exportPDF(range, customStart, customEnd, filterLocId) {
     if (!window.jspdf) {
       await new Promise((res, rej) => {
         const s1 = document.createElement('script');
@@ -3081,45 +3138,78 @@ const WorkTracker = (() => {
       });
     }
     const { jsPDF } = window.jspdf;
-    const shifts = _rangeShifts(range);
-    const pay = WTRules.weeklyPay(shifts);
+    let shifts = _rangeShifts(range, customStart, customEnd);
+    if (filterLocId) shifts = shifts.filter(s => s.locationId === filterLocId);
+    if (!shifts.length) { alert('No shifts in this period.'); return; }
+
+    const PURPLE = [94, 92, 230], DARK = [30, 30, 32], GRAY = [120, 120, 120], LIGHT = [244, 244, 247];
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    doc.setFillColor(0,0,0); doc.rect(0,0,297,34,'F');
-    doc.setTextColor(255,255,255); doc.setFontSize(20); doc.setFont(undefined,'bold');
-    doc.text('TEMPO — Work Log', 14, 14);
-    doc.setFontSize(10); doc.setFont(undefined,'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}`, 14, 22);
-    doc.text(`Period: ${range}  |  Hours: ${WTRules.fmtHours(pay.totalHours)}  |  Pay: ${WTRules.fmtMoney(pay.total)}${pay.isOvertime?' (OT included)':''}`, 14, 29);
-    const byDate = {};
-    shifts.forEach(s => { if(!byDate[s.date]) byDate[s.date]=[]; byDate[s.date].push(s); });
-    const body = [];
-    Object.entries(byDate).forEach(([date, ds]) => {
-      ds.forEach(shift => {
-        const hrs = WTRules.shiftHours(shift);
-        const earn = hrs * (shift.hourlyRate||NYC_MIN_WAGE);
-        body.push([_fmtDate(date), shift.locationName||'—', shift.shiftType||'—',
-          (shift.entries||[]).map(e=>_fmtTime(e.clockIn)).join(', '),
-          (shift.entries||[]).map(e=>e.clockOut?_fmtTime(e.clockOut):'—').join(', '),
-          WTRules.fmtHours(hrs), `$${(shift.hourlyRate||NYC_MIN_WAGE).toFixed(2)}`, WTRules.fmtMoney(earn)]);
+    const pageW = doc.internal.pageSize.width, pageH = doc.internal.pageSize.height;
+
+    doc.setFillColor(...PURPLE); doc.rect(0, 0, pageW, 3, 'F');
+    doc.setTextColor(...DARK); doc.setFontSize(20); doc.setFont(undefined, 'bold');
+    doc.text('Tempo — Work Report', 14, 16);
+    doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.setTextColor(...GRAY);
+    const rangeLabel = range === 'custom' ? `${customStart} → ${customEnd}` : range === 'all' ? 'All Time' : range.charAt(0).toUpperCase() + range.slice(1);
+    doc.text(`Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}  ·  Period: ${rangeLabel}`, 14, 23);
+
+    const byLoc = {};
+    shifts.forEach(s => {
+      const key = s.locationId || '—';
+      if (!byLoc[key]) byLoc[key] = { name: s.locationName || '—', shifts: [] };
+      byLoc[key].shifts.push(s);
+    });
+
+    let grandHrs = 0, grandPay = 0, grandCC = 0, grandCash = 0, y = 30;
+    Object.values(byLoc).forEach(loc => {
+      if (y > pageH - 40) { doc.addPage(); y = 16; }
+      doc.setFillColor(...LIGHT); doc.rect(14, y, pageW - 28, 8, 'F');
+      doc.setTextColor(...DARK); doc.setFontSize(12); doc.setFont(undefined, 'bold');
+      doc.text(loc.name, 17, y + 5.5);
+      y += 10;
+
+      const byDate = {};
+      loc.shifts.forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s); });
+      const body = [];
+      let locHrs = 0, locPay = 0, locCC = 0, locCash = 0;
+      Object.entries(byDate).forEach(([date, ds]) => {
+        ds.forEach(shift => {
+          const hrs = WTRules.shiftHours(shift);
+          const pay = hrs * (shift.hourlyRate || NYC_MIN_WAGE);
+          const cut = _shiftTipCut(shift);
+          body.push([_fmtDate(date), shift.shiftType || '—',
+            (shift.entries || []).map(e => _fmtTime(e.clockIn)).join(', ') || '—',
+            (shift.entries || []).map(e => e.clockOut ? _fmtTime(e.clockOut) : '—').join(', '),
+            WTRules.fmtHours(hrs), WTRules.fmtMoney(pay), WTRules.fmtMoney(cut.cc), WTRules.fmtMoney(cut.cash),
+            WTRules.fmtMoney(pay + cut.cc + cut.cash)]);
+          locHrs += hrs; locPay += pay; locCC += cut.cc; locCash += cut.cash;
+        });
       });
-      const ds2 = WTRules.dailySummary(ds);
-      body.push(['','','','','Day Total →', WTRules.fmtHours(ds2.totalHrs),'', WTRules.fmtMoney(ds2.totalEarnings)]);
+      body.push(['', '', '', 'Location Total →', WTRules.fmtHours(locHrs), WTRules.fmtMoney(locPay), WTRules.fmtMoney(locCC), WTRules.fmtMoney(locCash), WTRules.fmtMoney(locPay + locCC + locCash)]);
+      grandHrs += locHrs; grandPay += locPay; grandCC += locCC; grandCash += locCash;
+
+      doc.autoTable({
+        startY: y,
+        head: [['Date', 'Shift', 'In', 'Out', 'Hours', 'Hourly Pay', 'CC Tips', 'Cash Tips', 'Total']],
+        body, theme: 'grid',
+        headStyles: { fillColor: PURPLE, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        styles: { fontSize: 9, cellPadding: 2.5, textColor: DARK },
+        didParseCell: d => {
+          if (d.row.raw[3] === 'Location Total →') { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = LIGHT; }
+        }
+      });
+      y = doc.lastAutoTable.finalY + 10;
     });
-    body.push(['','','','','TOTAL', WTRules.fmtHours(pay.totalHours),'', WTRules.fmtMoney(pay.total)]);
-    doc.autoTable({
-      startY: 38,
-      head: [['Date','Location','Shift','Clock In(s)','Clock Out(s)','Hours','Rate','Pay']],
-      body, theme: 'grid',
-      headStyles: { fillColor:[20,20,20], textColor:200, fontStyle:'bold', fontSize:9 },
-      styles: { fontSize:9, cellPadding:2.5 },
-      didParseCell: d => {
-        if (d.row.raw[4]==='Day Total →') { d.cell.styles.fontStyle='bold'; d.cell.styles.fillColor=[240,240,240]; }
-        if (d.row.raw[4]==='TOTAL') { d.cell.styles.fontStyle='bold'; d.cell.styles.fillColor=[0,0,0]; d.cell.styles.textColor=255; }
-      }
-    });
-    doc.setFontSize(8); doc.setTextColor(150);
-    doc.text('Generated by Tempo · Personal reference only · Not an official payroll document', 14, doc.lastAutoTable.finalY + 8);
-    doc.save(`Tempo_Work_${range}_${_today()}.pdf`);
+
+    if (y > pageH - 25) { doc.addPage(); y = 16; }
+    doc.setFillColor(...PURPLE); doc.rect(14, y, pageW - 28, 12, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont(undefined, 'bold');
+    doc.text(`GRAND TOTAL  —  ${WTRules.fmtHours(grandHrs)}  ·  Hourly ${WTRules.fmtMoney(grandPay)}  ·  CC Tips ${WTRules.fmtMoney(grandCC)}  ·  Cash Tips ${WTRules.fmtMoney(grandCash)}  ·  ${WTRules.fmtMoney(grandPay + grandCC + grandCash)}`, 17, y + 8);
+
+    doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text('Generated by Tempo · Personal reference only · Not an official payroll document', 14, pageH - 8);
+    const fname = range === 'custom' ? `${customStart}_to_${customEnd}` : range;
+    doc.save(`Tempo_Work_${fname}_${_today()}.pdf`);
   }
 
   function _viewOrReplacePhoto(shiftId, photoKey, currentBase64) {
