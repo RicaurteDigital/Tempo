@@ -287,8 +287,8 @@ const StatsRules = (() => {
 
   // Days marked off within the range, broken down by reason — reuses the Day Off feature's
   // own storage, no new data collected.
-  function daysOffInRange(startDate, endDate) {
-    const all = WTDb.getAllDayOffReasons();
+  function daysOffInRange(startDate, endDate, workProfile) {
+    const all = WTDb.getAllDayOffReasons(workProfile || 'restaurant');
     const inRange = Object.entries(all).filter(([date]) => date >= startDate && date <= endDate);
     const byType = {};
     inRange.forEach(([, reason]) => {
