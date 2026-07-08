@@ -4450,6 +4450,24 @@ const WorkTracker = (() => {
             onpointerup="this.style.background='none';this.style.color='#98989D'"
             onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
         </div>
+        <label class="wt-modal-label">Pay Type</label>
+        <select class="wt-input" id="wt-el-paytype">
+          <option value="hourly" ${(loc.payType||'hourly')==='hourly'?'selected':''}>Hourly</option>
+          <option value="salary" ${loc.payType==='salary'?'selected':''}>Fixed Salary</option>
+        </select>
+        <div id="wt-el-salary-wrap" style="display:${loc.payType==='salary'?'block':'none'}">
+          <label class="wt-modal-label">Salary Amount</label>
+          <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:4px">
+            <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+            <input id="wt-el-salary-amt" type="text" inputmode="decimal" value="${loc.salaryAmount || ''}"
+              style="flex:1;background:none;border:none;color:#fff;font-size:16px;font-weight:700;padding:12px 0;outline:none"
+              onclick="this.select()" onfocus="this.select()">
+          </div>
+          <select class="wt-input" id="wt-el-salary-period">
+            <option value="annual" ${(loc.salaryPeriod||'annual')==='annual'?'selected':''}>Per year</option>
+            <option value="monthly" ${loc.salaryPeriod==='monthly'?'selected':''}>Per month</option>
+          </select>
+        </div>
         <label class="wt-modal-label">Credit card fee % <span style="font-size:11px;color:#636366;font-weight:400">(optional — blank uses the ${globalFeePercent}% default from Settings)</span></label>
         <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:4px">
           <input id="wt-el-fee" type="text" inputmode="decimal" placeholder="Default: ${globalFeePercent}%"
@@ -4465,6 +4483,25 @@ const WorkTracker = (() => {
             `<option value="${i+1}" ${loc.payDayOfWeek===(i+1)?'selected':''}>${d}</option>`
           ).join('')}
         </select>
+        <label class="wt-modal-label">Pay Period</label>
+        <select class="wt-input" id="wt-el-payperiod">
+          <option value="" ${!loc.payPeriod?'selected':''}>Same as default</option>
+          <option value="weekly" ${loc.payPeriod==='weekly'?'selected':''}>Weekly</option>
+          <option value="biweekly" ${loc.payPeriod==='biweekly'?'selected':''}>Bi-Weekly</option>
+          <option value="semimonthly" ${loc.payPeriod==='semimonthly'?'selected':''}>Semi-Monthly</option>
+          <option value="event" ${loc.payPeriod==='event'?'selected':''}>Per Event</option>
+        </select>
+        <div id="wt-el-biweekly-wrap" style="display:${loc.payPeriod==='biweekly'?'block':'none'}">
+          <label class="wt-modal-label">Any known past payday <span style="font-size:11px;color:#636366;font-weight:400">(anchors the 2-week cycle)</span></label>
+          <input id="wt-el-biweekly-anchor" class="wt-input" type="date" value="${loc.biweeklyAnchor || ''}">
+        </div>
+        <div id="wt-el-semimonthly-wrap" style="display:${loc.payPeriod==='semimonthly'?'block':'none'}">
+          <label class="wt-modal-label">Split dates <span style="font-size:11px;color:#636366;font-weight:400">(defaults to 1st and 16th)</span></label>
+          <div style="display:flex;gap:8px">
+            <input id="wt-el-semimonthly-c1" class="wt-input" type="text" inputmode="numeric" value="${(loc.semimonthlyDates||[1,16])[0]}" style="text-align:center">
+            <input id="wt-el-semimonthly-c2" class="wt-input" type="text" inputmode="numeric" value="${(loc.semimonthlyDates||[1,16])[1]}" style="text-align:center">
+          </div>
+        </div>
         <label class="wt-modal-label">Color</label>
         <input id="wt-el-color" type="color" value="${loc.color}" style="width:100%;height:44px;border-radius:12px;border:none;cursor:pointer">
         <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#98989D;margin-top:14px;cursor:pointer">
@@ -4521,6 +4558,14 @@ const WorkTracker = (() => {
     ov.querySelectorAll('input').forEach(i => { i.addEventListener('focus', () => i.select()); i.addEventListener('click', () => i.select()); });
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
 
+    ov.querySelector('#wt-el-paytype').onchange = function() {
+      ov.querySelector('#wt-el-salary-wrap').style.display = this.value === 'salary' ? 'block' : 'none';
+    };
+    ov.querySelector('#wt-el-payperiod').onchange = function() {
+      ov.querySelector('#wt-el-biweekly-wrap').style.display = this.value === 'biweekly' ? 'block' : 'none';
+      ov.querySelector('#wt-el-semimonthly-wrap').style.display = this.value === 'semimonthly' ? 'block' : 'none';
+    };
+
     const rateInput = ov.querySelector('#wt-el-rate');
     rateInput.addEventListener('focus', () => rateInput.select());
     rateInput.addEventListener('click', () => rateInput.select());
@@ -4567,6 +4612,34 @@ const WorkTracker = (() => {
       loc.processingFeePercent = feeVal !== '' && !isNaN(parseFloat(feeVal)) ? parseFloat(feeVal) : null;
       const pdVal = ov.querySelector('#wt-el-payday').value;
       loc.payDayOfWeek = pdVal ? parseInt(pdVal) : null;
+
+      loc.payType = ov.querySelector('#wt-el-paytype').value;
+      if (loc.payType === 'salary') {
+        const salaryAmt = parseFloat(ov.querySelector('#wt-el-salary-amt').value.replace(',','.'));
+        if (!salaryAmt || salaryAmt <= 0) { alert('Enter a valid salary amount.'); return; }
+        loc.salaryAmount = salaryAmt;
+        loc.salaryPeriod = ov.querySelector('#wt-el-salary-period').value;
+      } else {
+        loc.salaryAmount = null;
+        loc.salaryPeriod = null;
+      }
+
+      const ppVal = ov.querySelector('#wt-el-payperiod').value;
+      loc.payPeriod = ppVal || null;
+      if (ppVal === 'biweekly') {
+        loc.biweeklyAnchor = ov.querySelector('#wt-el-biweekly-anchor').value || null;
+      } else {
+        loc.biweeklyAnchor = null;
+      }
+      if (ppVal === 'semimonthly') {
+        const c1 = parseInt(ov.querySelector('#wt-el-semimonthly-c1').value) || 1;
+        const c2 = parseInt(ov.querySelector('#wt-el-semimonthly-c2').value) || 16;
+        if (c1 < 1 || c1 > 28 || c2 < 1 || c2 > 28 || c1 >= c2) { alert('Split dates must be two different days, 1–28, in order.'); return; }
+        loc.semimonthlyDates = [c1, c2];
+      } else {
+        loc.semimonthlyDates = null;
+      }
+
       WTDb.saveLocation(loc);
       const s = WTDb.getSettings();
       if (!s.locationSettings) s.locationSettings = {};
