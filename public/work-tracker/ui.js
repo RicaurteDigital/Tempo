@@ -961,7 +961,7 @@ const WorkTracker = (() => {
         ${(() => {
           const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
           const weekLocIds = [...new Set(shifts.map(s => s.locationId).filter(Boolean))];
-          const allLocs = WTDb.getLocations();
+          const allLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === activeProf);
           let weekLocs = allLocs.filter(l => weekLocIds.includes(l.id));
           // No tracked shifts this week — still let the user log a past check manually for any known location
           if (weekLocs.length === 0) weekLocs = allLocs.filter(l => locStartMs[l.id] !== null && locStartMs[l.id] <= ws.getTime());
@@ -1135,7 +1135,7 @@ const WorkTracker = (() => {
               detailEl.style.cssText = 'display:none;background:rgba(28,28,30,0.6);border-radius:12px;padding:10px 12px;margin-bottom:6px;font-size:13px';
               
               // Tips data for this day — aggregate all shifts
-              const dayShiftsAll = WTDb.getShiftsForDate(ds);
+              const dayShiftsAll = WTDb.getShiftsForDate(ds).filter(s => (s.workProfile || 'restaurant') === activeProf);
               const shiftsWithTips = dayShiftsAll.filter(s => {
                 const t = WTDb.getTipsForShift(s.id);
                 return t && (t.creditCardTotal > 0 || t.cashTotal > 0);
@@ -1399,7 +1399,8 @@ const WorkTracker = (() => {
     const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const startStr = _ds(start);
     const endStr = _ds(end);
-    return WTDb.getShifts().filter(s => s.date >= startStr && s.date <= endStr)
+    const rangeProfile = WTDb.getSettings().workProfile || 'restaurant';
+    return WTDb.getShifts().filter(s => s.date >= startStr && s.date <= endStr && (s.workProfile || 'restaurant') === rangeProfile)
       .sort((a,b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
   }
 
