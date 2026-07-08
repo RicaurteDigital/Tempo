@@ -3982,7 +3982,7 @@ const WorkTracker = (() => {
       <div class="wt-modal">
         <div class="wt-modal-handle"></div>
         <div class="wt-modal-title">My ${label} Amount</div>
-        <div style="color:#636366;font-size:12px;margin-bottom:14px">Enter what you actually received and your points — we'll work out the total pool.</div>
+        <div style="color:#636366;font-size:12px;margin-bottom:14px">Enter what you actually received and your points — we'll work out the total pool. This is a math estimate from your numbers, not a confirmed count — round it after if that's how your workplace usually does it.</div>
         <label class="wt-modal-label">My amount</label>
         <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin-bottom:14px">
           <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
@@ -4036,9 +4036,10 @@ const WorkTracker = (() => {
       const result = TipRules.reverseFromKnownAmount(amount, points, workers, feePercent, type);
       if (!result) { preview.textContent = ''; lastValidResult = null; return; }
       lastValidResult = result;
-      preview.innerHTML = type === 'cc'
+      preview.innerHTML = (type === 'cc'
         ? `Reconstructed CC total (before fee): <span style="color:#FF9F0A;font-weight:700">$${result.reconstructedGross.toFixed(2)}</span>`
-        : `Reconstructed cash total: <span style="color:#FF9F0A;font-weight:700">$${result.reconstructedGross.toFixed(2)}</span>`;
+        : `Reconstructed cash total: <span style="color:#FF9F0A;font-weight:700">$${result.reconstructedGross.toFixed(2)}</span>`)
+        + `<div style="margin-top:2px">Estimate — you can edit or round it in the field after applying.</div>`;
     }
     ov.querySelector('#wt-rv-amount').addEventListener('input', updatePreview);
     ov.querySelector('#wt-rv-points').addEventListener('input', updatePreview);
