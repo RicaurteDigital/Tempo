@@ -3955,10 +3955,28 @@ const WorkTracker = (() => {
   }
 
   function _showReverseAmount(type, feePercent, workers, onResolve) {
+    const label = type === 'cc' ? 'Credit Card' : 'Cash';
+    if (TipRules.totalPoints(workers) <= 0) {
+      const warnOv = document.createElement('div');
+      warnOv.className = 'wt-overlay';
+      warnOv.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title">Add workers first</div>
+          <div style="color:#98989D;font-size:14px;margin-bottom:18px">This works out the total pool from your share — it needs at least one worker with points added first so it knows how the pool is split.</div>
+          <div class="wt-modal-actions">
+            <button class="wt-btn wt-btn-primary" id="wt-rv-warn-ok" style="width:100%">Got it</button>
+          </div>
+        </div>`;
+      document.body.appendChild(warnOv);
+      warnOv.addEventListener('click', e => { if (e.target === warnOv) warnOv.remove(); });
+      warnOv.querySelector('#wt-rv-warn-ok').onclick = () => warnOv.remove();
+      return;
+    }
+
     const ov = document.createElement('div');
     ov.className = 'wt-overlay';
     document.body.appendChild(ov);
-    const label = type === 'cc' ? 'Credit Card' : 'Cash';
 
     ov.innerHTML = `
       <div class="wt-modal">
@@ -3989,7 +4007,12 @@ const WorkTracker = (() => {
         </div>
       </div>`;
 
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    let lastValidResult = null;
+    ov.addEventListener('click', e => {
+      if (e.target !== ov) return;
+      if (lastValidResult) onResolve(lastValidResult.reconstructedGross);
+      ov.remove();
+    });
     ov.querySelector('#wt-rv-cancel').onclick = () => ov.remove();
 
     ov.querySelector('#wt-rv-minus').onclick = () => {
@@ -4009,9 +4032,10 @@ const WorkTracker = (() => {
       const amount = parseFloat(ov.querySelector('#wt-rv-amount').value) || 0;
       const points = parseFloat(ov.querySelector('#wt-rv-points').value) || 0;
       const preview = ov.querySelector('#wt-rv-preview');
-      if (amount <= 0 || points <= 0) { preview.textContent = ''; return; }
+      if (amount <= 0 || points <= 0) { preview.textContent = ''; lastValidResult = null; return; }
       const result = TipRules.reverseFromKnownAmount(amount, points, workers, feePercent, type);
-      if (!result) { preview.textContent = ''; return; }
+      if (!result) { preview.textContent = ''; lastValidResult = null; return; }
+      lastValidResult = result;
       preview.innerHTML = type === 'cc'
         ? `Reconstructed CC total (before fee): <span style="color:#FF9F0A;font-weight:700">$${result.reconstructedGross.toFixed(2)}</span>`
         : `Reconstructed cash total: <span style="color:#FF9F0A;font-weight:700">$${result.reconstructedGross.toFixed(2)}</span>`;
@@ -4020,13 +4044,9 @@ const WorkTracker = (() => {
     ov.querySelector('#wt-rv-points').addEventListener('input', updatePreview);
 
     ov.querySelector('#wt-rv-apply').onclick = () => {
-      const amount = parseFloat(ov.querySelector('#wt-rv-amount').value) || 0;
-      const points = parseFloat(ov.querySelector('#wt-rv-points').value) || 0;
-      if (amount <= 0 || points <= 0) { alert('Enter your amount and points.'); return; }
-      const result = TipRules.reverseFromKnownAmount(amount, points, workers, feePercent, type);
-      if (!result) { alert('Could not calculate — check points.'); return; }
+      if (!lastValidResult) { alert('Enter your amount and points.'); return; }
       ov.remove();
-      onResolve(result.reconstructedGross);
+      onResolve(lastValidResult.reconstructedGross);
     };
   }
 
