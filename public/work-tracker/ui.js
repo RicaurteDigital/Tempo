@@ -115,7 +115,7 @@ const WorkTracker = (() => {
     const currentProfile = settings.workProfile || 'restaurant';
     const weekShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === currentProfile);
     const todayShifts = WTDb.getShiftsForDate(today).filter(s => (s.workProfile || 'restaurant') === currentProfile);
-    const todayMarkedOff = todayShifts.length === 0 && !!WTDb.getDayOffReason(today);
+    const todayMarkedOff = todayShifts.length === 0 && !!WTDb.getDayOffReason(today, currentProfile);
     const pay = WTRules.weeklyPay(weekShifts);
     const run = _running();
     const locs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
@@ -206,7 +206,7 @@ const WorkTracker = (() => {
       }, 1000);
     } else if (isToday) {
       if (todayShifts.length === 0) {
-        const dayOffReason = WTDb.getDayOffReason(today);
+        const dayOffReason = WTDb.getDayOffReason(today, currentProfile);
         if (dayOffReason) {
           const card = document.createElement('div');
           card.className = 'wt-empty';
@@ -244,7 +244,7 @@ const WorkTracker = (() => {
         w.appendChild(cta);
       }
     } else if (today < realToday && todayShifts.length === 0) {
-      const dayOffReason = WTDb.getDayOffReason(today);
+      const dayOffReason = WTDb.getDayOffReason(today, currentProfile);
       const card = document.createElement('div');
       card.className = 'wt-empty';
       if (dayOffReason) {
@@ -456,13 +456,13 @@ const WorkTracker = (() => {
         : () => _showAddShift(today);
     }
     const dayOffTodayBtn = w.querySelector('#wt-dayoff-today');
-    if (dayOffTodayBtn) dayOffTodayBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    if (dayOffTodayBtn) dayOffTodayBtn.onclick = () => _showDayOffPicker(today, currentProfile, () => _go('home'));
     const dayOffEditHomeBtn = w.querySelector('#wt-dayoff-edit-home');
-    if (dayOffEditHomeBtn) dayOffEditHomeBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    if (dayOffEditHomeBtn) dayOffEditHomeBtn.onclick = () => _showDayOffPicker(today, currentProfile, () => _go('home'));
     const dayOffAddNavBtn = w.querySelector('#wt-dayoff-add-nav');
-    if (dayOffAddNavBtn) dayOffAddNavBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    if (dayOffAddNavBtn) dayOffAddNavBtn.onclick = () => _showDayOffPicker(today, currentProfile, () => _go('home'));
     const dayOffEditNavBtn = w.querySelector('#wt-dayoff-edit-nav');
-    if (dayOffEditNavBtn) dayOffEditNavBtn.onclick = () => _showDayOffPicker(today, () => _go('home'));
+    if (dayOffEditNavBtn) dayOffEditNavBtn.onclick = () => _showDayOffPicker(today, currentProfile, () => _go('home'));
     const logPastNavBtn = w.querySelector('#wt-log-past-nav');
     if (logPastNavBtn) logPastNavBtn.onclick = () => _showLogPastData(today);
     const outBtn = w.querySelector('#wt-hero-out');
@@ -938,7 +938,7 @@ const WorkTracker = (() => {
         const dotHtml = `<div class="wt-dot ${has?'wt-dot-on':''} ${isT?'wt-dot-today':''}" data-date="${ds}">${['M','T','W','T','F','S','S'][i]}${has?'<span class="wt-dot-pip"></span>':''}</div>`;
         let offHtml = '';
         if (isPast && !has) {
-          const reason = WTDb.getDayOffReason(ds);
+          const reason = WTDb.getDayOffReason(ds, activeProf);
           if (reason) {
             offHtml = `<div data-dayoff-nav="${ds}" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off</div>`;
           } else if (isCur) {
@@ -1247,7 +1247,7 @@ const WorkTracker = (() => {
     const weekStart = getWeekStart(new Date(dateStr + 'T12:00:00'));
     const weekLabel = formatWeekLabel(weekStart);
     const allShiftsForNav = WTDb.getShifts().filter(s => (s.workProfile || 'restaurant') === activeProf2);
-    const dayOffDates = Object.keys(WTDb.getAllDayOffReasons());
+    const dayOffDates = Object.keys(WTDb.getAllDayOffReasons(activeProf2));
     const activeDates = [...new Set([...allShiftsForNav.map(s => s.date), ...dayOffDates])].sort();
     const prevDate = activeDates.filter(d => d < dateStr).pop();
     const nextDate = activeDates.filter(d => d > dateStr).shift();
@@ -1323,7 +1323,7 @@ const WorkTracker = (() => {
     } else {
       const emp = document.createElement('div');
       emp.className = 'wt-empty';
-      const dayOffReason = WTDb.getDayOffReason(dateStr);
+      const dayOffReason = WTDb.getDayOffReason(dateStr, activeProf2);
       if (dayOffReason) {
         emp.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
           onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Edit</button>`;
@@ -1344,9 +1344,9 @@ const WorkTracker = (() => {
     if (prevDate) w.querySelector('#wt-day-prev').onclick = () => _go('day', { date: prevDate });
     if (nextDate) w.querySelector('#wt-day-next').onclick = () => _go('day', { date: nextDate });
     const dayOffAddBtn = w.querySelector('#wt-dayoff-add');
-    if (dayOffAddBtn) dayOffAddBtn.onclick = () => _showDayOffPicker(dateStr, () => _go('day', { date: dateStr }));
+    if (dayOffAddBtn) dayOffAddBtn.onclick = () => _showDayOffPicker(dateStr, activeProf2, () => _go('day', { date: dateStr }));
     const dayOffEditBtn = w.querySelector('#wt-dayoff-edit');
-    if (dayOffEditBtn) dayOffEditBtn.onclick = () => _showDayOffPicker(dateStr, () => _go('day', { date: dateStr }));
+    if (dayOffEditBtn) dayOffEditBtn.onclick = () => _showDayOffPicker(dateStr, activeProf2, () => _go('day', { date: dateStr }));
     const logPastBtn = w.querySelector('#wt-log-past');
     if (logPastBtn) logPastBtn.onclick = () => _showLogPastData(dateStr);
   }
@@ -1633,7 +1633,7 @@ const WorkTracker = (() => {
         ${_svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v))}
       </div>` : '';
 
-    const daysOff = StatsRules.daysOffInRange(stats.startDate, stats.endDate);
+    const daysOff = StatsRules.daysOffInRange(stats.startDate, stats.endDate, statsProfile);
     const dayOffLabels = { not_scheduled: 'Not scheduled', weather: 'Weather', cancelled: 'Shift cancelled', sick: 'Sick', requested_off: 'Requested off', custom: 'Custom' };
     const daysOffCard = daysOff.total > 0 ? `
       <div class="wt-settings-block" style="margin-bottom:16px">
@@ -4163,8 +4163,9 @@ const WorkTracker = (() => {
     return def.label;
   }
 
-  function _showDayOffPicker(date, onSave) {
-    const existing = WTDb.getDayOffReason(date);
+  function _showDayOffPicker(date, profile, onSave) {
+    const dayOffProfile = profile || 'restaurant';
+    const existing = WTDb.getDayOffReason(date, dayOffProfile);
     const ov = document.createElement('div');
     ov.className = 'wt-overlay';
     ov.innerHTML = `
@@ -4195,7 +4196,7 @@ const WorkTracker = (() => {
         const data = { type: selectedType };
         if (selectedType === 'weather') data.subtype = selectedSubtype;
         if (selectedType === 'custom') data.note = ov.querySelector('#wt-do-note').value.trim();
-        WTDb.saveDayOffReason(date, data);
+        WTDb.saveDayOffReason(date, dayOffProfile, data);
         onSave();
       }
       ov.remove();
@@ -4246,13 +4247,13 @@ const WorkTracker = (() => {
         data.subtype = selectedSubtype;
       }
       if (selectedType === 'custom') data.note = ov.querySelector('#wt-do-note').value.trim();
-      WTDb.saveDayOffReason(date, data);
+      WTDb.saveDayOffReason(date, dayOffProfile, data);
       ov.remove();
       onSave();
     };
     const removeBtn = ov.querySelector('#wt-do-remove');
     if (removeBtn) removeBtn.onclick = () => {
-      WTDb.deleteDayOffReason(date);
+      WTDb.deleteDayOffReason(date, dayOffProfile);
       ov.remove();
       onSave();
     };
