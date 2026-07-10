@@ -50,6 +50,7 @@ const WTDb = (() => {
     if (!confirm('Delete this shift? This cannot be undone.')) return false;
     const shifts = getShifts().filter(s => s.id !== id);
     localStorage.setItem(SHIFTS_KEY, JSON.stringify(shifts));
+    deleteTipsForShift(id);
     return true;
   }
 
@@ -93,6 +94,22 @@ const WTDb = (() => {
 
   function deleteTipsForShift(shiftId) {
     localStorage.removeItem('wt_tips_' + shiftId);
+  }
+
+  // Removes tip records left behind by shifts deleted before deleteShift cleaned up after
+  // itself. Only ever touches a wt_tips_<id> key when <id> matches no shift at all — never
+  // touches anything tied to a shift that still exists. Returns how many were removed.
+  function cleanOrphanedTips() {
+    const validIds = new Set(getShifts().map(s => s.id));
+    let removed = 0;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('wt_tips_') && !validIds.has(key.slice(8))) {
+        localStorage.removeItem(key);
+        removed++;
+      }
+    }
+    return removed;
   }
 
   // Day Off reasons are scoped per work profile (being off from one job says nothing about
@@ -340,7 +357,7 @@ const WTDb = (() => {
     exportData, importData,
     getTaxSettings, saveTaxSettings,
     getTipSettings, saveTipSettings,
-    getTipsForShift, saveTipsForShift, deleteTipsForShift,
+    getTipsForShift, saveTipsForShift, deleteTipsForShift, cleanOrphanedTips,
     getDayOffReason, saveDayOffReason, deleteDayOffReason, getAllDayOffReasons,
     getRoster, saveRosterMember,
     deletePhoto,

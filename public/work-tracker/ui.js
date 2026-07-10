@@ -479,7 +479,11 @@ const WorkTracker = (() => {
     const logPastNavBtn = w.querySelector('#wt-log-past-nav');
     if (logPastNavBtn) logPastNavBtn.onclick = () => _showLogPastData(today);
     const outBtn = w.querySelector('#wt-hero-out');
-    if (outBtn) outBtn.onclick = () => _doClockOut(run.shift.id, run.entry.id);
+    if (outBtn) outBtn.onclick = (e) => {
+      e.currentTarget.disabled = true;
+      e.currentTarget.style.opacity = '0.6';
+      _doClockOut(run.shift.id, run.entry.id);
+    };
     const shiftEditBtn = w.querySelector('#wt-hero-shift-edit');
     if (shiftEditBtn) shiftEditBtn.onclick = () => _showEditShift(run.shift);
 
@@ -2122,9 +2126,10 @@ const WorkTracker = (() => {
       <div class="wt-settings-body" data-standalone-body="backup" style="display:none;margin-top:14px">
       <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Export all your shifts, tips, locations, and payment records to a file. Use it to move your data to a new device or a newly installed app, or just to keep a safe copy.</div>
       <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:10px" id="wt-backup-export">⬇️ Export All Data</button>
-      <button class="wt-btn wt-btn-secondary" style="width:100%" id="wt-backup-import">⬆️ Import from Backup</button>
+      <button class="wt-btn wt-btn-secondary" style="width:100%;margin-bottom:10px" id="wt-backup-import">⬆️ Import from Backup</button>
       <input type="file" id="wt-backup-file" accept="application/json" style="display:none">
-      <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Photos aren't included — they're already saved to your phone's photo gallery separately.</div>
+      <button class="wt-btn wt-btn-secondary" style="width:100%" id="wt-clean-orphans">🧹 Clean Up Old Data</button>
+      <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Photos aren't included — they're already saved to your phone's photo gallery separately.<br>"Clean Up" removes tip records left behind by deleted shifts. It never touches a shift that still exists.</div>
       </div>
     `;
     w.appendChild(backupBlock);
@@ -2150,6 +2155,11 @@ const WorkTracker = (() => {
 
     backupBlock.querySelector('#wt-backup-import').onclick = () => {
       backupBlock.querySelector('#wt-backup-file').click();
+    };
+
+    backupBlock.querySelector('#wt-clean-orphans').onclick = () => {
+      const removed = WTDb.cleanOrphanedTips();
+      alert(removed > 0 ? `Cleaned up ${removed} leftover tip record${removed !== 1 ? 's' : ''} from deleted shifts.` : 'Nothing to clean up — no leftover data found.');
     };
 
     backupBlock.querySelector('#wt-backup-file').onchange = (e) => {
@@ -2965,8 +2975,9 @@ const WorkTracker = (() => {
     const shift = WTDb.getShifts().find(s => s.id === shiftId);
     if (!shift) return;
     const entry = shift.entries.find(e => e.id === entryId);
+    if (!entry || entry.clockOut) return; // already clocked out — ignore a duplicate call
     const clockOutTime = new Date().toISOString();
-    if (entry) { entry.clockOut = clockOutTime; WTDb.saveShift(shift); }
+    entry.clockOut = clockOutTime; WTDb.saveShift(shift);
     _breakStart = null;
     localStorage.removeItem('wt_break_start');
 
