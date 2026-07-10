@@ -1379,15 +1379,16 @@ const WorkTracker = (() => {
         <div style="font-size:18px;font-weight:800">Preview & Export</div>
         <div style="width:36px"></div>
       </div>
-      <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:10px">
-        ${['Week','Month','Quarter','Year','All Time','Custom'].map(p =>
-          `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+      <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:8px">
+        ${['Week','Month','Quarter','6M','Year','All Time'].map(p =>
+          `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '').replace('6m','sixmonths')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
+      <button id="wt-pv-custom-btn" style="display:block;width:calc(100% - 32px);margin:0 16px 10px;background:rgba(28,28,30,0.8);border:1px solid #38383A;border-radius:12px;color:#98989D;font-size:13px;font-weight:700;padding:11px;cursor:pointer">📅 Pick a custom date range</button>
       <div id="wt-pv-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:10px">
-        <button id="wt-pv-prev" style="background:none;border:none;color:#5E5CE6;font-size:20px;cursor:pointer;padding:4px 14px">‹</button>
-        <span id="wt-pv-label" style="font-size:14px;font-weight:700;color:#fff;min-width:140px;text-align:center"></span>
-        <button id="wt-pv-next" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px 14px">›</button>
+        <button id="wt-pv-prev" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+        <span id="wt-pv-label" style="font-size:14px;font-weight:700;color:#fff;min-width:170px;text-align:center"></span>
+        <button id="wt-pv-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
       </div>
       <div id="wt-custom-wrap" style="display:none;gap:8px;margin:0 16px 10px">
         <input type="date" class="wt-input" id="wt-custom-start" style="flex:1">
@@ -1407,6 +1408,7 @@ const WorkTracker = (() => {
     const tbl = w.querySelector('#wt-tbl');
     const locFilterEl = w.querySelector('#wt-loc-filter');
     const pillsEl = w.querySelector('#wt-pv-pills');
+    const customBtn = w.querySelector('#wt-pv-custom-btn');
     const navEl = w.querySelector('#wt-pv-nav');
     const labelEl = w.querySelector('#wt-pv-label');
     const nextBtn = w.querySelector('#wt-pv-next');
@@ -1419,6 +1421,10 @@ const WorkTracker = (() => {
         btn.style.background = active ? 'rgba(94,92,230,.15)' : 'none';
         btn.style.color = active ? '#5E5CE6' : '#98989D';
       });
+      const customActive = granularity === 'custom';
+      customBtn.style.borderColor = customActive ? '#5E5CE6' : '#38383A';
+      customBtn.style.background = customActive ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.8)';
+      customBtn.style.color = customActive ? '#5E5CE6' : '#98989D';
     }
 
     function refresh() {
@@ -1432,22 +1438,24 @@ const WorkTracker = (() => {
       } else {
         curRange = _periodRange(granularity, offset);
         labelEl.textContent = curRange.label;
+        nextBtn.style.color = offset >= 0 ? '#3a3a3c' : '#fff';
         nextBtn.style.opacity = offset >= 0 ? '0.3' : '1';
         nextBtn.style.pointerEvents = offset >= 0 ? 'none' : 'auto';
       }
       _buildTable(curRange.start, curRange.end, tbl, locId);
     }
 
-    pillsEl.querySelectorAll('.wt-pv-pill').forEach(btn => {
-      btn.onclick = () => {
-        granularity = btn.dataset.gran;
-        offset = 0;
-        setActivePill();
-        navEl.style.display = (granularity !== 'custom' && granularity !== 'alltime') ? 'flex' : 'none';
-        w.querySelector('#wt-custom-wrap').style.display = granularity === 'custom' ? 'flex' : 'none';
-        refresh();
-      };
-    });
+    function selectGranularity(g) {
+      granularity = g;
+      offset = 0;
+      setActivePill();
+      navEl.style.display = (g !== 'custom' && g !== 'alltime') ? 'flex' : 'none';
+      w.querySelector('#wt-custom-wrap').style.display = g === 'custom' ? 'flex' : 'none';
+      refresh();
+    }
+
+    pillsEl.querySelectorAll('.wt-pv-pill').forEach(btn => { btn.onclick = () => selectGranularity(btn.dataset.gran); });
+    customBtn.onclick = () => selectGranularity('custom');
     w.querySelector('#wt-pv-prev').onclick = () => { offset--; refresh(); };
     nextBtn.onclick = () => { if (offset < 0) { offset++; refresh(); } };
     w.querySelector('#wt-custom-start').onchange = refresh;
@@ -1474,6 +1482,7 @@ const WorkTracker = (() => {
   function _periodRange(granularity, offset) {
     const now = new Date();
     const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const _mo = d => d.toLocaleDateString('en-US', { month: 'short' });
     let start, end, label;
     if (granularity === 'week') {
       start = getWeekStart(now); start.setDate(start.getDate() + offset * 7);
@@ -1486,7 +1495,11 @@ const WorkTracker = (() => {
     } else if (granularity === 'quarter') {
       start = new Date(now.getFullYear(), (Math.floor(now.getMonth() / 3) + offset) * 3, 1);
       end = new Date(start.getFullYear(), start.getMonth() + 3, 0);
-      label = `Q${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`;
+      label = `Q${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()} (${_mo(start)}–${_mo(end)})`;
+    } else if (granularity === 'sixmonths') {
+      start = new Date(now.getFullYear(), (Math.floor(now.getMonth() / 6) + offset) * 6, 1);
+      end = new Date(start.getFullYear(), start.getMonth() + 6, 0);
+      label = `H${Math.floor(start.getMonth() / 6) + 1} ${start.getFullYear()} (${_mo(start)}–${_mo(end)})`;
     } else {
       start = new Date(now.getFullYear() + offset, 0, 1);
       end = new Date(start.getFullYear(), 11, 31);
