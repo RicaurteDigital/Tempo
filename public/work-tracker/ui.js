@@ -344,9 +344,7 @@ const WorkTracker = (() => {
         const tWorkers = t.workers || [];
         const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(s.locationId), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
         const myPayout = result.payouts.find(p => p.isMe) || null;
-        const myCash = myPayout && typeof myPayout.cashExact === 'number'
-          ? Math.floor(myPayout.cashExact)
-          : (myPayout && result.totalPoints > 0 ? Math.floor((myPayout.points / result.totalPoints) * (t.cashTotal||0)) : 0);
+        const myCash = myPayout ? (typeof myPayout.cashAmount === 'number' ? myPayout.cashAmount : (myPayout.amount - (myPayout.ccAmount || 0))) : 0;
         if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
 
@@ -1178,9 +1176,7 @@ const WorkTracker = (() => {
                   const tipResult = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(s.locationId), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
                   const meIdx = tWorkers.findIndex(w => w.isMe);
                   const myPayout = meIdx >= 0 ? tipResult.payouts[meIdx] : null;
-                  const myCash = myPayout && typeof myPayout.cashExact === 'number'
-                    ? Math.floor(myPayout.cashExact)
-                    : (myPayout && tipResult.totalPoints > 0 ? Math.floor((myPayout.points / tipResult.totalPoints) * (t.cashTotal||0)) : 0);
+                  const myCash = myPayout ? (typeof myPayout.cashAmount === 'number' ? myPayout.cashAmount : (myPayout.amount - (myPayout.ccAmount || 0))) : 0;
                   const myCC = myPayout ? (myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount) : 0;
                   if (myPayout) totalMyCCCut += myCC;
                   totalMyCash += myCash;
