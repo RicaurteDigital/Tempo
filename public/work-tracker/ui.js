@@ -1466,9 +1466,10 @@ const WorkTracker = (() => {
     navEl.style.display = 'flex';
     refresh();
     w.querySelector('#wt-back').onclick = () => _go('home');
-    w.querySelector('#wt-backup').onclick = () => {
+    w.querySelector('#wt-backup').onclick = async () => {
       const b = new Blob([WTDb.exportData()], { type: 'application/json' });
-      _saveOrShareBlob(b, `Tempo_WorkBackup_${_today()}.json`);
+      const result = await _saveOrShareBlob(b, `Tempo_WorkBackup_${_today()}.json`);
+      if (result !== 'cancelled') WTDb.setLastBackupDate(new Date().toISOString());
     };
     w.querySelector('#wt-pdf').onclick = () => {
       if (!curRange) { alert('Pick both a start and end date.'); return; }
@@ -2178,6 +2179,7 @@ const WorkTracker = (() => {
       </div>
       <div class="wt-settings-body" data-standalone-body="backup" style="display:none;margin-top:14px">
       <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Export all your shifts, tips, locations, and payment records to a file. Use it to move your data to a new device or a newly installed app, or just to keep a safe copy.</div>
+      <div id="wt-last-backup" style="font-size:12px;font-weight:700;margin-bottom:12px"></div>
       <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:10px" id="wt-backup-export">⬇️ Export All Data</button>
       <button class="wt-btn wt-btn-secondary" style="width:100%;margin-bottom:10px" id="wt-backup-import">⬆️ Import from Backup</button>
       <input type="file" id="wt-backup-file" accept="application/json" style="display:none">
@@ -2186,6 +2188,17 @@ const WorkTracker = (() => {
       </div>
     `;
     w.appendChild(backupBlock);
+    function updateLastBackupLabel() {
+      const el = backupBlock.querySelector('#wt-last-backup');
+      const iso = WTDb.getLastBackupDate();
+      if (!iso) { el.textContent = '⚠️ Never backed up'; el.style.color = '#FF9F0A'; return; }
+      const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+      if (days <= 0) { el.textContent = '✓ Backed up today'; el.style.color = '#30D158'; }
+      else if (days === 1) { el.textContent = '✓ Backed up yesterday'; el.style.color = '#30D158'; }
+      else if (days < 14) { el.textContent = `✓ Backed up ${days} days ago`; el.style.color = '#30D158'; }
+      else { el.textContent = `⚠️ Last backup was ${days} days ago`; el.style.color = '#FF9F0A'; }
+    }
+    updateLastBackupLabel();
     backupBlock.querySelector('[data-standalone-header="backup"]').onclick = () => {
       const body = backupBlock.querySelector('[data-standalone-body="backup"]');
       const chev = backupBlock.querySelector('[data-standalone-chevron="backup"]');
@@ -2194,16 +2207,13 @@ const WorkTracker = (() => {
       chev.classList.toggle('open', !isOpen);
     };
 
-    backupBlock.querySelector('#wt-backup-export').onclick = () => {
+    backupBlock.querySelector('#wt-backup-export').onclick = async () => {
       const blob = new Blob([WTDb.exportData()], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tempo-backup-${_today()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const result = await _saveOrShareBlob(blob, `tempo-backup-${_today()}.json`);
+      if (result !== 'cancelled') {
+        WTDb.setLastBackupDate(new Date().toISOString());
+        updateLastBackupLabel();
+      }
     };
 
     backupBlock.querySelector('#wt-backup-import').onclick = () => {
@@ -2220,11 +2230,49 @@ const WorkTracker = (() => {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        if (!confirm('This will replace ALL Work Tracker data on this device with the data from this backup. This cannot be undone. Continue?')) return;
-        const ok = WTDb.importData(reader.result);
-        if (!ok) { alert("Could not read this file. Make sure it's a valid Tempo backup JSON."); return; }
-        alert('Backup restored. Reloading...');
-        location.reload();
+        let parsed;
+        try { parsed = JSON.parse(reader.result); } catch { alert("Could not read this file. Make sure it's a valid Tempo backup JSON."); e.target.value = ''; return; }
+        if (!parsed || !parsed.data) { alert("Could not read this file. Make sure it's a valid Tempo backup JSON."); e.target.value = ''; return; }
+
+        let shiftCount = 0, dateRange = '';
+        try {
+          const shifts = JSON.parse(parsed.data.wt_shifts_v1 || '[]');
+          shiftCount = shifts.length;
+          if (shifts.length) {
+            const dates = shifts.map(s => s.date).sort();
+            dateRange = ` (${dates[0]} to ${dates[dates.length - 1]})`;
+          }
+        } catch {}
+        const exportedDate = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'unknown date';
+        const versionMismatch = parsed.version && parsed.version !== WT_VERSION;
+
+        const ov = document.createElement('div');
+        ov.className = 'wt-overlay';
+        ov.innerHTML = `
+          <div class="wt-modal">
+            <div class="wt-modal-handle"></div>
+            <div class="wt-modal-title">Confirm Restore</div>
+            <div style="background:#2C2C2E;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#98989D;line-height:1.7">
+              <div><strong style="color:#fff">Backup from:</strong> ${exportedDate}</div>
+              <div><strong style="color:#fff">Contains:</strong> ${shiftCount} shift${shiftCount !== 1 ? 's' : ''}${dateRange}</div>
+            </div>
+            ${versionMismatch ? `<div style="background:rgba(255,149,0,.15);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#FF9F0A">⚠️ This backup is from a different app version (v${parsed.version} vs current v${WT_VERSION}). It should still work, but double-check your data after restoring.</div>` : ''}
+            <div style="color:#FF453A;font-size:13px;margin-bottom:18px;font-weight:600">This replaces everything currently on this device. Cannot be undone.</div>
+            <div class="wt-modal-actions">
+              <button class="wt-btn wt-btn-secondary" id="wt-restore-cancel">Cancel</button>
+              <button class="wt-btn wt-btn-primary" id="wt-restore-confirm" style="background:#FF453A">Replace Everything</button>
+            </div>
+          </div>`;
+        document.body.appendChild(ov);
+        ov.addEventListener('click', ev => { if (ev.target === ov) ov.remove(); });
+        ov.querySelector('#wt-restore-cancel').onclick = () => ov.remove();
+        ov.querySelector('#wt-restore-confirm').onclick = () => {
+          const ok = WTDb.importData(reader.result);
+          ov.remove();
+          if (!ok) { alert("Could not read this file. Make sure it's a valid Tempo backup JSON."); return; }
+          alert('Backup restored. Reloading...');
+          location.reload();
+        };
       };
       reader.readAsText(file);
       e.target.value = '';
@@ -3310,8 +3358,13 @@ const WorkTracker = (() => {
     doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont(undefined, 'bold');
     doc.text(`GRAND TOTAL  —  ${WTRules.fmtHours(grandHrs)}  ·  Hourly ${WTRules.fmtMoney(grandPay)}  ·  CC Tips ${WTRules.fmtMoney(grandCC)}  ·  Cash Tips ${WTRules.fmtMoney(grandCash)}  ·  ${WTRules.fmtMoney(grandPay + grandCC + grandCash)}`, 17, y + 8);
 
-    doc.setFontSize(8); doc.setTextColor(...GRAY);
-    doc.text('Generated by Tempo · Personal reference only · Not an official payroll document', 14, pageH - 8);
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFontSize(8); doc.setTextColor(...GRAY);
+      doc.text('Generated by Tempo · Personal reference only · Not an official payroll document', 14, pageH - 8);
+      doc.text(`Page ${p} of ${totalPages}`, pageW - 14, pageH - 8, { align: 'right' });
+    }
     const fname = `${startStr}_to_${endStr}`;
     await _saveOrShareBlob(doc.output('blob'), `Tempo_Work_${fname}.pdf`);
   }

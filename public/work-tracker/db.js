@@ -319,6 +319,14 @@ const WTDb = (() => {
     return member;
   }
 
+  function getLastBackupDate() {
+    return localStorage.getItem('wt_last_backup');
+  }
+
+  function setLastBackupDate(iso) {
+    localStorage.setItem('wt_last_backup', iso);
+  }
+
   function exportData() {
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -362,6 +370,7 @@ const WTDb = (() => {
     getRoster, saveRosterMember,
     deletePhoto,
     getPayment, savePayment, deletePayment,
-    getShiftsInRange, getAllPayments
+    getShiftsInRange, getAllPayments,
+    getLastBackupDate, setLastBackupDate
   };
 })();
