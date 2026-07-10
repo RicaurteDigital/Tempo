@@ -187,6 +187,7 @@ const WorkTracker = (() => {
         <div class="wt-hero-since">
           ${onBreak ? 'Break since ' + _fmtTime(_breakStart) : 'Since ' + _fmtTime(run.entry.clockIn)}
         </div>
+        <div id="wt-hero-warn" style="display:none;background:rgba(255,149,0,.15);border-radius:10px;padding:8px 12px;margin:10px 0 0;font-size:12px;color:#FF9F0A;font-weight:600;text-align:center"></div>
         <div class="wt-hero-actions">
           <button class="wt-clockout-hero" id="wt-hero-out"
             ${onBreak ? 'disabled style="opacity:.4"' : ''}>
@@ -201,8 +202,18 @@ const WorkTracker = (() => {
       _heroTimer = setInterval(() => {
         const el = document.getElementById('wt-htimer');
         const acc = document.getElementById('wt-accumulated');
+        const warnEl = document.getElementById('wt-hero-warn');
         if (!el) { clearInterval(_heroTimer); return; }
         el.textContent = onBreak ? _elapsed(_breakStart) : _elapsed(run.entry.clockIn);
+        if (warnEl) {
+          const hoursIn = (Date.now() - new Date(run.entry.clockIn)) / 3600000;
+          if (!onBreak && hoursIn >= 12) {
+            warnEl.style.display = 'block';
+            warnEl.textContent = `⚠️ Clocked in for ${hoursIn.toFixed(1)}h — still working?`;
+          } else {
+            warnEl.style.display = 'none';
+          }
+        }
         if (acc && !onBreak) {
           const completedSecs = (run.shift.entries || [])
             .filter(e => e.clockOut)
@@ -4500,6 +4511,7 @@ const WorkTracker = (() => {
     };
     const removeBtn = ov.querySelector('#wt-do-remove');
     if (removeBtn) removeBtn.onclick = () => {
+      if (!confirm('Remove this day off reason? This cannot be undone.')) return;
       WTDb.deleteDayOffReason(date, dayOffProfile);
       ov.remove();
       onSave();
@@ -4928,6 +4940,8 @@ const WorkTracker = (() => {
       <div class="wt-modal">
         <div class="wt-modal-handle"></div>
         <div class="wt-modal-title">Edit Current Shift</div>
+        <label class="wt-modal-label">Date</label>
+        <input id="wt-es-date" class="wt-input" type="date" value="${shift.date}" style="margin-bottom:4px">
         <label class="wt-modal-label">Shift Type</label>
         <select class="wt-input" id="wt-es-type">
           ${profileShifts.map(s => `<option ${s===shift.shiftType?'selected':''}>${s}</option>`).join('')}
@@ -4978,10 +4992,13 @@ const WorkTracker = (() => {
         ? (ov.querySelector('#wt-es-custom').value.trim() || shift.shiftType)
         : typeSel.value;
       const newRate = parseFloat(ov.querySelector('#wt-es-rate').value) || shift.hourlyRate;
+      const newDate = ov.querySelector('#wt-es-date').value;
+      if (!newDate) { alert('Pick a valid date.'); return; }
       const saved = WTDb.getShifts().find(s => s.id === shift.id);
       if (saved) {
         saved.shiftType = newType;
         saved.hourlyRate = newRate;
+        saved.date = newDate;
         WTDb.saveShift(saved);
       }
       ov.remove();
