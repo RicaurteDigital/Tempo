@@ -4106,6 +4106,9 @@ const WorkTracker = (() => {
         const parsed = parseFloat(cashInput.value.replace(',','.'));
         if (!isNaN(parsed)) saved.cashTotal = parsed;
       }
+      const __tapOutResult = _computeTipResult(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee, saved.cashFlatAmounts, saved.cashPointOverrides, saved.cashManualAmounts);
+      const __tapOutMe = __tapOutResult.payouts.find((p, i) => saved.workers[i] && saved.workers[i].isMe);
+      saved.myPayout = __tapOutMe ? __tapOutMe.amount : 0;
       WTDb.saveTipsForShift(dayKey, saved);
       ov.remove();
       _go('home');
