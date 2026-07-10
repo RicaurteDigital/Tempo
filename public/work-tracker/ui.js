@@ -1379,15 +1379,16 @@ const WorkTracker = (() => {
         <div style="font-size:18px;font-weight:800">Preview & Export</div>
         <div style="width:36px"></div>
       </div>
-      <select class="wt-range-sel" id="wt-range">
-        <option value="week">This Week</option>
-        <option value="month">This Month</option>
-        <option value="quarter">This Quarter</option>
-        <option value="semester">This Semester</option>
-        <option value="year">This Year</option>
-        <option value="all">All Time</option>
-        <option value="custom">Custom Range</option>
-      </select>
+      <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:10px">
+        ${['Week','Month','Quarter','Year','All Time','Custom'].map(p =>
+          `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+        ).join('')}
+      </div>
+      <div id="wt-pv-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:10px">
+        <button id="wt-pv-prev" style="background:none;border:none;color:#5E5CE6;font-size:20px;cursor:pointer;padding:4px 14px">‹</button>
+        <span id="wt-pv-label" style="font-size:14px;font-weight:700;color:#fff;min-width:140px;text-align:center"></span>
+        <button id="wt-pv-next" style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px 14px">›</button>
+      </div>
       <div id="wt-custom-wrap" style="display:none;gap:8px;margin:0 16px 10px">
         <input type="date" class="wt-input" id="wt-custom-start" style="flex:1">
         <input type="date" class="wt-input" id="wt-custom-end" style="flex:1">
@@ -1405,66 +1406,105 @@ const WorkTracker = (() => {
     _root.appendChild(w);
     const tbl = w.querySelector('#wt-tbl');
     const locFilterEl = w.querySelector('#wt-loc-filter');
+    const pillsEl = w.querySelector('#wt-pv-pills');
+    const navEl = w.querySelector('#wt-pv-nav');
+    const labelEl = w.querySelector('#wt-pv-label');
+    const nextBtn = w.querySelector('#wt-pv-next');
+    let granularity = 'month', offset = 0, curRange = null;
 
-    function currentParams() {
-      const range = w.querySelector('#wt-range').value;
-      const cs = w.querySelector('#wt-custom-start').value;
-      const ce = w.querySelector('#wt-custom-end').value;
-      const locId = locFilterEl ? locFilterEl.value : '';
-      return { range, cs, ce, locId };
+    function setActivePill() {
+      pillsEl.querySelectorAll('.wt-pv-pill').forEach(btn => {
+        const active = btn.dataset.gran === granularity;
+        btn.style.borderColor = active ? '#5E5CE6' : '#38383A';
+        btn.style.background = active ? 'rgba(94,92,230,.15)' : 'none';
+        btn.style.color = active ? '#5E5CE6' : '#98989D';
+      });
     }
+
     function refresh() {
-      const { range, cs, ce, locId } = currentParams();
-      if (range === 'custom' && (!cs || !ce)) { tbl.innerHTML = '<div class="wt-empty"><strong>Pick both dates</strong>Choose a start and end date.</div>'; return; }
-      _buildTable(range, tbl, cs, ce, locId);
+      const locId = locFilterEl ? locFilterEl.value : '';
+      if (granularity === 'custom') {
+        const cs = w.querySelector('#wt-custom-start').value, ce = w.querySelector('#wt-custom-end').value;
+        if (!cs || !ce) { tbl.innerHTML = '<div class="wt-empty"><strong>Pick both dates</strong>Choose a start and end date.</div>'; curRange = null; return; }
+        curRange = { start: cs, end: ce, label: `${cs} → ${ce}` };
+      } else if (granularity === 'alltime') {
+        curRange = { start: '2000-01-01', end: _today(), label: 'All Time' };
+      } else {
+        curRange = _periodRange(granularity, offset);
+        labelEl.textContent = curRange.label;
+        nextBtn.style.opacity = offset >= 0 ? '0.3' : '1';
+        nextBtn.style.pointerEvents = offset >= 0 ? 'none' : 'auto';
+      }
+      _buildTable(curRange.start, curRange.end, tbl, locId);
     }
 
-    _buildTable('week', tbl);
-    w.querySelector('#wt-back').onclick = () => _go('home');
-    w.querySelector('#wt-range').onchange = function() {
-      w.querySelector('#wt-custom-wrap').style.display = this.value === 'custom' ? 'flex' : 'none';
-      refresh();
-    };
+    pillsEl.querySelectorAll('.wt-pv-pill').forEach(btn => {
+      btn.onclick = () => {
+        granularity = btn.dataset.gran;
+        offset = 0;
+        setActivePill();
+        navEl.style.display = (granularity !== 'custom' && granularity !== 'alltime') ? 'flex' : 'none';
+        w.querySelector('#wt-custom-wrap').style.display = granularity === 'custom' ? 'flex' : 'none';
+        refresh();
+      };
+    });
+    w.querySelector('#wt-pv-prev').onclick = () => { offset--; refresh(); };
+    nextBtn.onclick = () => { if (offset < 0) { offset++; refresh(); } };
     w.querySelector('#wt-custom-start').onchange = refresh;
     w.querySelector('#wt-custom-end').onchange = refresh;
     if (locFilterEl) locFilterEl.onchange = refresh;
+
+    setActivePill();
+    navEl.style.display = 'flex';
+    refresh();
+    w.querySelector('#wt-back').onclick = () => _go('home');
     w.querySelector('#wt-backup').onclick = () => {
       const b = new Blob([WTDb.exportData()], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(b);
-      a.download = `Tempo_WorkBackup_${_today()}.json`;
-      a.click();
+      _saveOrShareBlob(b, `Tempo_WorkBackup_${_today()}.json`);
     };
     w.querySelector('#wt-pdf').onclick = () => {
-      const { range, cs, ce, locId } = currentParams();
-      if (range === 'custom' && (!cs || !ce)) { alert('Pick both a start and end date.'); return; }
-      _exportPDF(range, cs, ce, locId);
+      if (!curRange) { alert('Pick both a start and end date.'); return; }
+      const locId = locFilterEl ? locFilterEl.value : '';
+      _exportPDF(curRange.start, curRange.end, locId, curRange.label);
     };
   }
 
-  function _rangeShifts(range, customStart, customEnd) {
+  // Any calendar period, navigable via offset (0 = current, -1 = previous, etc.) — same
+  // pattern as Stats' weekRange, extended to month/quarter/year. Never extends past today.
+  function _periodRange(granularity, offset) {
     const now = new Date();
-    let start, end = new Date(now); end.setHours(23,59,59,999);
-    if (range === 'custom' && customStart && customEnd) {
-      start = new Date(customStart + 'T00:00:00');
-      end = new Date(customEnd + 'T23:59:59');
-    }
-    else if (range === 'all') start = new Date(2000, 0, 1);
-    else if (range === 'week') start = getWeekStart(now);
-    else if (range === 'month') start = new Date(now.getFullYear(), now.getMonth(), 1);
-    else if (range === 'quarter') start = new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3, 1);
-    else if (range === 'semester') start = new Date(now.getFullYear(), now.getMonth() < 6 ? 0 : 6, 1);
-    else start = new Date(now.getFullYear(), 0, 1);
     const _ds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    const startStr = _ds(start);
-    const endStr = _ds(end);
+    let start, end, label;
+    if (granularity === 'week') {
+      start = getWeekStart(now); start.setDate(start.getDate() + offset * 7);
+      end = getWeekEnd(start);
+      label = formatWeekLabel(start);
+    } else if (granularity === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+      label = start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else if (granularity === 'quarter') {
+      start = new Date(now.getFullYear(), (Math.floor(now.getMonth() / 3) + offset) * 3, 1);
+      end = new Date(start.getFullYear(), start.getMonth() + 3, 0);
+      label = `Q${Math.floor(start.getMonth() / 3) + 1} ${start.getFullYear()}`;
+    } else {
+      start = new Date(now.getFullYear() + offset, 0, 1);
+      end = new Date(start.getFullYear(), 11, 31);
+      label = String(start.getFullYear());
+    }
+    const today = new Date(now); today.setHours(23, 59, 59, 999);
+    if (end > today) end = today;
+    return { start: _ds(start), end: _ds(end), label };
+  }
+
+  function _rangeShifts(startStr, endStr) {
     const rangeProfile = WTDb.getSettings().workProfile || 'restaurant';
     return WTDb.getShifts().filter(s => s.date >= startStr && s.date <= endStr && (s.workProfile || 'restaurant') === rangeProfile)
       .sort((a,b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
   }
 
-  function _buildTable(range, container, customStart, customEnd, filterLocId) {
-    let shifts = _rangeShifts(range, customStart, customEnd);
+  function _buildTable(startStr, endStr, container, filterLocId) {
+    let shifts = _rangeShifts(startStr, endStr);
     if (filterLocId) shifts = shifts.filter(s => s.locationId === filterLocId);
     if (!shifts.length) { container.innerHTML = '<div class="wt-empty"><strong>No data</strong>No shifts in this period.</div>'; return; }
     const byDate = {};
@@ -3154,7 +3194,7 @@ const WorkTracker = (() => {
     input.click();
   }
 
-  async function _exportPDF(range, customStart, customEnd, filterLocId) {
+  async function _exportPDF(startStr, endStr, filterLocId, periodLabel) {
     if (!window.jspdf) {
       await new Promise((res, rej) => {
         const s1 = document.createElement('script');
@@ -3169,7 +3209,7 @@ const WorkTracker = (() => {
       });
     }
     const { jsPDF } = window.jspdf;
-    let shifts = _rangeShifts(range, customStart, customEnd);
+    let shifts = _rangeShifts(startStr, endStr);
     if (filterLocId) shifts = shifts.filter(s => s.locationId === filterLocId);
     if (!shifts.length) { alert('No shifts in this period.'); return; }
 
@@ -3181,8 +3221,7 @@ const WorkTracker = (() => {
     doc.setTextColor(...DARK); doc.setFontSize(20); doc.setFont(undefined, 'bold');
     doc.text('Tempo — Work Report', 14, 16);
     doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.setTextColor(...GRAY);
-    const rangeLabel = range === 'custom' ? `${customStart} → ${customEnd}` : range === 'all' ? 'All Time' : range.charAt(0).toUpperCase() + range.slice(1);
-    doc.text(`Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}  ·  Period: ${rangeLabel}`, 14, 23);
+    doc.text(`Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}  ·  Period: ${periodLabel}`, 14, 23);
 
     const byLoc = {};
     shifts.forEach(s => {
@@ -3199,22 +3238,42 @@ const WorkTracker = (() => {
       doc.text(loc.name, 17, y + 5.5);
       y += 10;
 
-      const byDate = {};
-      loc.shifts.forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s); });
+      const _wds = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const byWeek = {};
+      loc.shifts.forEach(s => {
+        const wsKey = _wds(getWeekStart(new Date(s.date + 'T12:00:00')));
+        if (!byWeek[wsKey]) byWeek[wsKey] = [];
+        byWeek[wsKey].push(s);
+      });
+      const weekKeys = Object.keys(byWeek).sort();
+      const showWeeks = weekKeys.length > 1;
       const body = [];
       let locHrs = 0, locPay = 0, locCC = 0, locCash = 0;
-      Object.entries(byDate).forEach(([date, ds]) => {
-        ds.forEach(shift => {
-          const hrs = WTRules.shiftHours(shift);
-          const pay = hrs * (shift.hourlyRate || NYC_MIN_WAGE);
-          const cut = _shiftTipCut(shift);
-          body.push([_fmtDate(date), shift.shiftType || '—',
-            (shift.entries || []).map(e => _fmtTime(e.clockIn)).join(', ') || '—',
-            (shift.entries || []).map(e => e.clockOut ? _fmtTime(e.clockOut) : '—').join(', '),
-            WTRules.fmtHours(hrs), WTRules.fmtMoney(pay), WTRules.fmtMoney(cut.cc), WTRules.fmtMoney(cut.cash),
-            WTRules.fmtMoney(pay + cut.cc + cut.cash)]);
-          locHrs += hrs; locPay += pay; locCC += cut.cc; locCash += cut.cash;
+      weekKeys.forEach(wsKey => {
+        if (showWeeks) {
+          const ws = new Date(wsKey + 'T12:00:00'), we = getWeekEnd(ws);
+          body.push([{ content: `Week of ${ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${we.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`, colSpan: 9, styles: { fontStyle: 'bold', fillColor: [230, 229, 250], textColor: DARK, fontSize: 9 } }]);
+        }
+        const byDate = {};
+        byWeek[wsKey].forEach(s => { if (!byDate[s.date]) byDate[s.date] = []; byDate[s.date].push(s); });
+        let wHrs = 0, wPay = 0, wCC = 0, wCash = 0;
+        Object.entries(byDate).forEach(([date, ds]) => {
+          ds.forEach(shift => {
+            const hrs = WTRules.shiftHours(shift);
+            const pay = hrs * (shift.hourlyRate || NYC_MIN_WAGE);
+            const cut = _shiftTipCut(shift);
+            body.push([_fmtDate(date), shift.shiftType || '—',
+              (shift.entries || []).map(e => _fmtTime(e.clockIn)).join(', ') || '—',
+              (shift.entries || []).map(e => e.clockOut ? _fmtTime(e.clockOut) : '—').join(', '),
+              WTRules.fmtHours(hrs), WTRules.fmtMoney(pay), WTRules.fmtMoney(cut.cc), WTRules.fmtMoney(cut.cash),
+              WTRules.fmtMoney(pay + cut.cc + cut.cash)]);
+            wHrs += hrs; wPay += pay; wCC += cut.cc; wCash += cut.cash;
+          });
         });
+        if (showWeeks) {
+          body.push(['', '', '', 'Week Total →', WTRules.fmtHours(wHrs), WTRules.fmtMoney(wPay), WTRules.fmtMoney(wCC), WTRules.fmtMoney(wCash), WTRules.fmtMoney(wPay + wCC + wCash)]);
+        }
+        locHrs += wHrs; locPay += wPay; locCC += wCC; locCash += wCash;
       });
       body.push(['', '', '', 'Location Total →', WTRules.fmtHours(locHrs), WTRules.fmtMoney(locPay), WTRules.fmtMoney(locCC), WTRules.fmtMoney(locCash), WTRules.fmtMoney(locPay + locCC + locCash)]);
       grandHrs += locHrs; grandPay += locPay; grandCC += locCC; grandCash += locCash;
@@ -3227,6 +3286,7 @@ const WorkTracker = (() => {
         styles: { fontSize: 9, cellPadding: 2.5, textColor: DARK },
         didParseCell: d => {
           if (d.row.raw[3] === 'Location Total →') { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = LIGHT; }
+          if (d.row.raw[3] === 'Week Total →') { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fillColor = [248, 248, 250]; }
         }
       });
       y = doc.lastAutoTable.finalY + 10;
@@ -3239,8 +3299,8 @@ const WorkTracker = (() => {
 
     doc.setFontSize(8); doc.setTextColor(...GRAY);
     doc.text('Generated by Tempo · Personal reference only · Not an official payroll document', 14, pageH - 8);
-    const fname = range === 'custom' ? `${customStart}_to_${customEnd}` : range;
-    await _saveOrShareBlob(doc.output('blob'), `Tempo_Work_${fname}_${_today()}.pdf`);
+    const fname = `${startStr}_to_${endStr}`;
+    await _saveOrShareBlob(doc.output('blob'), `Tempo_Work_${fname}.pdf`);
   }
 
   function _viewOrReplacePhoto(shiftId, photoKey, currentBase64) {
