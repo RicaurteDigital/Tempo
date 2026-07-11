@@ -315,60 +315,128 @@ const StatsRules = (() => {
   }
 
   // What actually moves your earnings, and by how much. Start/end of month and holidays are
-  // detected automatically from the date — zero data entry required. Weather and pace only
-  // compare shifts you've explicitly tagged as Bad/Slower/Busier against everything else in
-  // range; each comparison is only returned once both sides have at least 2 shifts, so one
-  // rainy Tuesday can never look like a trend.
+  // detected automatically from the date — zero data entry required. Most comparisons use
+  // $/hour rather than total shift pay, so a longer shift that day doesn't get mistaken for
+  // "this condition pays better" — it isolates whether the condition itself changes your
+  // rate, not just how many hours you happened to work. Every comparison requires at least
+  // 2 shifts (or weeks) on both sides, so a single anecdote never looks like a pattern.
   function computeShiftContext(startDate, endDate, workProfile) {
     const profile = workProfile || 'restaurant';
     const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
     const feePercent = WTDb.getTipSettings().processingFeePercent || 3;
+    const rangeSpanDays = (new Date(endDate) - new Date(startDate)) / 86400000;
 
-    const buckets = {
-      startOfMonth: { label: 'Start of Month (1st–5th)', in: [], out: [] },
-      endOfMonth: { label: 'End of Month (last 5 days)', in: [], out: [] },
-      holiday: { label: 'Holidays', in: [], out: [] },
-      weather: { label: 'Bad Weather', in: [], out: [] },
-      slow: { label: 'Marked "Slower"', in: [], out: [] },
-      busy: { label: 'Marked "Busier"', in: [], out: [] }
-    };
-
+    const records = [];
     shifts.forEach(s => {
       const hrs = WTRules.shiftHours(s);
+      if (hrs <= 0) return; // open or empty shift — no rate to measure yet
       const cut = _myTipCut(s, feePercent);
       const earn = hrs * (s.hourlyRate || 15) + cut.cc + cut.cash;
-      if (hrs <= 0 && earn <= 0) return; // nothing measurable yet (open or empty shift)
-
       const d = new Date(s.date + 'T12:00:00');
-      const day = d.getDate();
-      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-
-      (day <= 5 ? buckets.startOfMonth.in : buckets.startOfMonth.out).push(earn);
-      (day > lastDay - 5 ? buckets.endOfMonth.in : buckets.endOfMonth.out).push(earn);
-      (_isHospitalityHoliday(s.date) ? buckets.holiday.in : buckets.holiday.out).push(earn);
-      (s.weatherTag === 'bad' ? buckets.weather.in : buckets.weather.out).push(earn);
-      (s.paceTag === 'slow' ? buckets.slow.in : buckets.slow.out).push(earn);
-      (s.paceTag === 'busy' ? buckets.busy.in : buckets.busy.out).push(earn);
-    });
-
-    const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
-    const insights = [];
-    Object.values(buckets).forEach(b => {
-      if (b.in.length < 2 || b.out.length < 2) return; // not enough sample size to mean anything
-      const inAvg = avg(b.in), outAvg = avg(b.out);
-      insights.push({
-        label: b.label,
-        groupAvg: inAvg, groupCount: b.in.length,
-        baselineAvg: outAvg,
-        deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0
+      const dow = d.getDay();
+      records.push({
+        shift: s, hrs, earn, perHour: earn / hrs,
+        day: d.getDate(), lastDay: new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(),
+        isWeekend: dow === 0 || dow === 5 || dow === 6, // Fri/Sat/Sun
+        isHoliday: _isHospitalityHoliday(s.date)
       });
     });
+
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const insights = [];
+    function addInsight(label, inRecs, outRecs, metric) {
+      if (inRecs.length < 2 || outRecs.length < 2) return;
+      const inAvg = avg(inRecs.map(metric)), outAvg = avg(outRecs.map(metric));
+      insights.push({ label, groupCount: inRecs.length, deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0 });
+    }
+
+    if (rangeSpanDays >= 20) {
+      addInsight('Start of Month (1st–5th)', records.filter(r => r.day <= 5), records.filter(r => r.day > 5), r => r.earn);
+      addInsight('End of Month (last 5 days)', records.filter(r => r.day > r.lastDay - 5), records.filter(r => r.day <= r.lastDay - 5), r => r.earn);
+    }
+    addInsight('Holidays', records.filter(r => r.isHoliday), records.filter(r => !r.isHoliday), r => r.perHour);
+    addInsight('Weekends (Fri–Sun)', records.filter(r => r.isWeekend), records.filter(r => !r.isWeekend), r => r.perHour);
+    addInsight('Bad Weather', records.filter(r => r.shift.weatherTag === 'bad'), records.filter(r => r.shift.weatherTag !== 'bad'), r => r.perHour);
+    addInsight('Marked "Slower"', records.filter(r => r.shift.paceTag === 'slow'), records.filter(r => r.shift.paceTag !== 'slow'), r => r.perHour);
+    addInsight('Marked "Busier"', records.filter(r => r.shift.paceTag === 'busy'), records.filter(r => r.shift.paceTag !== 'busy'), r => r.perHour);
+
+    // Larger vs smaller tip pools, split at the median total points in range — does sharing
+    // with more people actually cost you per hour, or does it wash out with bigger sales?
+    const withPts = records.map(r => {
+      const t = WTDb.getTipsForShift(r.shift.id);
+      if (!t || !t.workers || !t.workers.length) return null;
+      return { ...r, pts: t.workers.reduce((sum, w) => sum + (w.points || 0), 0) };
+    }).filter(Boolean);
+    if (withPts.length >= 4) {
+      const sortedPts = withPts.map(r => r.pts).sort((a, b) => a - b);
+      const median = sortedPts[Math.floor(sortedPts.length / 2)];
+      addInsight(`Larger Tip Pools (${median.toFixed(2)}+ pts)`,
+        withPts.filter(r => r.pts >= median), withPts.filter(r => r.pts < median), r => r.perHour);
+    }
+
+    // Weeks with any day off vs weeks without — real weekly totals, not per-shift, since a
+    // day off's cost shows up across the whole week's earnings, not any single shift.
+    const dayOffData = WTDb.getAllDayOffReasons(profile);
+    const byWeek = {};
+    records.forEach(r => {
+      const ws = _ds(getWeekStart(new Date(r.shift.date + 'T12:00:00')));
+      byWeek[ws] = (byWeek[ws] || 0) + r.earn;
+    });
+    const weeksWithOff = [], weeksWithoutOff = [];
+    Object.entries(byWeek).forEach(([ws, total]) => {
+      const we = _ds(getWeekEnd(new Date(ws + 'T12:00:00')));
+      const hasOff = Object.keys(dayOffData).some(d => d >= ws && d <= we);
+      (hasOff ? weeksWithOff : weeksWithoutOff).push(total);
+    });
+    if (weeksWithOff.length >= 2 && weeksWithoutOff.length >= 2) {
+      const inAvg = avg(weeksWithOff), outAvg = avg(weeksWithoutOff);
+      insights.push({ label: 'Weeks with a Day Off', groupCount: weeksWithOff.length, deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0 });
+    }
+
     return insights;
+  }
+
+  // Purely descriptive (not a "good/bad" comparison): how long your shifts actually run, per
+  // location, weekday vs weekend — e.g. "do I really stay later on weekends, and by how much."
+  function shiftLengthPatterns(startDate, endDate, workProfile) {
+    const profile = workProfile || 'restaurant';
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const byLoc = {};
+    shifts.forEach(s => {
+      const hrs = WTRules.shiftHours(s);
+      if (hrs <= 0) return;
+      const isWeekend = [0, 5, 6].includes(new Date(s.date + 'T12:00:00').getDay());
+      const key = s.locationName || 'Unknown';
+      if (!byLoc[key]) byLoc[key] = { weekday: [], weekend: [] };
+      (isWeekend ? byLoc[key].weekend : byLoc[key].weekday).push(hrs);
+    });
+    const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    return Object.entries(byLoc).map(([location, d]) => ({
+      location,
+      weekdayAvg: avg(d.weekday), weekdayCount: d.weekday.length,
+      weekendAvg: avg(d.weekend), weekendCount: d.weekend.length
+    })).filter(r => r.weekdayCount > 0 || r.weekendCount > 0);
+  }
+
+  // Current period vs the immediately preceding period of the same length (this week vs last
+  // week, this month vs last month, etc.) — reuses computeAllStats for both, so the numbers
+  // always agree with the rest of Stats.
+  function periodComparison(startDate, endDate, workProfile) {
+    const spanDays = Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
+    const prevEnd = new Date(startDate); prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - spanDays + 1);
+    const curTotal = computeAllStats(startDate, endDate, workProfile).totals.expectedGross;
+    const prevTotal = computeAllStats(_ds(prevStart), _ds(prevEnd), workProfile).totals.expectedGross;
+    return {
+      curTotal, prevTotal, spanDays,
+      prevStart: _ds(prevStart), prevEnd: _ds(prevEnd),
+      deltaPercent: prevTotal > 0 ? ((curTotal - prevTotal) / prevTotal) * 100 : null
+    };
   }
 
   return {
     rollingRange, yearRange, weekRange, activeYears,
     computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange,
-    computeShiftContext
+    computeShiftContext, shiftLengthPatterns, periodComparison
   };
 })();

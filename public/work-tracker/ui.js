@@ -1689,11 +1689,12 @@ const WorkTracker = (() => {
         <div style="font-size:18px;font-weight:800">Stats</div>
         <div style="width:36px"></div>
       </div>
-      <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px">
+      <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;margin-bottom:0;position:sticky;top:0;z-index:10;background:#000">
         ${['7D','30D','3M','6M','1Y','By Year','Custom'].map(p =>
           `<button class="wt-stats-pill" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
+      <div style="margin-bottom:12px"></div>
       <div id="wt-stats-year-picker" style="display:none;margin-bottom:12px">
         <select class="wt-select-sm" id="wt-stats-year-sel" style="width:100%">
           ${(years.length ? years : [curYear]).map(y => `<option value="${y}">${y}</option>`).join('')}
@@ -1747,6 +1748,16 @@ const WorkTracker = (() => {
       resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
         el.onclick = () => _go('day', { date: el.dataset.chartDate });
       });
+      const contextHeader = resultsEl.querySelector('#wt-context-header');
+      if (contextHeader) {
+        contextHeader.onclick = () => {
+          const body = resultsEl.querySelector('#wt-context-body');
+          const chev = resultsEl.querySelector('#wt-context-chevron');
+          const open = body.style.display !== 'none';
+          body.style.display = open ? 'none' : 'block';
+          chev.textContent = open ? '▼' : '▲';
+        };
+      }
     }
 
     function loadWeek() {
@@ -1838,9 +1849,8 @@ const WorkTracker = (() => {
       </div>`;
 
     const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile)
-      .filter(d => d.count > 0)
       .sort((a, b) => b.avg - a.avg);
-    const dowCard = dowData.length > 0 ? `
+    const dowCard = dowData.some(d => d.count > 0) ? `
       <div class="wt-settings-block" style="margin-bottom:16px">
         <div class="wt-settings-title">Best days to work</div>
         ${_svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v))}
@@ -1856,11 +1866,34 @@ const WorkTracker = (() => {
       </div>` : '';
 
     const contextInsights = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile);
-    const contextCard = contextInsights.length > 0 ? `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">What affects your earnings</div>
-        ${contextInsights.map(i => _statRow(`${i.label} (${i.groupCount})`, `${i.deltaPercent >= 0 ? '+' : ''}${i.deltaPercent.toFixed(0)}%`, i.deltaPercent >= 0 ? '#30D158' : '#FF453A')).join('')}
-        <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.4">Compared to your average on other shifts in this period. Only shown once there's enough data to mean something.</div>
+    const cmp = StatsRules.periodComparison(stats.startDate, stats.endDate, statsProfile);
+    const topDriver = contextInsights.length
+      ? contextInsights.reduce((best, i) => Math.abs(i.deltaPercent) > Math.abs(best.deltaPercent) ? i : best)
+      : null;
+    const headlineCard = cmp.deltaPercent !== null ? `
+      <div class="wt-settings-block" style="margin-bottom:16px;background:rgba(94,92,230,.08);border:1px solid rgba(94,92,230,.25)">
+        <div style="font-size:14px;line-height:1.5;color:#fff">
+          You earned <strong>${WTRules.fmtMoney(cmp.curTotal)}</strong> this period — <strong style="color:${cmp.deltaPercent >= 0 ? '#30D158' : '#FF453A'}">${cmp.deltaPercent >= 0 ? '+' : ''}${cmp.deltaPercent.toFixed(0)}%</strong> vs. the previous ${cmp.spanDays === 1 ? 'day' : cmp.spanDays + ' days'} (${WTRules.fmtMoney(cmp.prevTotal)})${topDriver && Math.abs(topDriver.deltaPercent) >= 15 ? `, largely coinciding with <strong>${topDriver.label}</strong> (${topDriver.deltaPercent >= 0 ? '+' : ''}${topDriver.deltaPercent.toFixed(0)}%)` : ''}.
+        </div>
+      </div>` : '';
+
+    const lengthPatterns = StatsRules.shiftLengthPatterns(stats.startDate, stats.endDate, statsProfile);
+    const contextCard = (contextInsights.length > 0 || lengthPatterns.length > 0) ? `
+      <div class="wt-settings-block" style="margin-bottom:16px;padding:0;overflow:hidden">
+        <div id="wt-context-header" style="display:flex;justify-content:space-between;align-items:center;padding:16px;cursor:pointer">
+          <div class="wt-settings-title" style="margin:0">What affects your earnings</div>
+          <span id="wt-context-chevron" style="color:#98989D;font-size:12px">▼</span>
+        </div>
+        <div id="wt-context-body" style="display:none;padding:0 16px 16px">
+          ${contextInsights.map(i => _statRow(`${i.label} (${i.groupCount})`, `${i.deltaPercent >= 0 ? '+' : ''}${i.deltaPercent.toFixed(0)}%`, i.deltaPercent >= 0 ? '#30D158' : '#FF453A')).join('')}
+          ${contextInsights.length ? `<div style="font-size:11px;color:#636366;margin:8px 0 14px;line-height:1.4">Compared to your average on other shifts in this period. Only shown once there's enough data to mean something.</div>` : ''}
+          ${lengthPatterns.length ? `<div style="font-size:12px;color:#98989D;font-weight:700;margin-bottom:6px">Avg hours per shift</div>` : ''}
+          ${lengthPatterns.map(p => `
+            <div style="font-size:13px;color:#fff;margin-bottom:6px">${p.location}</div>
+            ${p.weekdayCount ? _statRow(`Weekday (${p.weekdayCount})`, WTRules.fmtHours(p.weekdayAvg)) : ''}
+            ${p.weekendCount ? _statRow(`Weekend (${p.weekendCount})`, WTRules.fmtHours(p.weekendAvg)) : ''}
+          `).join('')}
+        </div>
       </div>` : '';
 
     const summaryCard = `
@@ -1918,7 +1951,7 @@ const WorkTracker = (() => {
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
       </div>`).join('');
 
-    return lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
+    return headlineCard + lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
   }
 
   function _Settings() {
