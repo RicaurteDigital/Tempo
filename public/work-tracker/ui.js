@@ -5,6 +5,7 @@ const WorkTracker = (() => {
   let _view = 'home';
   let _date = null;
   let _heroTimer = null;
+  let _weekHistoryCount = 12;
   let _settingsOpenSection = 'profile';
   let _breakStart = localStorage.getItem('wt_break_start') || null;
 
@@ -935,7 +936,7 @@ const WorkTracker = (() => {
     w.className = 'wt-screen';
     const settings = WTDb.getSettings();
     const curMs = getWeekStart(new Date()).getTime();
-    const weeks = WTRules.getRecentWeeks(12);
+    const weeks = WTRules.getRecentWeeks(_weekHistoryCount);
 
     // Earliest active week per location — explicit startDate wins if set, else earliest tracked shift.
     // Used so "no shifts this week" doesn't retroactively show a location before it existed.
@@ -957,17 +958,18 @@ const WorkTracker = (() => {
         <div style="width:36px"></div>
       </div>`;
 
-    // Payments Due — a short, actionable digest of any (location, week) whose payday has
-    // arrived but hasn't been confirmed yet. Computed fresh every render, so it clears itself
-    // the moment a payment gets recorded — no separate flag to manage or forget to clear.
-    // Bounded to a 3-week window: an unregistered payment older than that quietly stops being
-    // flagged instead of piling up into noise (same principle as the Day Off nudge). Each row
-    // jumps straight into the existing Record Payment flow for that exact week.
+    // Payments Due — a collapsible, actionable digest of any (location, week) whose payday
+    // has arrived but hasn't been confirmed yet. Computed fresh every render, so it clears
+    // itself the moment a payment gets recorded — no separate flag to manage or forget to
+    // clear. Bounded to a 3-week window: an unregistered payment older than that quietly
+    // stops being flagged instead of piling up into noise (same principle as the Day Off
+    // nudge). Each row jumps straight into the existing Record Payment flow for that week.
     const activeProf0 = settings.workProfile || 'restaurant';
     const dueLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === activeProf0);
     const todayEndMs = new Date(_today() + 'T23:59:59').getTime();
     const dueWindowMs = 21 * 86400000;
     const due = [];
+    let nextPayday = null;
     weeks.forEach(ws => {
       const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
       const wShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === activeProf0);
@@ -977,32 +979,62 @@ const WorkTracker = (() => {
         const rawDate = WTRules.getPayDateRaw(ws, settings, l);
         if (!rawDate) return;
         const payMs = rawDate.getTime();
-        if (payMs > todayEndMs || payMs < todayEndMs - dueWindowMs) return;
+        if (payMs > todayEndMs) {
+          if (!nextPayday || rawDate < nextPayday) nextPayday = rawDate;
+          return;
+        }
+        if (payMs < todayEndMs - dueWindowMs) return;
         due.push({ locId: l.id, locName: l.name, ws: wsStr, weekLabel: formatWeekLabel(ws), payDate: rawDate });
       });
     });
-    due.sort((a, b) => a.payDate - b.payDate);
+    due.sort((a, b) => b.payDate - a.payDate); // most recent first — the one you'd actually check today
 
     if (due.length) {
       const dueCard = document.createElement('div');
-      dueCard.className = 'wt-glow';
-      dueCard.style.cssText = 'background:rgba(255,149,0,.12);border:1px solid rgba(255,159,10,.3);border-radius:16px;padding:14px 16px;margin:0 16px 14px';
+      dueCard.style.cssText = 'border:1px solid rgba(255,159,10,.3);border-radius:16px;margin:0 16px 14px;overflow:hidden';
       dueCard.innerHTML = `
-        <div style="font-size:13px;font-weight:800;color:#FF9F0A;margin-bottom:8px">💰 Payment${due.length > 1 ? 's' : ''} Due (${due.length})</div>
-        ${due.map((d, i) => `
-          <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;cursor:pointer;${i > 0 ? 'border-top:1px solid rgba(255,255,255,0.08)' : ''}">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:#fff">${d.locName}</div>
-              <div style="font-size:11px;color:#98989D">${d.weekLabel}</div>
+        <div class="wt-glow" id="wt-due-header" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;background:rgba(255,149,0,.12);border-radius:16px">
+          <span style="font-size:13px;font-weight:800;color:#FF9F0A">💰 Payment${due.length > 1 ? 's' : ''} Due (${due.length})</span>
+          <span id="wt-due-chevron" style="color:#FF9F0A;font-size:12px;transition:transform .15s">▼</span>
+        </div>
+        <div id="wt-due-body" style="display:none;padding:10px 12px 12px;background:rgba(255,149,0,.05)">
+          ${due.map(d => `
+            <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;cursor:pointer;background:rgba(28,28,30,0.7);border-radius:12px;transition:opacity .1s" onpointerdown="this.style.opacity='0.6'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#fff">${d.locName}</div>
+                <div style="font-size:11px;color:#98989D">${d.weekLabel}</div>
+              </div>
+              <div class="wt-glow" style="font-size:11px;color:#FF9F0A;font-weight:700;border-radius:8px;padding:3px 8px">Expected ${d.payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ›</div>
             </div>
-            <div style="font-size:11px;color:#FF9F0A;font-weight:700">Expected ${d.payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ›</div>
-          </div>
-        `).join('')}
-      `;
+          `).join('')}
+          ${_weekHistoryCount < 52 ? `<div id="wt-view-full-year" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;padding:8px;cursor:pointer">View Full Year →</div>` : ''}
+        </div>`;
       w.appendChild(dueCard);
+      const headerEl = dueCard.querySelector('#wt-due-header');
+      const bodyEl = dueCard.querySelector('#wt-due-body');
+      const chevEl = dueCard.querySelector('#wt-due-chevron');
+      headerEl.onclick = () => {
+        const open = bodyEl.style.display !== 'none';
+        bodyEl.style.display = open ? 'none' : 'block';
+        chevEl.textContent = open ? '▼' : '▲';
+      };
       dueCard.querySelectorAll('.wt-due-row').forEach(el => {
-        el.onclick = () => _showPayDayOptions(el.dataset.locId, el.dataset.locName, el.dataset.ws, settings);
+        el.onclick = (e) => {
+          e.stopPropagation();
+          _showPayDayOptions(el.dataset.locId, el.dataset.locName, el.dataset.ws, settings);
+        };
       });
+      const viewFullYearBtn = dueCard.querySelector('#wt-view-full-year');
+      if (viewFullYearBtn) viewFullYearBtn.onclick = (e) => {
+        e.stopPropagation();
+        _weekHistoryCount = 52;
+        _go('week');
+      };
+    } else if (nextPayday) {
+      const okCard = document.createElement('div');
+      okCard.style.cssText = 'background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:16px;padding:14px 16px;margin:0 16px 14px';
+      okCard.innerHTML = `<span style="font-size:13px;color:#30D158">✓ All caught up · Next payment expected <strong>${nextPayday.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</strong></span>`;
+      w.appendChild(okCard);
     }
 
     weeks.forEach(ws => {
