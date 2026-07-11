@@ -434,9 +434,50 @@ const StatsRules = (() => {
     };
   }
 
+  // "Can this job actually pay my bills, and how much do I need to work for that." Uses a
+  // realistic 90-day lookback (recent enough to reflect current reality, long enough to
+  // smooth out one unusual week) and estimated NET income (via the user's own tax settings,
+  // reusing WTRules.estimateNet) rather than gross, since "can I cover my bills" is a
+  // take-home question. Falls back to gross with a clear flag if tax estimation is off.
+  function sustainabilityAnalysis(workProfile, lookbackDays) {
+    const days = lookbackDays || 90;
+    const end = new Date();
+    const start = new Date(); start.setDate(start.getDate() - (days - 1));
+    const t = computeAllStats(_ds(start), _ds(end), workProfile).totals;
+
+    const taxSettings = WTDb.getTaxSettings();
+    const netEstimate = WTRules.estimateNet(t.expectedGross, taxSettings);
+    const usingNet = netEstimate !== null;
+    const periodEarnings = usingNet ? netEstimate.net : t.expectedGross;
+
+    const weeksInWindow = days / 7;
+    const avgHoursPerWeek = t.hours / weeksInWindow;
+    const avgShiftsPerWeek = t.shiftsCount / weeksInWindow;
+    const avgPerHour = t.hours > 0 ? periodEarnings / t.hours : 0;
+    const avgPerShift = t.shiftsCount > 0 ? periodEarnings / t.shiftsCount : 0;
+    const projectedAnnual = periodEarnings * (365 / days);
+
+    const monthlyExpenses = (WTDb.getBudget().monthlyExpenses) || null;
+    let annualExpenses = null, surplusAnnual = null, hoursNeededPerWeek = null, shiftsNeededPerWeek = null;
+    if (monthlyExpenses > 0) {
+      annualExpenses = monthlyExpenses * 12;
+      surplusAnnual = projectedAnnual - annualExpenses;
+      if (avgPerHour > 0) hoursNeededPerWeek = (annualExpenses / 52) / avgPerHour;
+      if (avgPerShift > 0) shiftsNeededPerWeek = (annualExpenses / 52) / avgPerShift;
+    }
+
+    return {
+      hasData: t.hours > 0, usingNet, lookbackDays: days,
+      avgPerHour, avgPerShift, avgHoursPerWeek, avgShiftsPerWeek,
+      projectedAnnual, projectedMonthly: projectedAnnual / 12,
+      monthlyExpenses, annualExpenses, surplusAnnual,
+      hoursNeededPerWeek, shiftsNeededPerWeek
+    };
+  }
+
   return {
     rollingRange, yearRange, weekRange, activeYears,
     computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange,
-    computeShiftContext, shiftLengthPatterns, periodComparison
+    computeShiftContext, shiftLengthPatterns, periodComparison, sustainabilityAnalysis
   };
 })();

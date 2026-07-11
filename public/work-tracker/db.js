@@ -201,6 +201,19 @@ const WTDb = (() => {
     return t;
   }
 
+  function getBudget() {
+    try {
+      const raw = localStorage.getItem('wt_budget_v1');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { monthlyExpenses: null };
+  }
+
+  function saveBudget(b) {
+    localStorage.setItem('wt_budget_v1', JSON.stringify(b));
+    return b;
+  }
+
   function getSettings() {
     try {
       return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
@@ -364,6 +377,7 @@ const WTDb = (() => {
     savePhoto, getPhoto,
     exportData, importData,
     getTaxSettings, saveTaxSettings,
+    getBudget, saveBudget,
     getTipSettings, saveTipSettings,
     getTipsForShift, saveTipsForShift, deleteTipsForShift, cleanOrphanedTips,
     getDayOffReason, saveDayOffReason, deleteDayOffReason, getAllDayOffReasons,

@@ -2327,6 +2327,69 @@ const WorkTracker = (() => {
       </div>
     `;
     w.appendChild(backupBlock);
+
+    const budget = WTDb.getBudget();
+    const sustainBlock = document.createElement('div');
+    sustainBlock.className = 'wt-settings-block';
+    sustainBlock.innerHTML = `
+      <div class="wt-settings-header" data-standalone-header="sustain">
+        <div class="wt-settings-title" style="margin-bottom:0">Sustainability</div>
+        <span class="wt-settings-chevron" data-standalone-chevron="sustain">▼</span>
+      </div>
+      <div class="wt-settings-body" data-standalone-body="sustain" style="display:none;margin-top:14px">
+      <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Does this job actually cover your bills? Enter your real monthly expenses, and Tempo compares them against your real earnings from the last 90 days — no guessing.</div>
+      <label class="wt-modal-label">Monthly expenses ($)</label>
+      <input id="wt-sustain-expenses" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 3200" value="${budget.monthlyExpenses || ''}" style="margin-bottom:12px">
+      <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:14px" id="wt-sustain-save">Calculate</button>
+      <div id="wt-sustain-results"></div>
+      </div>
+    `;
+    w.appendChild(sustainBlock);
+    sustainBlock.querySelector('[data-standalone-header="sustain"]').onclick = () => {
+      const body = sustainBlock.querySelector('[data-standalone-body="sustain"]');
+      const chev = sustainBlock.querySelector('[data-standalone-chevron="sustain"]');
+      const isOpen = body.style.display !== 'none';
+      body.style.display = isOpen ? 'none' : 'block';
+      chev.classList.toggle('open', !isOpen);
+      if (!isOpen) renderSustainResults();
+    };
+
+    function renderSustainResults() {
+      const resultsEl = sustainBlock.querySelector('#wt-sustain-results');
+      const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
+      const r = StatsRules.sustainabilityAnalysis(currentProfile, 90);
+      if (!r.hasData) {
+        resultsEl.innerHTML = `<div style="font-size:12px;color:#636366">Not enough recent shifts yet — log some work first.</div>`;
+        return;
+      }
+      const fmt = WTRules.fmtMoney;
+      let html = `
+        <div style="font-size:11px;color:#636366;margin-bottom:10px">Based on your last ${r.lookbackDays} days${r.usingNet ? ' (net, after your estimated taxes)' : ' (gross — turn on tax estimates for a real take-home number)'}.</div>
+        ${_statRow('Avg per hour', fmt(r.avgPerHour))}
+        ${_statRow('Avg per shift', fmt(r.avgPerShift))}
+        ${_statRow('Hours worked / week', r.avgHoursPerWeek.toFixed(1))}
+        ${_statRow('Shifts worked / week', r.avgShiftsPerWeek.toFixed(1))}
+        ${_statRow('Projected this year', fmt(r.projectedAnnual))}`;
+      if (r.monthlyExpenses > 0) {
+        const ok = r.surplusAnnual >= 0;
+        html += `
+        ${_statRow('Your annual expenses', fmt(r.annualExpenses))}
+        ${_statRow(ok ? 'Projected surplus' : 'Projected shortfall', (ok ? '+' : '') + fmt(r.surplusAnnual), ok ? '#30D158' : '#FF453A')}
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #2C2C2E">
+          ${_statRow('Hours/week needed to break even', r.hoursNeededPerWeek.toFixed(1), ok ? '#30D158' : '#FF9F0A')}
+          ${_statRow('Shifts/week needed to break even', r.shiftsNeededPerWeek.toFixed(1), ok ? '#30D158' : '#FF9F0A')}
+        </div>`;
+      } else {
+        html += `<div style="font-size:11px;color:#636366;margin-top:8px">Enter your monthly expenses above to see if this pace covers your bills.</div>`;
+      }
+      resultsEl.innerHTML = html;
+    }
+
+    sustainBlock.querySelector('#wt-sustain-save').onclick = () => {
+      const val = parseFloat(sustainBlock.querySelector('#wt-sustain-expenses').value.replace(',', '.'));
+      WTDb.saveBudget({ monthlyExpenses: !isNaN(val) && val > 0 ? val : null });
+      renderSustainResults();
+    };
     function updateLastBackupLabel() {
       const el = backupBlock.querySelector('#wt-last-backup');
       const iso = WTDb.getLastBackupDate();
