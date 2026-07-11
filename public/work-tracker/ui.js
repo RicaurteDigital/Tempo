@@ -507,8 +507,6 @@ const WorkTracker = (() => {
           const openEntry = shift.entries.find(e => !e.clockOut);
           if (openEntry) { openEntry.clockOut = _breakStart; WTDb.saveShift(shift); }
         }
-        _go('home'); // reflect ON BREAK immediately — _Home()'s own onBreak check renders it
-                      // correctly, without waiting on the photo-prompt flow below
         // Show photo prompt first, then update DOM
         const breakStartTime = _breakStart;
         const heroEl = breakBtn.closest('.wt-hero');
@@ -613,7 +611,6 @@ const WorkTracker = (() => {
 
         _breakStart = null;
         localStorage.removeItem('wt_break_start');
-        _go('home'); // reflect back-to-work immediately, same reasoning as Start Break above
 
         // Show immediate photo prompt for break end proof, plus a quick correction if the
         // location default doesn't match this specific break.
