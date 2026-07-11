@@ -1688,7 +1688,7 @@ const WorkTracker = (() => {
         <div style="width:36px"></div>
       </div>
       <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px">
-        ${['7D','30D','3M','6M','1A','Year','Custom'].map(p =>
+        ${['7D','30D','3M','6M','1Y','By Year','Custom'].map(p =>
           `<button class="wt-stats-pill" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
@@ -1763,15 +1763,15 @@ const WorkTracker = (() => {
       btn.onclick = () => {
         const p = btn.dataset.pill;
         setActivePill(p);
-        yearPicker.style.display = p === 'Year' ? 'block' : 'none';
+        yearPicker.style.display = p === 'By Year' ? 'block' : 'none';
         customPicker.style.display = p === 'Custom' ? 'flex' : 'none';
         weekNavEl.style.display = p === '7D' ? 'flex' : 'none';
         if (p === '7D') { weekOffset = 0; loadWeek(); }
         else if (p === '30D') { const r = StatsRules.rollingRange(30); loadRange(r.start, r.end, 'Last 30 days'); }
         else if (p === '3M') { const r = StatsRules.rollingRange(90); loadRange(r.start, r.end, 'Last 3 months'); }
         else if (p === '6M') { const r = StatsRules.rollingRange(180); loadRange(r.start, r.end, 'Last 6 months'); }
-        else if (p === '1A') { const r = StatsRules.rollingRange(365); loadRange(r.start, r.end, 'Last year'); }
-        else if (p === 'Year') { const y = parseInt(yearSel.value) || curYear; const r = StatsRules.yearRange(y); loadRange(r.start, r.end, String(y)); }
+        else if (p === '1Y') { const r = StatsRules.rollingRange(365); loadRange(r.start, r.end, 'Last year'); }
+        else if (p === 'By Year') { const y = parseInt(yearSel.value) || curYear; const r = StatsRules.yearRange(y); loadRange(r.start, r.end, String(y)); }
         else if (p === 'Custom') { /* wait for Go button */ }
       };
     });

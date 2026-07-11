@@ -411,7 +411,7 @@
 /* Existing tappable classes that were missing press feedback */
 .wt-pv-pill { transition: transform .1s; }
 .wt-pv-pill:active { transform: scale(.95); }
-.wt-stats-pill { transition: transform .1s; }
+.wt-stats-pill { transition: transform .1s; min-width: 52px; text-align: center; }
 .wt-stats-pill:active { transform: scale(.95); }
 .wt-tips-btn { transition: transform .1s; }
 .wt-tips-btn:active { transform: scale(.95); }
