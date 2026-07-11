@@ -1678,6 +1678,24 @@ const WorkTracker = (() => {
     </div>`;
   }
 
+  // Every Stats section (except the always-visible headline) uses this same collapsible
+  // shell — starts closed so the screen reads as a scannable list of titles, and the user
+  // opens whichever they actually want to dig into. One delegated click listener (wired in
+  // loadRange) handles every instance, matched by its data-collapse-* id.
+  function _collapsibleCard(id, title, bodyHtml) {
+    if (!bodyHtml) return '';
+    return `
+      <div class="wt-settings-block" style="margin-bottom:16px;padding:0;overflow:hidden">
+        <div class="wt-collapse-header" data-collapse-toggle="${id}" style="display:flex;justify-content:space-between;align-items:center;padding:16px;cursor:pointer">
+          <div class="wt-settings-title" style="margin:0">${title}</div>
+          <span class="wt-collapse-chevron" data-collapse-chevron="${id}" style="color:#98989D;font-size:12px">▼</span>
+        </div>
+        <div class="wt-collapse-body" data-collapse-body="${id}" style="display:none;padding:0 16px 16px">
+          ${bodyHtml}
+        </div>
+      </div>`;
+  }
+
   function _Stats() {
     const w = document.createElement('div');
     w.className = 'wt-screen';
@@ -1748,16 +1766,16 @@ const WorkTracker = (() => {
       resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
         el.onclick = () => _go('day', { date: el.dataset.chartDate });
       });
-      const contextHeader = resultsEl.querySelector('#wt-context-header');
-      if (contextHeader) {
-        contextHeader.onclick = () => {
-          const body = resultsEl.querySelector('#wt-context-body');
-          const chev = resultsEl.querySelector('#wt-context-chevron');
-          const open = body.style.display !== 'none';
-          body.style.display = open ? 'none' : 'block';
-          chev.textContent = open ? '▼' : '▲';
-        };
-      }
+      resultsEl.onclick = (e) => {
+        const toggle = e.target.closest('[data-collapse-toggle]');
+        if (!toggle) return;
+        const id = toggle.dataset.collapseToggle;
+        const body = resultsEl.querySelector(`[data-collapse-body="${id}"]`);
+        const chev = resultsEl.querySelector(`[data-collapse-chevron="${id}"]`);
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        chev.textContent = open ? '▼' : '▲';
+      };
     }
 
     function loadWeek() {
@@ -1842,28 +1860,20 @@ const WorkTracker = (() => {
     const statsProfile = WTDb.getSettings().workProfile || 'restaurant';
 
     const ts = StatsRules.timeSeries(stats.startDate, stats.endDate, statsProfile);
-    const lineChartCard = `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">Earnings over time</div>
-        ${_svgLineChart(ts.points)}
-      </div>`;
+    const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points));
 
     const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile)
       .sort((a, b) => b.avg - a.avg);
-    const dowCard = dowData.some(d => d.count > 0) ? `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">Best days to work</div>
-        ${_svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v))}
-      </div>` : '';
+    const dowCard = dowData.some(d => d.count > 0)
+      ? _collapsibleCard('dow', 'Best days to work', _svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)))
+      : '';
 
     const daysOff = StatsRules.daysOffInRange(stats.startDate, stats.endDate, statsProfile);
     const dayOffLabels = { not_scheduled: 'Not scheduled', weather: 'Weather', cancelled: 'Shift cancelled', sick: 'Sick', requested_off: 'Requested off', custom: 'Custom' };
-    const daysOffCard = daysOff.total > 0 ? `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">Days off</div>
-        ${_statRow('Total', String(daysOff.total))}
-        ${Object.entries(daysOff.byType).map(([type, count]) => _statRow(dayOffLabels[type] || type, String(count))).join('')}
-      </div>` : '';
+    const daysOffCard = daysOff.total > 0 ? _collapsibleCard('daysoff', 'Days off', `
+      ${_statRow('Total', String(daysOff.total))}
+      ${Object.entries(daysOff.byType).map(([type, count]) => _statRow(dayOffLabels[type] || type, String(count))).join('')}
+    `) : '';
 
     const contextInsights = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile);
     const cmp = StatsRules.periodComparison(stats.startDate, stats.endDate, statsProfile);
@@ -1875,81 +1885,66 @@ const WorkTracker = (() => {
         <div style="font-size:14px;line-height:1.5;color:#fff">
           You earned <strong>${WTRules.fmtMoney(cmp.curTotal)}</strong> this period — <strong style="color:${cmp.deltaPercent >= 0 ? '#30D158' : '#FF453A'}">${cmp.deltaPercent >= 0 ? '+' : ''}${cmp.deltaPercent.toFixed(0)}%</strong> vs. the previous ${cmp.spanDays === 1 ? 'day' : cmp.spanDays + ' days'} (${WTRules.fmtMoney(cmp.prevTotal)})${topDriver && Math.abs(topDriver.deltaPercent) >= 15 ? `, largely coinciding with <strong>${topDriver.label}</strong> (${topDriver.deltaPercent >= 0 ? '+' : ''}${topDriver.deltaPercent.toFixed(0)}%)` : ''}.
         </div>
+        <div style="font-size:11px;color:#98989D;margin-top:6px">${cmp.usingNet ? 'Estimated net, after your configured taxes — not a confirmed paycheck.' : 'Gross, before taxes — turn on tax estimates in Settings for a take-home number.'}</div>
       </div>` : '';
 
     const lengthPatterns = StatsRules.shiftLengthPatterns(stats.startDate, stats.endDate, statsProfile);
-    const contextCard = (contextInsights.length > 0 || lengthPatterns.length > 0) ? `
-      <div class="wt-settings-block" style="margin-bottom:16px;padding:0;overflow:hidden">
-        <div id="wt-context-header" style="display:flex;justify-content:space-between;align-items:center;padding:16px;cursor:pointer">
-          <div class="wt-settings-title" style="margin:0">What affects your earnings</div>
-          <span id="wt-context-chevron" style="color:#98989D;font-size:12px">▼</span>
-        </div>
-        <div id="wt-context-body" style="display:none;padding:0 16px 16px">
-          ${contextInsights.map(i => _statRow(`${i.label} (${i.groupCount})`, `${i.deltaPercent >= 0 ? '+' : ''}${i.deltaPercent.toFixed(0)}%`, i.deltaPercent >= 0 ? '#30D158' : '#FF453A')).join('')}
-          ${contextInsights.length ? `<div style="font-size:11px;color:#636366;margin:8px 0 14px;line-height:1.4">Compared to your average on other shifts in this period. Only shown once there's enough data to mean something.</div>` : ''}
-          ${lengthPatterns.length ? `<div style="font-size:12px;color:#98989D;font-weight:700;margin-bottom:6px">Avg hours per shift</div>` : ''}
-          ${lengthPatterns.map(p => `
-            <div style="font-size:13px;color:#fff;margin-bottom:6px">${p.location}</div>
-            ${p.weekdayCount ? _statRow(`Weekday (${p.weekdayCount})`, WTRules.fmtHours(p.weekdayAvg)) : ''}
-            ${p.weekendCount ? _statRow(`Weekend (${p.weekendCount})`, WTRules.fmtHours(p.weekendAvg)) : ''}
-          `).join('')}
-        </div>
-      </div>` : '';
+    const contextBody = (contextInsights.length > 0 || lengthPatterns.length > 0) ? `
+      ${contextInsights.map(i => _statRow(`${i.label} (${i.groupCount})`, `${i.deltaPercent >= 0 ? '+' : ''}${i.deltaPercent.toFixed(0)}%`, i.deltaPercent >= 0 ? '#30D158' : '#FF453A')).join('')}
+      ${contextInsights.length
+        ? `<div style="font-size:11px;color:#636366;margin:8px 0 14px;line-height:1.4">Compared to your average on other shifts in this period. Only shown once there's enough data to mean something.</div>`
+        : `<div style="font-size:11px;color:#636366;margin-bottom:14px;line-height:1.4">Not enough shifts yet in this period for earnings comparisons (need at least 2 on each side). Check back after a few more.</div>`}
+      ${lengthPatterns.length ? `<div style="font-size:12px;color:#98989D;font-weight:700;margin-bottom:6px">Avg hours per shift</div>` : ''}
+      ${lengthPatterns.map(p => `
+        <div style="font-size:13px;color:#fff;margin-bottom:6px">${p.location}</div>
+        ${p.weekdayCount ? _statRow(`Weekday (${p.weekdayCount})`, WTRules.fmtHours(p.weekdayAvg)) : ''}
+        ${p.weekendCount ? _statRow(`Weekend (${p.weekendCount})`, WTRules.fmtHours(p.weekendAvg)) : ''}
+      `).join('')}
+    ` : '';
+    const contextCard = _collapsibleCard('context', 'What affects your earnings', contextBody);
 
-    const summaryCard = `
-      <div class="wt-summary" style="margin-bottom:16px">
-        ${_statRow('Hours worked', WTRules.fmtHours(t.hours))}
-        ${_statRow('Gross from hours', WTRules.fmtMoney(t.grossFromHours))}
-        ${_statRow('CC tips', '+' + WTRules.fmtMoney(t.ccTips), '#30D158')}
-        ${_statRow('Cash tips', '+' + WTRules.fmtMoney(t.cashTips), '#FF9F0A')}
-        ${_statRow('Expected total', WTRules.fmtMoney(t.expectedGross), '#fff')}
-        ${t.receivedGross !== null ? _statRow('Received (gross)', WTRules.fmtMoney(t.receivedGross), '#64D2FF') : ''}
-        ${t.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(t.receivedNet), '#64D2FF') : ''}
-      </div>`;
+    const summaryCard = _collapsibleCard('summary', 'Summary', `
+      ${_statRow('Hours worked', WTRules.fmtHours(t.hours))}
+      ${_statRow('Gross from hours', WTRules.fmtMoney(t.grossFromHours))}
+      ${_statRow('CC tips', '+' + WTRules.fmtMoney(t.ccTips), '#30D158')}
+      ${_statRow('Cash tips', '+' + WTRules.fmtMoney(t.cashTips), '#FF9F0A')}
+      ${_statRow('Expected total (gross)', WTRules.fmtMoney(t.expectedGross), '#fff')}
+      ${t.receivedGross !== null ? _statRow('Received (gross)', WTRules.fmtMoney(t.receivedGross), '#64D2FF') : ''}
+      ${t.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(t.receivedNet), '#64D2FF') : ''}
+    `);
 
-    const activityCard = `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">Activity</div>
-        ${_statRow('Days worked', `${t.daysWorked} of ${t.totalDaysInRange}`)}
-        ${_statRow('Avg hours per worked day', WTRules.fmtHours(t.avgHoursPerWorkedDay))}
-        ${_statRow('Shifts tracked', String(t.shiftsCount))}
-      </div>`;
+    const activityCard = _collapsibleCard('activity', 'Activity', `
+      ${_statRow('Days worked', `${t.daysWorked} of ${t.totalDaysInRange}`)}
+      ${_statRow('Avg hours per worked day', WTRules.fmtHours(t.avgHoursPerWorkedDay))}
+      ${_statRow('Shifts tracked', String(t.shiftsCount))}
+    `);
 
-    const positionsCard = stats.positionBreakdown.length > 0 ? `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">Positions worked</div>
-        ${stats.positionBreakdown.map(p => _statRow(p.position, `${p.days} day${p.days !== 1 ? 's' : ''}`)).join('')}
-      </div>` : '';
+    const positionsCard = stats.positionBreakdown.length > 0
+      ? _collapsibleCard('positions', 'Positions worked', stats.positionBreakdown.map(p => _statRow(p.position, `${p.days} day${p.days !== 1 ? 's' : ''}`)).join(''))
+      : '';
 
-    const hoursChart = stats.perLocation.length > 1 ? `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">Hours by location</div>
-        ${_svgBarRow(stats.perLocation.map((l,i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v))}
-      </div>` : '';
+    const hoursChart = stats.perLocation.length > 1
+      ? _collapsibleCard('hourschart', 'Hours by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v)))
+      : '';
 
-    const incomeChart = stats.perLocation.length > 1 ? `
-      <div class="wt-settings-block" style="margin-bottom:16px">
-        <div class="wt-settings-title">Expected income by location</div>
-        ${_svgBarRow(stats.perLocation.map((l,i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v))}
-      </div>` : '';
+    const incomeChart = stats.perLocation.length > 1
+      ? _collapsibleCard('incomechart', 'Expected income by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)))
+      : '';
 
-    const locCards = stats.perLocation.map((l, i) => `
-      <div class="wt-settings-block" style="margin-bottom:12px">
-        <div class="wt-settings-title" style="display:flex;align-items:center;gap:8px">
-          <span style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]}"></span>
-          ${l.locationName}
-        </div>
+    const locCards = stats.perLocation.map((l, i) => _collapsibleCard(`loc-${i}`, `
+        <span style="display:inline-flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]}"></span>${l.locationName}</span>
+      `, `
         ${_statRow('Hours', WTRules.fmtHours(l.hours) + (l.overtimeHours > 0 ? ` (${WTRules.fmtHours(l.overtimeHours)} OT)` : ''))}
         ${_statRow('Gross from hours', WTRules.fmtMoney(l.grossFromHours))}
         ${_statRow('CC tips', '+' + WTRules.fmtMoney(l.ccTips), '#30D158')}
         ${_statRow('Cash tips', '+' + WTRules.fmtMoney(l.cashTips), '#FF9F0A')}
-        ${_statRow('Expected total', WTRules.fmtMoney(l.expectedGross))}
+        ${_statRow('Expected total (gross)', WTRules.fmtMoney(l.expectedGross))}
         ${l.expectedNet !== null ? _statRow('Est. net (after taxes)', WTRules.fmtMoney(l.expectedNet), '#64D2FF') : ''}
         ${l.receivedGross !== null ? _statRow('Received (gross)', WTRules.fmtMoney(l.receivedGross), '#64D2FF') : ''}
         ${l.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(l.receivedNet), '#64D2FF') : ''}
         ${l.realTaxRate !== null ? _statRow('Avg. real tax rate', l.realTaxRate.toFixed(1) + '%', '#FF9F0A') : ''}
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
-      </div>`).join('');
+      `)).join('');
 
     return headlineCard + lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
   }

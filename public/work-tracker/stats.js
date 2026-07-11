@@ -425,10 +425,16 @@ const StatsRules = (() => {
     const spanDays = Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
     const prevEnd = new Date(startDate); prevEnd.setDate(prevEnd.getDate() - 1);
     const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - spanDays + 1);
-    const curTotal = computeAllStats(startDate, endDate, workProfile).totals.expectedGross;
-    const prevTotal = computeAllStats(_ds(prevStart), _ds(prevEnd), workProfile).totals.expectedGross;
+    const curGross = computeAllStats(startDate, endDate, workProfile).totals.expectedGross;
+    const prevGross = computeAllStats(_ds(prevStart), _ds(prevEnd), workProfile).totals.expectedGross;
+    const taxSettings = WTDb.getTaxSettings();
+    const curNetEst = WTRules.estimateNet(curGross, taxSettings);
+    const prevNetEst = WTRules.estimateNet(prevGross, taxSettings);
+    const usingNet = curNetEst !== null;
+    const curTotal = usingNet ? curNetEst.net : curGross;
+    const prevTotal = usingNet ? (prevNetEst ? prevNetEst.net : prevGross) : prevGross;
     return {
-      curTotal, prevTotal, spanDays,
+      curTotal, prevTotal, spanDays, usingNet,
       prevStart: _ds(prevStart), prevEnd: _ds(prevEnd),
       deltaPercent: prevTotal > 0 ? ((curTotal - prevTotal) / prevTotal) * 100 : null
     };
