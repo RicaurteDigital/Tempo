@@ -507,6 +507,8 @@ const WorkTracker = (() => {
           const openEntry = shift.entries.find(e => !e.clockOut);
           if (openEntry) { openEntry.clockOut = _breakStart; WTDb.saveShift(shift); }
         }
+        clearInterval(_heroTimer); // freeze the stale ticker now — it was still counting the
+                                    // old work session's elapsed time during the photo prompt
         // Show photo prompt first, then update DOM
         const breakStartTime = _breakStart;
         const heroEl = breakBtn.closest('.wt-hero');
@@ -611,6 +613,8 @@ const WorkTracker = (() => {
 
         _breakStart = null;
         localStorage.removeItem('wt_break_start');
+        clearInterval(_heroTimer); // stop the stale break-ticker now, before it ticks again
+                                    // against a null _breakStart and shows a garbage number
 
         // Show immediate photo prompt for break end proof, plus a quick correction if the
         // location default doesn't match this specific break.
