@@ -507,6 +507,8 @@ const WorkTracker = (() => {
           const openEntry = shift.entries.find(e => !e.clockOut);
           if (openEntry) { openEntry.clockOut = _breakStart; WTDb.saveShift(shift); }
         }
+        _go('home'); // reflect ON BREAK immediately — _Home()'s own onBreak check renders it
+                      // correctly, without waiting on the photo-prompt flow below
         // Show photo prompt first, then update DOM
         const breakStartTime = _breakStart;
         const heroEl = breakBtn.closest('.wt-hero');
@@ -611,6 +613,7 @@ const WorkTracker = (() => {
 
         _breakStart = null;
         localStorage.removeItem('wt_break_start');
+        _go('home'); // reflect back-to-work immediately, same reasoning as Start Break above
 
         // Show immediate photo prompt for break end proof, plus a quick correction if the
         // location default doesn't match this specific break.
@@ -2930,6 +2933,7 @@ const WorkTracker = (() => {
         entries: [{ id: entryId, clockIn: clockInTime, clockOut: null, breakMinutes: 0 }]
       });
       ov.remove();
+      _go('home'); // reflect the running shift immediately, not gated behind the photo flow
       const photoOv = document.createElement('div');
       photoOv.className = 'wt-overlay';
       photoOv.innerHTML = `
@@ -3088,6 +3092,8 @@ const WorkTracker = (() => {
     entry.clockOut = clockOutTime; WTDb.saveShift(shift);
     _breakStart = null;
     localStorage.removeItem('wt_break_start');
+    _go('home'); // reflect the closed shift immediately (this also stops the live ticker,
+                  // since _go() clears it internally) — not gated behind the photo flow
 
     // Show immediate photo prompt with 5-second skip countdown
     const photoOv = document.createElement('div');
