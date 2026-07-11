@@ -277,13 +277,12 @@ const WTRules = (() => {
     return annual / (payPeriod === 'biweekly' ? 26 : payPeriod === 'semimonthly' ? 24 : 52);
   }
 
-  function getPayDate(weekStart, settings, location) {
-    if (!settings) return 'Same day (event)';
+  function getPayDateRaw(weekStart, settings, location) {
+    if (!settings) return null;
     const payPeriod = (location && location.payPeriod) || settings.payPeriod || 'weekly';
-    if (payPeriod === 'event') return 'Same day (event)';
+    if (payPeriod === 'event') return null;
     if (payPeriod === 'custom' && settings.customPayDate) {
-      return new Date(settings.customPayDate).toLocaleDateString('en-US',
-        { weekday: 'long', month: 'short', day: 'numeric' });
+      return new Date(settings.customPayDate);
     }
     // Use location-specific payDay if set, otherwise fall back to global setting (default: Friday=5)
     const targetDay = (location && location.payDayOfWeek) || settings.payDayOfWeek || 5;
@@ -292,7 +291,12 @@ const WTRules = (() => {
     const d = new Date(curStart + 'T12:00:00');
     do { d.setDate(d.getDate() + 1); } while (payPeriodStart(d, location, settings) === curStart);
     d.setDate(d.getDate() + (targetJS - d.getDay() + 7) % 7);
-    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    return d;
+  }
+
+  function getPayDate(weekStart, settings, location) {
+    const raw = getPayDateRaw(weekStart, settings, location);
+    return raw ? raw.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }) : 'Same day (event)';
   }
 
   function paymentAmounts(payment) {
@@ -319,7 +323,7 @@ const WTRules = (() => {
 
   return {
     entryHours, shiftHours, shiftEarnings, weeklyPay,
-    dailySummary, fmtHours, fmtMoney, getPayDate, getRecentWeeks,
+    dailySummary, fmtHours, fmtMoney, getPayDate, getPayDateRaw, getRecentWeeks,
     estimateNet, paymentAmounts, payPeriodStart, salaryPerPeriod
   };
 })();

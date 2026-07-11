@@ -957,6 +957,54 @@ const WorkTracker = (() => {
         <div style="width:36px"></div>
       </div>`;
 
+    // Payments Due — a short, actionable digest of any (location, week) whose payday has
+    // arrived but hasn't been confirmed yet. Computed fresh every render, so it clears itself
+    // the moment a payment gets recorded — no separate flag to manage or forget to clear.
+    // Bounded to a 3-week window: an unregistered payment older than that quietly stops being
+    // flagged instead of piling up into noise (same principle as the Day Off nudge). Each row
+    // jumps straight into the existing Record Payment flow for that exact week.
+    const activeProf0 = settings.workProfile || 'restaurant';
+    const dueLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === activeProf0);
+    const todayEndMs = new Date(_today() + 'T23:59:59').getTime();
+    const dueWindowMs = 21 * 86400000;
+    const due = [];
+    weeks.forEach(ws => {
+      const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
+      const wShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === activeProf0);
+      const wLocIds = [...new Set(wShifts.map(s => s.locationId).filter(Boolean))];
+      dueLocs.filter(l => wLocIds.includes(l.id)).forEach(l => {
+        if (WTDb.getPayment(l.id, wsStr)) return;
+        const rawDate = WTRules.getPayDateRaw(ws, settings, l);
+        if (!rawDate) return;
+        const payMs = rawDate.getTime();
+        if (payMs > todayEndMs || payMs < todayEndMs - dueWindowMs) return;
+        due.push({ locId: l.id, locName: l.name, ws: wsStr, weekLabel: formatWeekLabel(ws), payDate: rawDate });
+      });
+    });
+    due.sort((a, b) => a.payDate - b.payDate);
+
+    if (due.length) {
+      const dueCard = document.createElement('div');
+      dueCard.className = 'wt-glow';
+      dueCard.style.cssText = 'background:rgba(255,149,0,.12);border:1px solid rgba(255,159,10,.3);border-radius:16px;padding:14px 16px;margin:0 16px 14px';
+      dueCard.innerHTML = `
+        <div style="font-size:13px;font-weight:800;color:#FF9F0A;margin-bottom:8px">💰 Payment${due.length > 1 ? 's' : ''} Due (${due.length})</div>
+        ${due.map((d, i) => `
+          <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;cursor:pointer;${i > 0 ? 'border-top:1px solid rgba(255,255,255,0.08)' : ''}">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#fff">${d.locName}</div>
+              <div style="font-size:11px;color:#98989D">${d.weekLabel}</div>
+            </div>
+            <div style="font-size:11px;color:#FF9F0A;font-weight:700">Expected ${d.payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ›</div>
+          </div>
+        `).join('')}
+      `;
+      w.appendChild(dueCard);
+      dueCard.querySelectorAll('.wt-due-row').forEach(el => {
+        el.onclick = () => _showPayDayOptions(el.dataset.locId, el.dataset.locName, el.dataset.ws, settings);
+      });
+    }
+
     weeks.forEach(ws => {
       const activeProf = (WTDb.getSettings().workProfile || 'restaurant');
       const shifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === activeProf);
