@@ -684,7 +684,7 @@ const WorkTracker = (() => {
     const isExpanded = forceExpanded || isRunning;
 
     const card = document.createElement('div');
-    card.className = 'wt-shift' + (isExpanded ? ' wt-shift-expanded' : ' wt-shift-collapsed');
+    card.className = 'wt-shift' + (isExpanded ? ' wt-shift-expanded' : ' wt-shift-collapsed') + (shift.needsReview ? ' wt-glow' : '');
 
     // ── HEADER (always visible) ──
     const top = document.createElement('div');
@@ -810,6 +810,11 @@ const WorkTracker = (() => {
         if (chev) chev.textContent = open ? '▼' : '▲';
         card.classList.toggle('wt-shift-expanded', !open);
         card.classList.toggle('wt-shift-collapsed', open);
+        if (shift.needsReview) {
+          shift.needsReview = false;
+          WTDb.saveShift(shift);
+          card.classList.remove('wt-glow');
+        }
       };
     }
 
@@ -3090,7 +3095,9 @@ const WorkTracker = (() => {
     const entry = shift.entries.find(e => e.id === entryId);
     if (!entry || entry.clockOut) return; // already clocked out — ignore a duplicate call
     const clockOutTime = new Date().toISOString();
-    entry.clockOut = clockOutTime; WTDb.saveShift(shift);
+    entry.clockOut = clockOutTime;
+    shift.needsReview = true;
+    WTDb.saveShift(shift);
     _breakStart = null;
     localStorage.removeItem('wt_break_start');
     _go('home'); // reflect the closed shift immediately (this also stops the live ticker,
