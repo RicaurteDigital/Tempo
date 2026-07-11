@@ -640,5 +640,23 @@ _applyMode();
 <script src="study-tracker/db.js"></script>
 <script src="study-tracker/rules.js"></script>
 <script src="study-tracker/ui.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    location.reload();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.update();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+    }).catch(() => {});
+  });
+}
+</script>
 </body>
 </html>
