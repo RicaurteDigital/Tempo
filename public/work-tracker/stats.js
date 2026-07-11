@@ -297,8 +297,78 @@ const StatsRules = (() => {
     return { total: inRange.length, byType };
   }
 
+  // Fixed-date holidays that actually move hospitality traffic (not generic office holidays
+  // like Presidents Day), plus Thanksgiving and its eve — one of the busiest bar nights of
+  // the year — computed since it falls on a different date each year (4th Thursday of Nov).
+  function _isHospitalityHoliday(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    const m = d.getMonth() + 1, day = d.getDate();
+    const fixed = new Set(['1-1', '2-14', '3-17', '5-5', '7-4', '10-31', '12-24', '12-25', '12-31']);
+    if (fixed.has(`${m}-${day}`)) return true;
+    if (m === 11) {
+      const nov1DayOfWeek = new Date(d.getFullYear(), 10, 1).getDay();
+      const firstThursday = 1 + (4 - nov1DayOfWeek + 7) % 7;
+      const thanksgiving = firstThursday + 21;
+      if (day === thanksgiving || day === thanksgiving - 1) return true;
+    }
+    return false;
+  }
+
+  // What actually moves your earnings, and by how much. Start/end of month and holidays are
+  // detected automatically from the date — zero data entry required. Weather and pace only
+  // compare shifts you've explicitly tagged as Bad/Slower/Busier against everything else in
+  // range; each comparison is only returned once both sides have at least 2 shifts, so one
+  // rainy Tuesday can never look like a trend.
+  function computeShiftContext(startDate, endDate, workProfile) {
+    const profile = workProfile || 'restaurant';
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const feePercent = WTDb.getTipSettings().processingFeePercent || 3;
+
+    const buckets = {
+      startOfMonth: { label: 'Start of Month (1st–5th)', in: [], out: [] },
+      endOfMonth: { label: 'End of Month (last 5 days)', in: [], out: [] },
+      holiday: { label: 'Holidays', in: [], out: [] },
+      weather: { label: 'Bad Weather', in: [], out: [] },
+      slow: { label: 'Marked "Slower"', in: [], out: [] },
+      busy: { label: 'Marked "Busier"', in: [], out: [] }
+    };
+
+    shifts.forEach(s => {
+      const hrs = WTRules.shiftHours(s);
+      const cut = _myTipCut(s, feePercent);
+      const earn = hrs * (s.hourlyRate || 15) + cut.cc + cut.cash;
+      if (hrs <= 0 && earn <= 0) return; // nothing measurable yet (open or empty shift)
+
+      const d = new Date(s.date + 'T12:00:00');
+      const day = d.getDate();
+      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+
+      (day <= 5 ? buckets.startOfMonth.in : buckets.startOfMonth.out).push(earn);
+      (day > lastDay - 5 ? buckets.endOfMonth.in : buckets.endOfMonth.out).push(earn);
+      (_isHospitalityHoliday(s.date) ? buckets.holiday.in : buckets.holiday.out).push(earn);
+      (s.weatherTag === 'bad' ? buckets.weather.in : buckets.weather.out).push(earn);
+      (s.paceTag === 'slow' ? buckets.slow.in : buckets.slow.out).push(earn);
+      (s.paceTag === 'busy' ? buckets.busy.in : buckets.busy.out).push(earn);
+    });
+
+    const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const insights = [];
+    Object.values(buckets).forEach(b => {
+      if (b.in.length < 2 || b.out.length < 2) return; // not enough sample size to mean anything
+      const inAvg = avg(b.in), outAvg = avg(b.out);
+      insights.push({
+        label: b.label,
+        groupAvg: inAvg, groupCount: b.in.length,
+        baselineAvg: outAvg,
+        deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0
+      });
+    });
+    return insights;
+  }
+
   return {
     rollingRange, yearRange, weekRange, activeYears,
-    computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange
+    computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange,
+    computeShiftContext
   };
 })();

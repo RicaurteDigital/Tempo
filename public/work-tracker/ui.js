@@ -784,11 +784,13 @@ const WorkTracker = (() => {
     const cardProfile = WORK_PROFILES[WTDb.getSettings().workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
     footer.innerHTML = `
       <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
+      <button class="wt-tag-btn wt-tap-scale" data-sid="${shift.id}" style="background:none;border:none;color:${(shift.weatherTag||shift.paceTag||shift.contextNote)?'#5E5CE6':'#636366'};cursor:pointer;padding:0;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5H6.5L12.5 7.5L7.5 12.5L1.5 6.5V1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="4" r="1" fill="currentColor"/></svg></button>
       ${cardProfile.hasTips ? `<button class="wt-tips-btn ${(!isRunning && !hasTips) ? 'wt-glow' : ''}" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'rgba(28,28,30,0.8)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'#98989D'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">` : ''}
         💰 ${hasTips ? TipRules.fmtMoney(tipsData.myPayout||0) + ' tips' : 'Tips'}
       ${cardProfile.hasTips ? `</button>` : ''}
       <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
     footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
+    footer.querySelector('.wt-tag-btn').onclick = () => _showShiftContext(shift);
     if (cardProfile.hasTips) {
       const tipsBtn = footer.querySelector('.wt-tips-btn');
       if (tipsBtn) tipsBtn.onclick = () => _showTipPool(shift.id);
@@ -1853,6 +1855,14 @@ const WorkTracker = (() => {
         ${Object.entries(daysOff.byType).map(([type, count]) => _statRow(dayOffLabels[type] || type, String(count))).join('')}
       </div>` : '';
 
+    const contextInsights = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile);
+    const contextCard = contextInsights.length > 0 ? `
+      <div class="wt-settings-block" style="margin-bottom:16px">
+        <div class="wt-settings-title">What affects your earnings</div>
+        ${contextInsights.map(i => _statRow(`${i.label} (${i.groupCount})`, `${i.deltaPercent >= 0 ? '+' : ''}${i.deltaPercent.toFixed(0)}%`, i.deltaPercent >= 0 ? '#30D158' : '#FF453A')).join('')}
+        <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.4">Compared to your average on other shifts in this period. Only shown once there's enough data to mean something.</div>
+      </div>` : '';
+
     const summaryCard = `
       <div class="wt-summary" style="margin-bottom:16px">
         ${_statRow('Hours worked', WTRules.fmtHours(t.hours))}
@@ -1908,7 +1918,7 @@ const WorkTracker = (() => {
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
       </div>`).join('');
 
-    return lineChartCard + dowCard + daysOffCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
+    return lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
   }
 
   function _Settings() {
@@ -5019,6 +5029,71 @@ const WorkTracker = (() => {
       reader.readAsDataURL(file);
     };
     input.click();
+  }
+
+  // Weather/pace are deliberately limited to 2-3 options each — few enough buckets that each
+  // one accumulates real sample size over time, instead of scattering into one-off anecdotes
+  // that can't support any actual average. The free-text note is personal-reference only and
+  // is never used in Stats aggregation.
+  function _showShiftContext(shift) {
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    let weather = shift.weatherTag || null;
+    let pace = shift.paceTag || null;
+    ov.innerHTML = `
+      <div class="wt-modal">
+        <div class="wt-modal-handle"></div>
+        <div class="wt-modal-title">Shift Notes</div>
+        <label class="wt-modal-label">Weather</label>
+        <div id="wt-sc-weather" style="display:flex;gap:8px;margin-bottom:16px">
+          <button data-v="" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Normal</button>
+          <button data-v="bad" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Bad</button>
+        </div>
+        <label class="wt-modal-label">Pace</label>
+        <div id="wt-sc-pace" style="display:flex;gap:8px;margin-bottom:16px">
+          <button data-v="slow" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Slower</button>
+          <button data-v="" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Normal</button>
+          <button data-v="busy" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Busier</button>
+        </div>
+        <label class="wt-modal-label">Note <span style="font-size:11px;color:#636366;font-weight:400">(just for you — not used in Stats)</span></label>
+        <textarea id="wt-sc-note" class="wt-input" style="min-height:60px;resize:vertical" placeholder="e.g. concert let out nearby...">${shift.contextNote || ''}</textarea>
+        <div class="wt-modal-actions" style="margin-top:18px">
+          <button class="wt-btn wt-btn-secondary" id="wt-sc-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary" id="wt-sc-save">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+
+    function refreshOpts(containerId, val) {
+      ov.querySelectorAll(`#${containerId} .wt-sc-opt`).forEach(b => {
+        const active = b.dataset.v === (val || '');
+        b.style.background = active ? '#5E5CE6' : '#2C2C2E';
+        b.style.color = '#fff';
+        b.style.border = active ? 'none' : '1px solid #3A3A3C';
+      });
+    }
+    refreshOpts('wt-sc-weather', weather);
+    refreshOpts('wt-sc-pace', pace);
+    ov.querySelectorAll('#wt-sc-weather .wt-sc-opt').forEach(b => {
+      b.onclick = () => { weather = b.dataset.v || null; refreshOpts('wt-sc-weather', weather); };
+    });
+    ov.querySelectorAll('#wt-sc-pace .wt-sc-opt').forEach(b => {
+      b.onclick = () => { pace = b.dataset.v || null; refreshOpts('wt-sc-pace', pace); };
+    });
+
+    ov.querySelector('#wt-sc-cancel').onclick = () => ov.remove();
+    ov.querySelector('#wt-sc-save').onclick = () => {
+      const saved = WTDb.getShifts().find(s => s.id === shift.id);
+      if (saved) {
+        saved.weatherTag = weather;
+        saved.paceTag = pace;
+        saved.contextNote = ov.querySelector('#wt-sc-note').value.trim();
+        WTDb.saveShift(saved);
+      }
+      ov.remove();
+      _go('home');
+    };
   }
 
   function _showEditShift(shift) {
