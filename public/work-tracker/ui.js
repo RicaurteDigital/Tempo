@@ -999,7 +999,7 @@ const WorkTracker = (() => {
         </div>
         <div id="wt-due-body" style="display:none;padding:10px 12px 12px;background:rgba(255,149,0,.05)">
           ${due.map(d => `
-            <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;cursor:pointer;background:rgba(28,28,30,0.7);border-radius:12px;transition:opacity .1s" onpointerdown="this.style.opacity='0.6'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">
+            <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;cursor:pointer;background:rgba(28,28,30,0.7);border-radius:12px">
               <div>
                 <div style="font-size:13px;font-weight:700;color:#fff">${d.locName}</div>
                 <div style="font-size:11px;color:#98989D">${d.weekLabel}</div>
@@ -1007,7 +1007,7 @@ const WorkTracker = (() => {
               <div class="wt-glow" style="font-size:11px;color:#FF9F0A;font-weight:700;border-radius:8px;padding:3px 8px">Expected ${d.payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ›</div>
             </div>
           `).join('')}
-          ${_weekHistoryCount < 52 ? `<div id="wt-view-full-year" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;padding:8px;cursor:pointer">View Full Year →</div>` : ''}
+          ${_weekHistoryCount < 52 ? `<div id="wt-view-full-year" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;padding:8px;cursor:pointer">View Full Year →</div>` : ''}
         </div>`;
       w.appendChild(dueCard);
       const headerEl = dueCard.querySelector('#wt-due-header');
@@ -1055,11 +1055,11 @@ const WorkTracker = (() => {
         if (isPast && !has) {
           const reason = WTDb.getDayOffReason(ds, activeProf);
           if (reason) {
-            offHtml = `<div data-dayoff-nav="${ds}" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off</div>`;
+            offHtml = `<div data-dayoff-nav="${ds}" class="wt-tap-fade" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer">Off</div>`;
           } else if (isCur) {
             // Only nudge within the current, still-in-progress week — once a week ends,
             // stop asking about days you likely won't remember; still fully clickable though.
-            offHtml = `<div data-dayoff-nav="${ds}" class="wt-glow" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px;transition:opacity .1s" onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Off?</div>`;
+            offHtml = `<div data-dayoff-nav="${ds}" class="wt-glow wt-tap-fade" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px">Off?</div>`;
           }
         }
         return `<div style="display:flex;flex-direction:column;align-items:center">${dotHtml}${offHtml}</div>`;
@@ -1480,11 +1480,11 @@ const WorkTracker = (() => {
           `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '').replace('6m','sixmonths')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
-      <button id="wt-pv-custom-btn" style="display:block;width:calc(100% - 32px);margin:0 16px 10px;background:rgba(28,28,30,0.8);border:1px solid #38383A;border-radius:12px;color:#98989D;font-size:13px;font-weight:700;padding:11px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:5px"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5H12.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 1.3V3.3M10 1.3V3.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Pick a custom date range</button>
+      <button id="wt-pv-custom-btn" class="wt-tap-scale" style="display:block;width:calc(100% - 32px);margin:0 16px 10px;background:rgba(28,28,30,0.8);border:1px solid #38383A;border-radius:12px;color:#98989D;font-size:13px;font-weight:700;padding:11px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:5px"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5H12.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 1.3V3.3M10 1.3V3.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Pick a custom date range</button>
       <div id="wt-pv-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:10px">
-        <button id="wt-pv-prev" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+        <button id="wt-pv-prev" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
         <span id="wt-pv-label" style="font-size:14px;font-weight:700;color:#fff;min-width:170px;text-align:center"></span>
-        <button id="wt-pv-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
+        <button id="wt-pv-next" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
       </div>
       <div id="wt-custom-wrap" style="display:none;gap:8px;margin:0 16px 10px">
         <input type="date" class="wt-input" id="wt-custom-start" style="flex:1">
@@ -4537,8 +4537,7 @@ const WorkTracker = (() => {
           <button class="wt-btn wt-btn-secondary" id="wt-do-cancel">Cancel</button>
           <button class="wt-btn wt-btn-primary" id="wt-do-save">Save</button>
         </div>
-        ${existing ? `<button id="wt-do-remove" style="width:100%;margin-top:10px;background:none;border:none;color:#FF453A;font-size:13px;font-weight:600;cursor:pointer;padding:8px;transition:opacity .1s"
-          onpointerdown="this.style.opacity='0.5'" onpointerup="this.style.opacity='1'" onpointerleave="this.style.opacity='1'">Remove</button>` : ''}
+        ${existing ? `<button id="wt-do-remove" class="wt-tap-fade" style="width:100%;margin-top:10px;background:none;border:none;color:#FF453A;font-size:13px;font-weight:600;cursor:pointer;padding:8px">Remove</button>` : ''}
       </div>`;
     document.body.appendChild(ov);
     ov.addEventListener('click', e => {

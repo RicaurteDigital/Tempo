@@ -397,6 +397,29 @@
 .wt-btn-secondary { background: #2C2C2E; color: #fff; border: 1px solid #3A3A3C; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
 .wt-btn-secondary:active { background: #38383A; }
 
+/* ── TAP FEEDBACK (reusable) ─────────────────────────────
+   Two shared press states for one-off tappable elements that don't warrant their own
+   dedicated class. Prefer these over inline onpointerdown/up JS — CSS :active is more
+   reliable across devices and needs no per-element script.
+   - wt-tap-scale: compact, button-like elements (pills, small icon buttons)
+   - wt-tap-fade: small text-only or borderless elements, where scaling looks awkward */
+.wt-tap-scale { transition: transform .1s; }
+.wt-tap-scale:active { transform: scale(.95); }
+.wt-tap-fade { transition: opacity .1s; }
+.wt-tap-fade:active { opacity: .5; }
+
+/* Existing tappable classes that were missing press feedback */
+.wt-pv-pill { transition: transform .1s; }
+.wt-pv-pill:active { transform: scale(.95); }
+.wt-stats-pill { transition: transform .1s; }
+.wt-stats-pill:active { transform: scale(.95); }
+.wt-tips-btn { transition: transform .1s; }
+.wt-tips-btn:active { transform: scale(.95); }
+.wt-due-row { transition: background .15s; }
+.wt-due-row:active { background: rgba(255,255,255,0.08) !important; }
+.wt-shift-top { transition: background .15s; }
+.wt-shift-top:active { background: rgba(255,255,255,0.04); }
+
 /* ── SETTINGS ACCORDION ──────────────────────────────── */
 .wt-settings-header {
   display: flex;
