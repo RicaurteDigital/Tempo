@@ -344,21 +344,25 @@ const StatsRules = (() => {
 
     const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
     const insights = [];
-    function addInsight(label, inRecs, outRecs, metric) {
+    function addInsight(label, inRecs, outRecs, metric, unit) {
       if (inRecs.length < 2 || outRecs.length < 2) return;
       const inAvg = avg(inRecs.map(metric)), outAvg = avg(outRecs.map(metric));
-      insights.push({ label, groupCount: inRecs.length, deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0 });
+      insights.push({
+        label, unit, groupCount: inRecs.length,
+        groupAvg: inAvg, baselineAvg: outAvg,
+        deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0
+      });
     }
 
     if (rangeSpanDays >= 20) {
-      addInsight('Start of Month (1st–5th)', records.filter(r => r.day <= 5), records.filter(r => r.day > 5), r => r.earn);
-      addInsight('End of Month (last 5 days)', records.filter(r => r.day > r.lastDay - 5), records.filter(r => r.day <= r.lastDay - 5), r => r.earn);
+      addInsight('Start of Month (1st–5th)', records.filter(r => r.day <= 5), records.filter(r => r.day > 5), r => r.earn, 'perShift');
+      addInsight('End of Month (last 5 days)', records.filter(r => r.day > r.lastDay - 5), records.filter(r => r.day <= r.lastDay - 5), r => r.earn, 'perShift');
     }
-    addInsight('Holidays', records.filter(r => r.isHoliday), records.filter(r => !r.isHoliday), r => r.perHour);
-    addInsight('Weekends (Fri–Sun)', records.filter(r => r.isWeekend), records.filter(r => !r.isWeekend), r => r.perHour);
-    addInsight('Bad Weather', records.filter(r => r.shift.weatherTag === 'bad'), records.filter(r => r.shift.weatherTag !== 'bad'), r => r.perHour);
-    addInsight('Marked "Slower"', records.filter(r => r.shift.paceTag === 'slow'), records.filter(r => r.shift.paceTag !== 'slow'), r => r.perHour);
-    addInsight('Marked "Busier"', records.filter(r => r.shift.paceTag === 'busy'), records.filter(r => r.shift.paceTag !== 'busy'), r => r.perHour);
+    addInsight('Holidays', records.filter(r => r.isHoliday), records.filter(r => !r.isHoliday), r => r.perHour, 'perHour');
+    addInsight('Weekends (Fri–Sun)', records.filter(r => r.isWeekend), records.filter(r => !r.isWeekend), r => r.perHour, 'perHour');
+    addInsight('Bad Weather', records.filter(r => r.shift.weatherTag === 'bad'), records.filter(r => r.shift.weatherTag !== 'bad'), r => r.perHour, 'perHour');
+    addInsight('Marked "Slower"', records.filter(r => r.shift.paceTag === 'slow'), records.filter(r => r.shift.paceTag !== 'slow'), r => r.perHour, 'perHour');
+    addInsight('Marked "Busier"', records.filter(r => r.shift.paceTag === 'busy'), records.filter(r => r.shift.paceTag !== 'busy'), r => r.perHour, 'perHour');
 
     // Larger vs smaller tip pools, split at the median total points in range — does sharing
     // with more people actually cost you per hour, or does it wash out with bigger sales?
@@ -371,7 +375,7 @@ const StatsRules = (() => {
       const sortedPts = withPts.map(r => r.pts).sort((a, b) => a - b);
       const median = sortedPts[Math.floor(sortedPts.length / 2)];
       addInsight(`Larger Tip Pools (${median.toFixed(2)}+ pts)`,
-        withPts.filter(r => r.pts >= median), withPts.filter(r => r.pts < median), r => r.perHour);
+        withPts.filter(r => r.pts >= median), withPts.filter(r => r.pts < median), r => r.perHour, 'perHour');
     }
 
     // Weeks with any day off vs weeks without — real weekly totals, not per-shift, since a
@@ -390,10 +394,22 @@ const StatsRules = (() => {
     });
     if (weeksWithOff.length >= 2 && weeksWithoutOff.length >= 2) {
       const inAvg = avg(weeksWithOff), outAvg = avg(weeksWithoutOff);
-      insights.push({ label: 'Weeks with a Day Off', groupCount: weeksWithOff.length, deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0 });
+      insights.push({
+        label: 'Weeks with a Day Off', unit: 'perWeek', groupCount: weeksWithOff.length,
+        groupAvg: inAvg, baselineAvg: outAvg,
+        deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0
+      });
     }
 
-    return insights;
+    // Weather/pace need the user to actually tag shifts (via the 🏷️ button) — if those
+    // insights didn't make it in and very few shifts here are tagged at all, that's the
+    // likely reason, and it's something the user can directly act on (unlike, say, "not
+    // enough holidays this period," which just needs time to pass).
+    const taggedCount = records.filter(r => r.shift.weatherTag || r.shift.paceTag).length;
+    const hasTagBasedInsight = insights.some(i => i.label === 'Bad Weather' || i.label.startsWith('Marked'));
+    const needsTagging = !hasTagBasedInsight && taggedCount < 4;
+
+    return { insights, needsTagging };
   }
 
   // Purely descriptive (not a "good/bad" comparison): how long your shifts actually run, per

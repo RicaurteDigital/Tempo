@@ -1679,24 +1679,28 @@ const WorkTracker = (() => {
   }
 
   // Every Stats section (except the always-visible headline) uses this same collapsible
-  // shell — starts closed so the screen reads as a scannable list of titles, and the user
-  // opens whichever they actually want to dig into. One delegated click listener (wired in
-  // loadRange) handles every instance, matched by its data-collapse-* id.
-  function _collapsibleCard(id, title, bodyHtml) {
+  // shell — defaults closed so the screen reads as a scannable list of titles. isOpen lets
+  // a caller restore a previously-expanded state (e.g. after switching the date-range pill,
+  // where the screen isn't really "changing" so open cards shouldn't re-collapse). One
+  // delegated click listener (wired in loadRange) handles every instance, matched by id.
+  function _collapsibleCard(id, title, bodyHtml, isOpen) {
     if (!bodyHtml) return '';
     return `
       <div class="wt-settings-block" style="margin-bottom:16px;padding:0;overflow:hidden">
         <div class="wt-collapse-header" data-collapse-toggle="${id}" style="display:flex;justify-content:space-between;align-items:center;padding:16px;cursor:pointer">
           <div class="wt-settings-title" style="margin:0">${title}</div>
-          <span class="wt-collapse-chevron" data-collapse-chevron="${id}" style="color:#98989D;font-size:12px">▼</span>
+          <span class="wt-collapse-chevron" data-collapse-chevron="${id}" style="color:#98989D;font-size:12px">${isOpen ? '▲' : '▼'}</span>
         </div>
-        <div class="wt-collapse-body" data-collapse-body="${id}" style="display:none;padding:0 16px 16px">
+        <div class="wt-collapse-body" data-collapse-body="${id}" style="display:${isOpen ? 'block' : 'none'};padding:0 16px 16px">
           ${bodyHtml}
         </div>
       </div>`;
   }
 
   function _Stats() {
+    const openCardIds = new Set(); // which cards are expanded — survives pill changes (loadRange),
+                                    // resets fresh only when _Stats() itself re-runs (leaving and
+                                    // coming back), matching "collapse on page change, not on filter change"
     const w = document.createElement('div');
     w.className = 'wt-screen';
     const years = StatsRules.activeYears();
@@ -1762,7 +1766,7 @@ const WorkTracker = (() => {
       rangeLabelEl.textContent = `${label} · ${fmtStatDate(start)} → ${fmtStatDate(end)}`;
       const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
       const stats = StatsRules.computeAllStats(start, end, currentProfile);
-      resultsEl.innerHTML = _renderStatsResults(stats);
+      resultsEl.innerHTML = _renderStatsResults(stats, openCardIds);
       resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
         el.onclick = () => _go('day', { date: el.dataset.chartDate });
       });
@@ -1775,6 +1779,7 @@ const WorkTracker = (() => {
         const open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
         chev.textContent = open ? '▼' : '▲';
+        if (open) openCardIds.delete(id); else openCardIds.add(id);
       };
     }
 
@@ -1851,7 +1856,7 @@ const WorkTracker = (() => {
     </svg>`;
   }
 
-  function _renderStatsResults(stats) {
+  function _renderStatsResults(stats, openCardIds) {
     if (!stats.perLocation.length) {
       return '<div class="wt-empty"><strong>No data</strong>No shifts or payments in this period.</div>';
     }
@@ -1860,12 +1865,12 @@ const WorkTracker = (() => {
     const statsProfile = WTDb.getSettings().workProfile || 'restaurant';
 
     const ts = StatsRules.timeSeries(stats.startDate, stats.endDate, statsProfile);
-    const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points));
+    const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points), openCardIds.has('chart'));
 
     const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile)
       .sort((a, b) => b.avg - a.avg);
     const dowCard = dowData.some(d => d.count > 0)
-      ? _collapsibleCard('dow', 'Best days to work', _svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)))
+      ? _collapsibleCard('dow', 'Best days to work', _svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)), openCardIds.has('dow'))
       : '';
 
     const daysOff = StatsRules.daysOffInRange(stats.startDate, stats.endDate, statsProfile);
@@ -1873,9 +1878,10 @@ const WorkTracker = (() => {
     const daysOffCard = daysOff.total > 0 ? _collapsibleCard('daysoff', 'Days off', `
       ${_statRow('Total', String(daysOff.total))}
       ${Object.entries(daysOff.byType).map(([type, count]) => _statRow(dayOffLabels[type] || type, String(count))).join('')}
-    `) : '';
+    `, openCardIds.has('daysoff')) : '';
 
-    const contextInsights = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile);
+    const contextResult = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile);
+    const contextInsights = contextResult.insights;
     const cmp = StatsRules.periodComparison(stats.startDate, stats.endDate, statsProfile);
     const topDriver = contextInsights.length
       ? contextInsights.reduce((best, i) => Math.abs(i.deltaPercent) > Math.abs(best.deltaPercent) ? i : best)
@@ -1888,20 +1894,30 @@ const WorkTracker = (() => {
         <div style="font-size:11px;color:#98989D;margin-top:6px">${cmp.usingNet ? 'Estimated net, after your configured taxes — not a confirmed paycheck.' : 'Gross, before taxes — turn on tax estimates in Settings for a take-home number.'}</div>
       </div>` : '';
 
+    function _contextRow(i) {
+      const unitLabel = i.unit === 'perHour' ? '/hr' : i.unit === 'perShift' ? '/shift' : '/wk';
+      const better = i.deltaPercent >= 0;
+      return `
+        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #2C2C2E">
+          <div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:2px">${i.label} <span style="color:#636366;font-weight:400">(${i.groupCount} shift${i.groupCount !== 1 ? 's' : ''})</span></div>
+          <div style="font-size:12px;color:#98989D">${WTRules.fmtMoney(i.groupAvg)}${unitLabel} vs. your usual ${WTRules.fmtMoney(i.baselineAvg)}${unitLabel} — <span style="color:${better ? '#30D158' : '#FF453A'};font-weight:700">${Math.abs(i.deltaPercent).toFixed(0)}% ${better ? 'more' : 'less'}</span></div>
+        </div>`;
+    }
+
     const lengthPatterns = StatsRules.shiftLengthPatterns(stats.startDate, stats.endDate, statsProfile);
     const contextBody = (contextInsights.length > 0 || lengthPatterns.length > 0) ? `
-      ${contextInsights.map(i => _statRow(`${i.label} (${i.groupCount})`, `${i.deltaPercent >= 0 ? '+' : ''}${i.deltaPercent.toFixed(0)}%`, i.deltaPercent >= 0 ? '#30D158' : '#FF453A')).join('')}
-      ${contextInsights.length
-        ? `<div style="font-size:11px;color:#636366;margin:8px 0 14px;line-height:1.4">Compared to your average on other shifts in this period. Only shown once there's enough data to mean something.</div>`
-        : `<div style="font-size:11px;color:#636366;margin-bottom:14px;line-height:1.4">Not enough shifts yet in this period for earnings comparisons (need at least 2 on each side). Check back after a few more.</div>`}
+      <div style="font-size:11px;color:#636366;margin-bottom:14px;line-height:1.4">Each line compares your average pay in that situation against your average on everything else this period, using your real numbers.</div>
+      ${contextInsights.map(_contextRow).join('')}
+      ${contextInsights.length === 0 ? `<div style="font-size:11px;color:#636366;margin-bottom:14px;line-height:1.4">Not enough shifts yet in this period for earnings comparisons (need at least 2 on each side). Check back after a few more.</div>` : ''}
+      ${contextResult.needsTagging ? `<div style="font-size:11px;color:#FF9F0A;margin-bottom:14px;line-height:1.4">🏷️ Tag more shifts with weather and pace (on each shift's card) to unlock those insights here.</div>` : ''}
       ${lengthPatterns.length ? `<div style="font-size:12px;color:#98989D;font-weight:700;margin-bottom:6px">Avg hours per shift</div>` : ''}
       ${lengthPatterns.map(p => `
         <div style="font-size:13px;color:#fff;margin-bottom:6px">${p.location}</div>
-        ${p.weekdayCount ? _statRow(`Weekday (${p.weekdayCount})`, WTRules.fmtHours(p.weekdayAvg)) : ''}
-        ${p.weekendCount ? _statRow(`Weekend (${p.weekendCount})`, WTRules.fmtHours(p.weekendAvg)) : ''}
+        ${p.weekdayCount ? _statRow(`Weekday (${p.weekdayCount} shift${p.weekdayCount !== 1 ? 's' : ''})`, WTRules.fmtHours(p.weekdayAvg)) : ''}
+        ${p.weekendCount ? _statRow(`Weekend (${p.weekendCount} shift${p.weekendCount !== 1 ? 's' : ''})`, WTRules.fmtHours(p.weekendAvg)) : ''}
       `).join('')}
     ` : '';
-    const contextCard = _collapsibleCard('context', 'What affects your earnings', contextBody);
+    const contextCard = _collapsibleCard('context', 'What affects your earnings', contextBody, openCardIds.has('context'));
 
     const summaryCard = _collapsibleCard('summary', 'Summary', `
       ${_statRow('Hours worked', WTRules.fmtHours(t.hours))}
@@ -1911,24 +1927,24 @@ const WorkTracker = (() => {
       ${_statRow('Expected total (gross)', WTRules.fmtMoney(t.expectedGross), '#fff')}
       ${t.receivedGross !== null ? _statRow('Received (gross)', WTRules.fmtMoney(t.receivedGross), '#64D2FF') : ''}
       ${t.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(t.receivedNet), '#64D2FF') : ''}
-    `);
+    `, openCardIds.has('summary'));
 
     const activityCard = _collapsibleCard('activity', 'Activity', `
       ${_statRow('Days worked', `${t.daysWorked} of ${t.totalDaysInRange}`)}
       ${_statRow('Avg hours per worked day', WTRules.fmtHours(t.avgHoursPerWorkedDay))}
       ${_statRow('Shifts tracked', String(t.shiftsCount))}
-    `);
+    `, openCardIds.has('activity'));
 
     const positionsCard = stats.positionBreakdown.length > 0
-      ? _collapsibleCard('positions', 'Positions worked', stats.positionBreakdown.map(p => _statRow(p.position, `${p.days} day${p.days !== 1 ? 's' : ''}`)).join(''))
+      ? _collapsibleCard('positions', 'Positions worked', stats.positionBreakdown.map(p => _statRow(p.position, `${p.days} day${p.days !== 1 ? 's' : ''}`)).join(''), openCardIds.has('positions'))
       : '';
 
     const hoursChart = stats.perLocation.length > 1
-      ? _collapsibleCard('hourschart', 'Hours by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v)))
+      ? _collapsibleCard('hourschart', 'Hours by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v)), openCardIds.has('hourschart'))
       : '';
 
     const incomeChart = stats.perLocation.length > 1
-      ? _collapsibleCard('incomechart', 'Expected income by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)))
+      ? _collapsibleCard('incomechart', 'Expected income by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)), openCardIds.has('incomechart'))
       : '';
 
     const locCards = stats.perLocation.map((l, i) => _collapsibleCard(`loc-${i}`, `
@@ -1944,7 +1960,7 @@ const WorkTracker = (() => {
         ${l.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(l.receivedNet), '#64D2FF') : ''}
         ${l.realTaxRate !== null ? _statRow('Avg. real tax rate', l.realTaxRate.toFixed(1) + '%', '#FF9F0A') : ''}
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
-      `)).join('');
+      `, openCardIds.has(`loc-${i}`))).join('');
 
     return headlineCard + lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
   }
