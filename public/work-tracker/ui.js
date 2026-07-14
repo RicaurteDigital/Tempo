@@ -3510,10 +3510,6 @@ const WorkTracker = (() => {
         const btn = document.querySelector(`[data-pid="${photoKey}"]`);
         if (btn) {
           if (btn.nextSibling && btn.nextSibling.tagName === 'IMG') btn.nextSibling.remove();
-          const img = document.createElement('img');
-          img.src = compressed;
-          img.style.cssText = 'width:100%;border-radius:10px;margin-top:8px;max-height:200px;object-fit:cover';
-          btn.parentNode.insertBefore(img, btn.nextSibling);
           btn.textContent = '✓ View proof';
           btn.classList.add('has-photo');
           btn.onclick = () => _viewOrReplacePhoto(shiftId, photoKey, compressed);
