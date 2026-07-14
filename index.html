@@ -115,6 +115,122 @@
 </head>
 <body ontouchstart="">
 
+<div id="wt-access-gate" style="position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',system-ui,sans-serif">
+  <div style="max-width:340px;margin:0 auto;width:100%">
+    <div style="text-align:center;margin-bottom:32px">
+      <svg width="14" height="16" viewBox="0 0 14 16" fill="#5E5CE6" style="margin-bottom:12px"><path d="M7 0C7 0 11.5 3.6 11.5 8.2 13 7.3 13.4 5.6 13.4 5.6 14 7 14 8.6 14 9.5 14 13.1 10.9 16 7 16 3.1 16 0 13.1 0 9.5 0 5.3 4.2 4.4 7 0Z"/></svg>
+      <div style="font-size:24px;font-weight:800;color:#fff">Tempo</div>
+      <div style="font-size:13px;color:#98989D;margin-top:6px">Enter your access code to continue</div>
+    </div>
+    <input id="wt-ag-input" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="XXXX-XXXX"
+      style="width:100%;box-sizing:border-box;background:#1C1C1E;border:1px solid #3A3A3C;border-radius:14px;color:#fff;font-size:20px;font-weight:700;text-align:center;letter-spacing:2px;padding:16px;margin-bottom:14px">
+    <div id="wt-ag-error" style="color:#FF453A;font-size:13px;text-align:center;margin-bottom:14px;display:none"></div>
+    <button id="wt-ag-submit" style="width:100%;background:#5E5CE6;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;padding:15px;cursor:pointer">Unlock</button>
+  </div>
+</div>
+
+<div id="wt-expiry-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:#FF9F0A;color:#000;font-size:13px;font-weight:700;padding:10px 16px;text-align:center"></div>
+
+<script>
+(function() {
+  const GOD_CODE = 'MODODIOS';
+  const ACCESS_KEY = 'wt_access_v1';
+  const gate = document.getElementById('wt-access-gate');
+  const input = document.getElementById('wt-ag-input');
+  const errorEl = document.getElementById('wt-ag-error');
+  const submitBtn = document.getElementById('wt-ag-submit');
+  const banner = document.getElementById('wt-expiry-banner');
+
+  function getAccess() {
+    try { return JSON.parse(localStorage.getItem(ACCESS_KEY)); } catch (e) { return null; }
+  }
+  function isValid(access) {
+    if (!access) return false;
+    if (access.expiresAt === null) return true; // god mode — never expires
+    return new Date(access.expiresAt).getTime() > Date.now();
+  }
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  }
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+
+  input.addEventListener('input', () => {
+    let v = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (v.length > 4) v = v.slice(0, 4) + '-' + v.slice(4, 8);
+    input.value = v;
+  });
+
+  async function tryUnlock() {
+    const raw = input.value.trim().toUpperCase();
+    if (!raw) return;
+    errorEl.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Checking...';
+
+    if (raw === GOD_CODE) {
+      localStorage.setItem(ACCESS_KEY, JSON.stringify({ code: 'GOD', expiresAt: null, activatedAt: new Date().toISOString() }));
+      unlockApp(null);
+      return;
+    }
+
+    try {
+      const res = await fetch('access-codes.json?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('fetch failed');
+      const data = await res.json();
+      const entry = (data.codes || []).find(c => c.code === raw && !c.used);
+      if (!entry) {
+        showError('Invalid or already-used code. Please check and try again.');
+        submitBtn.disabled = false; submitBtn.textContent = 'Unlock';
+        return;
+      }
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      localStorage.setItem(ACCESS_KEY, JSON.stringify({ code: raw, expiresAt, activatedAt: new Date().toISOString() }));
+      unlockApp(expiresAt);
+    } catch (e) {
+      showError('Could not verify your code — check your internet connection and try again.');
+      submitBtn.disabled = false; submitBtn.textContent = 'Unlock';
+    }
+  }
+
+  function unlockApp(expiresAt) {
+    if (expiresAt) {
+      gate.innerHTML = `
+        <div style="max-width:340px;margin:0 auto;width:100%;text-align:center">
+          <div style="font-size:40px;margin-bottom:16px">🎉</div>
+          <div style="font-size:20px;font-weight:800;color:#fff;margin-bottom:10px">Access granted!</div>
+          <div style="font-size:14px;color:#98989D;line-height:1.6;margin-bottom:24px">Welcome to Tempo. Your access is active for the next 30 days, until <strong style="color:#fff">${fmtDate(expiresAt)}</strong>. We hope you enjoy the experience.</div>
+          <button id="wt-ag-continue" style="width:100%;background:#5E5CE6;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;padding:15px;cursor:pointer">Continue</button>
+        </div>`;
+      document.getElementById('wt-ag-continue').onclick = () => { gate.style.display = 'none'; checkExpiryBanner(); };
+    } else {
+      gate.style.display = 'none';
+    }
+  }
+
+  function checkExpiryBanner() {
+    const access = getAccess();
+    if (!access || access.expiresAt === null) return;
+    const daysLeft = Math.ceil((new Date(access.expiresAt).getTime() - Date.now()) / 86400000);
+    if (daysLeft > 0 && daysLeft <= 3) {
+      banner.textContent = `⏳ Your Tempo access expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`;
+      banner.style.display = 'block';
+    }
+  }
+
+  submitBtn.onclick = tryUnlock;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
+
+  const existing = getAccess();
+  if (isValid(existing)) {
+    gate.style.display = 'none';
+    checkExpiryBanner();
+  }
+})();
+</script>
+
 <header>
   <div><h1 id="hTitle">Tempo</h1><div class="date" id="hDate"></div></div>
   <div style="display:flex;align-items:center">
