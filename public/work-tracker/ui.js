@@ -2714,12 +2714,24 @@ const WorkTracker = (() => {
       };
     });
     w.querySelector('#wt-add-loc').onclick = () => {
-      const name = w.querySelector('#wt-loc-name').value.trim();
-      const rate = parseFloat(w.querySelector('#wt-loc-rate').value);
+      const nameEl = w.querySelector('#wt-loc-name');
+      const rateEl = w.querySelector('#wt-loc-rate');
+      const name = nameEl.value.trim();
+      const rate = parseFloat(rateEl.value);
       const color = w.querySelector('#wt-loc-color').value;
       const paidBreaks = w.querySelector('#wt-loc-paid-break').checked;
-      if (!name) { alert('Enter a work location name.'); return; }
-      if (!rate || rate <= 0) { alert('Enter a valid hourly rate.'); return; }
+      if (!name) {
+        nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        nameEl.focus();
+        alert('Enter a work location name.');
+        return;
+      }
+      if (!rate || rate <= 0) {
+        rateEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        rateEl.focus();
+        alert('Enter a valid hourly rate.');
+        return;
+      }
 
       const calcBy = w.querySelector('#wt-ot-calcby').value;
       const ot1After = parseFloat(w.querySelector('#wt-ot1-after').value) || 40;
@@ -5189,12 +5201,23 @@ const WorkTracker = (() => {
     };
     ov.querySelector('#wt-el-cancel').onclick = () => ov.remove();
     ov.querySelector('#wt-el-save').onclick = () => {
-      const name = ov.querySelector('#wt-el-name').value.trim();
+      const nameEl = ov.querySelector('#wt-el-name');
+      const name = nameEl.value.trim();
       const rate = parseFloat(rateInput.value.replace(',','.'));
       const color = ov.querySelector('#wt-el-color').value;
       const paidBreaks = ov.querySelector('#wt-el-paid-break').checked;
-      if (!name) { alert('Enter a location name.'); return; }
-      if (!rate || rate <= 0) { alert('Enter a valid rate.'); return; }
+      if (!name) {
+        nameEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        nameEl.focus();
+        alert('Enter a location name.');
+        return;
+      }
+      if (!rate || rate <= 0) {
+        rateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        rateInput.focus();
+        alert('Enter a valid rate.');
+        return;
+      }
       const calcBy = ov.querySelector('#wt-el-calcby').value;
       const ot1After = parseFloat(ov.querySelector('#wt-el-ot1-after').value) || 40;
       const ot1Per = ov.querySelector('#wt-el-ot1-per').value;
