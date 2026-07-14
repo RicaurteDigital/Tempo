@@ -373,15 +373,20 @@ const WorkTracker = (() => {
                 // more intuitive way to gauge "how many extra dollars" than raw cents.
                 const dollarSteps = (actual, exact) => Math.floor(actual) - Math.floor(exact);
                 return result.payouts.map(p => {
-                  // "Over" (red) fires on two different real problems: the pool itself being
-                  // over-allocated (catches manual-entry errors that happen to still net to
-                  // zero, e.g. +$50 to one person and -$50 to another), OR one person's
-                  // individual excess exceeding what normal group rounding could plausibly
-                  // explain. A worker absorbing a couple dollars of everyone else's rounding
-                  // is expected and not flagged red; absorbing far more than the group's size
-                  // could account for is a real anomaly worth a second look.
-                  const isCCOver = result.ccRemainder < 0 || (p.ccAmount - p.ccExact) > roundingAllowance;
-                  const isCashOver = (result.remainder - result.ccRemainder) < 0 || (p.cashAmount - p.cashExact) > roundingAllowance;
+                  const ccDeviation = p.ccAmount - p.ccExact;
+                  const cashDeviation = p.cashAmount - p.cashExact;
+                  // "Over" (red) fires on two different real problems: this specific person
+                  // being part of a pool that's over-allocated (only flags someone who
+                  // actually received more than their exact share — a worker who got their
+                  // exact share or less isn't the cause, even if the pool overall is over),
+                  // OR one person's individual excess exceeding what normal group rounding
+                  // could plausibly explain (catches manual-entry errors that happen to still
+                  // net the pool to zero, e.g. +$50 to one person and -$50 to another). A
+                  // worker absorbing a couple dollars of everyone else's rounding is expected
+                  // and not flagged red; absorbing far more than the group's size could
+                  // account for is a real anomaly worth a second look.
+                  const isCCOver = (result.ccRemainder < 0 && ccDeviation > 0) || ccDeviation > roundingAllowance;
+                  const isCashOver = ((result.remainder - result.ccRemainder) < 0 && cashDeviation > 0) || cashDeviation > roundingAllowance;
                   const isOver = isCCOver || isCashOver;
                   // "Warn" (orange) is a softer, informational nudge for someone who picked up
                   // 2+ whole dollars from rounding — not a problem, just worth a glance. Never
