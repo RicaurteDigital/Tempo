@@ -1,5 +1,404 @@
 {
   "codes": [
-    { "code": "BETA-2026", "used": false }
+    {
+      "code": "65ZT-Z6GQ",
+      "used": false
+    },
+    {
+      "code": "FDKG-VGNB",
+      "used": false
+    },
+    {
+      "code": "9VEU-6FAQ",
+      "used": false
+    },
+    {
+      "code": "TS69-NR7X",
+      "used": false
+    },
+    {
+      "code": "UTUQ-YT62",
+      "used": false
+    },
+    {
+      "code": "6B7S-KWEX",
+      "used": false
+    },
+    {
+      "code": "XDDG-AGJ6",
+      "used": false
+    },
+    {
+      "code": "FGZ6-ZRX5",
+      "used": false
+    },
+    {
+      "code": "VQ6K-H45Y",
+      "used": false
+    },
+    {
+      "code": "6FZN-MEPK",
+      "used": false
+    },
+    {
+      "code": "WXRK-4YQ9",
+      "used": false
+    },
+    {
+      "code": "XJ5W-F9VX",
+      "used": false
+    },
+    {
+      "code": "VJYB-XXVZ",
+      "used": false
+    },
+    {
+      "code": "ZJQQ-PMCT",
+      "used": false
+    },
+    {
+      "code": "BG98-8MG2",
+      "used": false
+    },
+    {
+      "code": "G9JY-VRWD",
+      "used": false
+    },
+    {
+      "code": "5HWM-XKMR",
+      "used": false
+    },
+    {
+      "code": "2UFT-4NJW",
+      "used": false
+    },
+    {
+      "code": "KG5Z-H3AK",
+      "used": false
+    },
+    {
+      "code": "YHGQ-S8G6",
+      "used": false
+    },
+    {
+      "code": "3F9G-D2XJ",
+      "used": false
+    },
+    {
+      "code": "REB5-6R6Q",
+      "used": false
+    },
+    {
+      "code": "Q3XQ-6HE4",
+      "used": false
+    },
+    {
+      "code": "RME6-AS4Q",
+      "used": false
+    },
+    {
+      "code": "M3XG-PWFM",
+      "used": false
+    },
+    {
+      "code": "X2NS-9ZDH",
+      "used": false
+    },
+    {
+      "code": "CDBM-V69Y",
+      "used": false
+    },
+    {
+      "code": "ZV85-MR2U",
+      "used": false
+    },
+    {
+      "code": "TCHM-B5X6",
+      "used": false
+    },
+    {
+      "code": "PZXM-MCBT",
+      "used": false
+    },
+    {
+      "code": "XG6F-RQZ2",
+      "used": false
+    },
+    {
+      "code": "B7EJ-4SR3",
+      "used": false
+    },
+    {
+      "code": "TJKH-SZCA",
+      "used": false
+    },
+    {
+      "code": "QNMQ-HCSV",
+      "used": false
+    },
+    {
+      "code": "TYA7-Q5RQ",
+      "used": false
+    },
+    {
+      "code": "PS28-AR6V",
+      "used": false
+    },
+    {
+      "code": "6M5D-QGBC",
+      "used": false
+    },
+    {
+      "code": "VS26-QXYG",
+      "used": false
+    },
+    {
+      "code": "WZ35-NB5W",
+      "used": false
+    },
+    {
+      "code": "SS42-WC43",
+      "used": false
+    },
+    {
+      "code": "XGWD-BCUC",
+      "used": false
+    },
+    {
+      "code": "AMEE-HPMK",
+      "used": false
+    },
+    {
+      "code": "CEBS-FX3E",
+      "used": false
+    },
+    {
+      "code": "7FNJ-JMDN",
+      "used": false
+    },
+    {
+      "code": "NVC7-Q7H5",
+      "used": false
+    },
+    {
+      "code": "RHQX-D3M8",
+      "used": false
+    },
+    {
+      "code": "HYGX-MJ9H",
+      "used": false
+    },
+    {
+      "code": "JEKS-AA3J",
+      "used": false
+    },
+    {
+      "code": "GTKD-QBT9",
+      "used": false
+    },
+    {
+      "code": "AYCJ-H7VF",
+      "used": false
+    },
+    {
+      "code": "CUPN-SG97",
+      "used": false
+    },
+    {
+      "code": "U6B2-XT8X",
+      "used": false
+    },
+    {
+      "code": "UF55-5MCU",
+      "used": false
+    },
+    {
+      "code": "SBF4-NHJN",
+      "used": false
+    },
+    {
+      "code": "QQRK-NWZN",
+      "used": false
+    },
+    {
+      "code": "5BYD-MS2M",
+      "used": false
+    },
+    {
+      "code": "GH9Q-UBJA",
+      "used": false
+    },
+    {
+      "code": "7GS4-WTAV",
+      "used": false
+    },
+    {
+      "code": "DSNC-T97K",
+      "used": false
+    },
+    {
+      "code": "UTXT-52MB",
+      "used": false
+    },
+    {
+      "code": "74RP-ZG68",
+      "used": false
+    },
+    {
+      "code": "PCJW-UMQV",
+      "used": false
+    },
+    {
+      "code": "GABW-3P59",
+      "used": false
+    },
+    {
+      "code": "KXVX-RXFU",
+      "used": false
+    },
+    {
+      "code": "SZCY-6KVY",
+      "used": false
+    },
+    {
+      "code": "5228-Z9UH",
+      "used": false
+    },
+    {
+      "code": "2QKR-9KZN",
+      "used": false
+    },
+    {
+      "code": "C343-9RN7",
+      "used": false
+    },
+    {
+      "code": "FCFT-7SSJ",
+      "used": false
+    },
+    {
+      "code": "3XC3-FDSB",
+      "used": false
+    },
+    {
+      "code": "3PZB-9XA5",
+      "used": false
+    },
+    {
+      "code": "N6FU-UQK9",
+      "used": false
+    },
+    {
+      "code": "AVB8-S267",
+      "used": false
+    },
+    {
+      "code": "XCN5-ZV6S",
+      "used": false
+    },
+    {
+      "code": "AR6A-XANR",
+      "used": false
+    },
+    {
+      "code": "EC4X-BAQF",
+      "used": false
+    },
+    {
+      "code": "BY24-SSRM",
+      "used": false
+    },
+    {
+      "code": "M9QZ-7SBT",
+      "used": false
+    },
+    {
+      "code": "E4KD-ETTX",
+      "used": false
+    },
+    {
+      "code": "8NHX-YV4P",
+      "used": false
+    },
+    {
+      "code": "7T6Q-G6SY",
+      "used": false
+    },
+    {
+      "code": "2NNG-4V78",
+      "used": false
+    },
+    {
+      "code": "XNJM-KGBZ",
+      "used": false
+    },
+    {
+      "code": "CQV9-JFZT",
+      "used": false
+    },
+    {
+      "code": "3F4A-6BA3",
+      "used": false
+    },
+    {
+      "code": "GAQ6-BDMH",
+      "used": false
+    },
+    {
+      "code": "D449-QWP6",
+      "used": false
+    },
+    {
+      "code": "AZYS-3BGK",
+      "used": false
+    },
+    {
+      "code": "ZCSR-S6N9",
+      "used": false
+    },
+    {
+      "code": "S6SG-K4YT",
+      "used": false
+    },
+    {
+      "code": "WJN6-KBPE",
+      "used": false
+    },
+    {
+      "code": "8J2S-K753",
+      "used": false
+    },
+    {
+      "code": "NXEG-Z9P3",
+      "used": false
+    },
+    {
+      "code": "U2H9-EJP7",
+      "used": false
+    },
+    {
+      "code": "VYMF-XC63",
+      "used": false
+    },
+    {
+      "code": "C4W9-2XCE",
+      "used": false
+    },
+    {
+      "code": "MSM5-AJPH",
+      "used": false
+    },
+    {
+      "code": "2VDK-F2C9",
+      "used": false
+    },
+    {
+      "code": "63EN-HNMK",
+      "used": false
+    },
+    {
+      "code": "27E2-5MY9",
+      "used": false
+    }
   ]
 }
