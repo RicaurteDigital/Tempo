@@ -3492,7 +3492,7 @@ const WorkTracker = (() => {
     input.click();
   }
 
-  async function _doPhoto(shiftId, photoKey) {
+  async function _doPhoto(shiftId, photoKey, onDone) {
     const hint = document.createElement('div');
     hint.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;z-index:9999;pointer-events:none;text-align:center';
     hint.textContent = '💡 Tip: turn off flash before taking photo';
@@ -3514,9 +3514,11 @@ const WorkTracker = (() => {
           img.src = compressed;
           img.style.cssText = 'width:100%;border-radius:10px;margin-top:8px;max-height:200px;object-fit:cover';
           btn.parentNode.insertBefore(img, btn.nextSibling);
-          btn.textContent = '✓ Proof saved';
+          btn.textContent = '✓ View proof';
           btn.classList.add('has-photo');
+          btn.onclick = () => _viewOrReplacePhoto(shiftId, photoKey, compressed);
         }
+        if (onDone) onDone(compressed);
         const a = document.createElement('a');
         a.href = compressed;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
@@ -3778,7 +3780,9 @@ const WorkTracker = (() => {
 
     ov.querySelector('#wt-vp-replace').onclick = () => {
       ov.remove();
-      _doPhoto(shiftId, photoKey);
+      _doPhoto(shiftId, photoKey, (newBase64) => {
+        _viewOrReplacePhoto(shiftId, photoKey, newBase64);
+      });
     };
     ov.querySelector('#wt-vp-delete').onclick = () => {
       if (!confirm('Delete this photo? This cannot be undone.')) return;
