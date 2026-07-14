@@ -475,9 +475,20 @@ const StatsRules = (() => {
     const weeksInWindow = days / 7;
     const avgHoursPerWeek = t.hours / weeksInWindow;
     const avgShiftsPerWeek = t.shiftsCount / weeksInWindow;
+    const avgHoursPerShift = t.shiftsCount > 0 ? t.hours / t.shiftsCount : 0;
     const avgPerHour = t.hours > 0 ? periodEarnings / t.hours : 0;
     const avgPerShift = t.shiftsCount > 0 ? periodEarnings / t.shiftsCount : 0;
     const projectedAnnual = periodEarnings * (365 / days);
+
+    // Gross is 100% real — straight from your logged hours and tips, no estimation at all.
+    const grossPerHour = t.hours > 0 ? t.expectedGross / t.hours : 0;
+    const grossPerShift = t.shiftsCount > 0 ? t.expectedGross / t.shiftsCount : 0;
+
+    // If any payments in this window have actually been recorded (Pay History), surface that
+    // as a real cross-check against the estimate — it's not used in the math below (a partial
+    // window of confirmed weeks isn't a fair full-period figure), just shown for trust.
+    const hasReceivedData = t.receivedNet !== null;
+    const receivedNetInWindow = hasReceivedData ? t.receivedNet : null;
 
     const monthlyExpenses = (WTDb.getBudget().monthlyExpenses) || null;
     let annualExpenses = null, surplusAnnual = null, hoursNeededPerWeek = null, shiftsNeededPerWeek = null;
@@ -490,7 +501,8 @@ const StatsRules = (() => {
 
     return {
       hasData: t.hours > 0, usingNet, lookbackDays: days,
-      avgPerHour, avgPerShift, avgHoursPerWeek, avgShiftsPerWeek,
+      avgPerHour, avgPerShift, avgHoursPerWeek, avgShiftsPerWeek, avgHoursPerShift,
+      grossPerHour, grossPerShift, hasReceivedData, receivedNetInWindow,
       projectedAnnual, projectedMonthly: projectedAnnual / 12,
       monthlyExpenses, annualExpenses, surplusAnnual,
       hoursNeededPerWeek, shiftsNeededPerWeek

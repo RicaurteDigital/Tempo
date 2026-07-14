@@ -1697,6 +1697,52 @@ const WorkTracker = (() => {
       </div>`;
   }
 
+  // Shared by Settings (where expenses get entered) and Stats (read-only view of the same
+  // analysis) — one place formats this so the two screens can never drift out of sync.
+  // Shows three tiers of confidence explicitly: gross (100% real, no estimation at all),
+  // estimated net (your own configured tax %, clearly labeled as an estimate — taxes are a
+  // real fiscal question this app can't know for certain), and, when available, whatever
+  // net has actually been confirmed via payments you've recorded, as a trust cross-check.
+  function _sustainabilityResultsHtml(r) {
+    if (!r.hasData) {
+      return `<div style="font-size:12px;color:#636366">Not enough recent shifts yet — log some work first.</div>`;
+    }
+    const fmt = WTRules.fmtMoney;
+    let html = `
+      <div style="font-size:11px;color:#636366;margin-bottom:12px;line-height:1.4">Based on your last ${r.lookbackDays} days. This is math from your own data, not a recommendation for how much you should work — take care of yourself.</div>
+
+      <div style="font-size:12px;color:#98989D;font-weight:700;margin-bottom:6px">Per hour</div>
+      ${_statRow('Gross (real, no estimate)', fmt(r.grossPerHour))}
+      ${r.usingNet ? _statRow('Est. net (after your tax %)', fmt(r.avgPerHour), '#64D2FF') : ''}
+
+      <div style="font-size:12px;color:#98989D;font-weight:700;margin:12px 0 6px">Per shift</div>
+      ${_statRow('Gross (real, no estimate)', fmt(r.grossPerShift))}
+      ${r.usingNet ? _statRow('Est. net (after your tax %)', fmt(r.avgPerShift), '#64D2FF') : ''}
+      ${r.hasReceivedData ? `<div style="font-size:11px;color:#30D158;margin-top:8px">✓ ${fmt(r.receivedNetInWindow)} of this window has been confirmed from payments you've actually recorded.</div>` : ''}
+
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2C2C2E">
+        ${_statRow('Hours worked / week', r.avgHoursPerWeek.toFixed(1))}
+        ${_statRow('Shifts worked / week', r.avgShiftsPerWeek.toFixed(1))}
+        ${_statRow('Projected this year (est. net)', fmt(r.projectedAnnual))}
+      </div>`;
+    if (r.monthlyExpenses > 0) {
+      const ok = r.surplusAnnual >= 0;
+      html += `
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2C2C2E">
+        ${_statRow('Your annual expenses', fmt(r.annualExpenses))}
+        ${_statRow(ok ? 'Projected surplus' : 'Projected shortfall', (ok ? '+' : '') + fmt(r.surplusAnnual), ok ? '#30D158' : '#FF453A')}
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2C2C2E">
+        <div style="font-size:13px;color:#636366;margin-bottom:4px">Needed to break even</div>
+        <div style="font-size:15px;font-weight:700;color:${ok ? '#30D158' : '#FF9F0A'}">${r.hoursNeededPerWeek.toFixed(1)} hrs/week</div>
+        <div style="font-size:12px;color:#636366;margin-top:2px">≈ ${r.shiftsNeededPerWeek.toFixed(1)} shifts/week, at your average ~${r.avgHoursPerShift.toFixed(1)}h per shift</div>
+      </div>`;
+    } else {
+      html += `<div style="font-size:11px;color:#636366;margin-top:10px">Enter your monthly expenses in Settings → Sustainability to see if this pace covers your bills.</div>`;
+    }
+    return html;
+  }
+
   function _Stats() {
     const openCardIds = new Set(); // which cards are expanded — survives pill changes (loadRange),
                                     // resets fresh only when _Stats() itself re-runs (leaving and
@@ -1770,6 +1816,8 @@ const WorkTracker = (() => {
       resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
         el.onclick = () => _go('day', { date: el.dataset.chartDate });
       });
+      const sustainLink = resultsEl.querySelector('#wt-stats-sustain-link');
+      if (sustainLink) sustainLink.onclick = (e) => { e.stopPropagation(); _go('settings'); };
       resultsEl.onclick = (e) => {
         const toggle = e.target.closest('[data-collapse-toggle]');
         if (!toggle) return;
@@ -1962,7 +2010,15 @@ const WorkTracker = (() => {
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
       `, openCardIds.has(`loc-${i}`))).join('');
 
-    return headlineCard + lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards;
+    // Always the fixed 90-day lookback, independent of whichever pill is selected above —
+    // sustainability is about your current real pace, not the specific range you're browsing.
+    const sustainResult = StatsRules.sustainabilityAnalysis(statsProfile, 90);
+    const sustainCard = sustainResult.hasData ? _collapsibleCard('sustain', 'Sustainability', `
+      ${_sustainabilityResultsHtml(sustainResult)}
+      <div id="wt-stats-sustain-link" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">Edit expenses in Settings →</div>
+    `, openCardIds.has('sustain')) : '';
+
+    return headlineCard + lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards + sustainCard;
   }
 
   function _Settings() {
@@ -2353,9 +2409,11 @@ const WorkTracker = (() => {
       <input id="wt-sustain-expenses" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 3200" value="${budget.monthlyExpenses || ''}" style="margin-bottom:12px">
       <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:14px" id="wt-sustain-save">Calculate</button>
       <div id="wt-sustain-results"></div>
+      <div id="wt-sustain-view-stats" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">View full analysis in Stats →</div>
       </div>
     `;
     w.appendChild(sustainBlock);
+    sustainBlock.querySelector('#wt-sustain-view-stats').onclick = () => _go('stats');
     sustainBlock.querySelector('[data-standalone-header="sustain"]').onclick = () => {
       const body = sustainBlock.querySelector('[data-standalone-body="sustain"]');
       const chev = sustainBlock.querySelector('[data-standalone-chevron="sustain"]');
@@ -2369,31 +2427,7 @@ const WorkTracker = (() => {
       const resultsEl = sustainBlock.querySelector('#wt-sustain-results');
       const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
       const r = StatsRules.sustainabilityAnalysis(currentProfile, 90);
-      if (!r.hasData) {
-        resultsEl.innerHTML = `<div style="font-size:12px;color:#636366">Not enough recent shifts yet — log some work first.</div>`;
-        return;
-      }
-      const fmt = WTRules.fmtMoney;
-      let html = `
-        <div style="font-size:11px;color:#636366;margin-bottom:10px">Based on your last ${r.lookbackDays} days${r.usingNet ? ' (net, after your estimated taxes)' : ' (gross — turn on tax estimates for a real take-home number)'}.</div>
-        ${_statRow('Avg per hour', fmt(r.avgPerHour))}
-        ${_statRow('Avg per shift', fmt(r.avgPerShift))}
-        ${_statRow('Hours worked / week', r.avgHoursPerWeek.toFixed(1))}
-        ${_statRow('Shifts worked / week', r.avgShiftsPerWeek.toFixed(1))}
-        ${_statRow('Projected this year', fmt(r.projectedAnnual))}`;
-      if (r.monthlyExpenses > 0) {
-        const ok = r.surplusAnnual >= 0;
-        html += `
-        ${_statRow('Your annual expenses', fmt(r.annualExpenses))}
-        ${_statRow(ok ? 'Projected surplus' : 'Projected shortfall', (ok ? '+' : '') + fmt(r.surplusAnnual), ok ? '#30D158' : '#FF453A')}
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #2C2C2E">
-          ${_statRow('Hours/week needed to break even', r.hoursNeededPerWeek.toFixed(1), ok ? '#30D158' : '#FF9F0A')}
-          ${_statRow('Shifts/week needed to break even', r.shiftsNeededPerWeek.toFixed(1), ok ? '#30D158' : '#FF9F0A')}
-        </div>`;
-      } else {
-        html += `<div style="font-size:11px;color:#636366;margin-top:8px">Enter your monthly expenses above to see if this pace covers your bills.</div>`;
-      }
-      resultsEl.innerHTML = html;
+      resultsEl.innerHTML = _sustainabilityResultsHtml(r);
     }
 
     sustainBlock.querySelector('#wt-sustain-save').onclick = () => {
