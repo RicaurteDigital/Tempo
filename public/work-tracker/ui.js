@@ -3449,6 +3449,24 @@ const WorkTracker = (() => {
     return 'downloaded';
   }
 
+  // Wraps every photo save with real error handling and a read-back verification — without
+  // this, an IndexedDB failure (iOS Safari is known for silently failing writes under low
+  // storage or private-mode restrictions) would leave the user thinking the photo was saved
+  // when it never was, with zero indication anything went wrong. Returns false on any
+  // failure so callers can stop and tell the user, instead of proceeding as if it worked.
+  async function _savePhotoSafe(shiftId, photoKey, base64) {
+    try {
+      await WTDb.savePhoto(shiftId, photoKey, base64);
+      const verify = await WTDb.getPhoto(shiftId, photoKey);
+      if (!verify) throw new Error('Photo did not persist');
+      return true;
+    } catch (err) {
+      console.error('Photo save failed:', err);
+      alert('⚠️ This photo could not be saved (storage error). Please try again — if this keeps happening, your device may be low on storage.');
+      return false;
+    }
+  }
+
   async function _doPhotoThenRefresh(shiftId, photoKey, onDone) {
     const hint = document.createElement('div');
     hint.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;z-index:9999;pointer-events:none;text-align:center';
@@ -3462,7 +3480,8 @@ const WorkTracker = (() => {
       const reader = new FileReader();
       reader.onload = async ev => {
         const compressed = await _compressImage(ev.target.result, 1024, 0.75);
-        await WTDb.savePhoto(shiftId, photoKey, compressed);
+        const ok = await _savePhotoSafe(shiftId, photoKey, compressed);
+        if (!ok) return;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
         const result = await _saveOrShareImage(compressed, `Tempo_report_${now}.jpg`);
         if (result === 'downloaded') alert('📷 Saved — find it in Files > Downloads.');
@@ -3486,7 +3505,8 @@ const WorkTracker = (() => {
       const reader = new FileReader();
       reader.onload = async ev => {
         const compressed = await _compressImage(ev.target.result, 1024, 0.75);
-        await WTDb.savePhoto(shiftId, photoKey, compressed);
+        const ok = await _savePhotoSafe(shiftId, photoKey, compressed);
+        if (!ok) return;
         const btn = document.querySelector(`[data-pid="${photoKey}"]`);
         if (btn) {
           const img = document.createElement('img');
@@ -3646,8 +3666,8 @@ const WorkTracker = (() => {
     }) : '—';
 
     let photoLabel = 'Proof';
-    if (photoKey && photoKey.includes('clockin')) photoLabel = 'Clock In';
-    else if (photoKey && photoKey.includes('clockout')) photoLabel = 'Clock Out';
+    if (photoKey && photoKey.includes('_in_')) photoLabel = 'Clock In';
+    else if (photoKey && photoKey.includes('_out_')) photoLabel = 'Clock Out';
     else if (photoKey && photoKey.includes('break')) photoLabel = 'Break';
     else if (photoKey && photoKey.includes('report')) photoLabel = 'Report';
 
@@ -3782,13 +3802,14 @@ const WorkTracker = (() => {
 
   function _doPhotoThenHome(shiftId, photoKey) {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
+    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) { _go('home'); return; }
       const reader = new FileReader();
       reader.onload = async ev => {
-        await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
+        const ok = await _savePhotoSafe(shiftId, photoKey, ev.target.result);
+        if (!ok) { _go('home'); return; }
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
         const result = await _saveOrShareImage(ev.target.result, 'Tempo_clockin_' + now + '.jpg');
         if (result === 'downloaded') alert('📷 Saved — find it in Files > Downloads.');
@@ -5153,13 +5174,14 @@ const WorkTracker = (() => {
 
   function _doPhotoThenCallback(shiftId, photoKey, callback) {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
+    input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
     input.onchange = async () => {
       const file = input.files[0];
       if (!file) { callback(); return; }
       const reader = new FileReader();
       reader.onload = async ev => {
-        await WTDb.savePhoto(shiftId, photoKey, ev.target.result);
+        const ok = await _savePhotoSafe(shiftId, photoKey, ev.target.result);
+        if (!ok) { callback(); return; }
         const a = document.createElement('a');
         a.href = ev.target.result;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
