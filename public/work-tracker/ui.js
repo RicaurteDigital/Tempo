@@ -299,7 +299,7 @@ const WorkTracker = (() => {
             <div class="wt-stat-label">This Week</div>
             <div class="wt-stat-value">${WTRules.fmtHours(pay.totalHours)}</div>
             <div class="wt-stat-sub">${WTRules.fmtMoney(pay.total)}</div>
-            ${pay.isOvertime ? `<div class="wt-ot-tag">OT +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
+            ${pay.isOvertime ? `<div class="wt-ot-tag">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
           </div>
         </div>
         ${weekLocs.length > 0 ? `
@@ -1074,7 +1074,7 @@ const WorkTracker = (() => {
           <span>${WTRules.fmtHours(pay.totalHours)}</span>
           <span class="wt-week-pay">${WTRules.fmtMoney(pay.total)}</span>
           ${weekTipCut > 0 ? `<span style="color:#FF9F0A;font-weight:700">+${WTRules.fmtMoney(weekTipCut)}</span>` : ''}
-          ${pay.isOvertime ? '<span class="wt-ot-pill">OT</span>' : ''}
+          ${pay.isOvertime ? '<span class="wt-ot-pill">Overtime</span>' : ''}
         </div>
         <div class="wt-week-dots">${dots}</div>
         ${(() => {
@@ -1406,7 +1406,7 @@ const WorkTracker = (() => {
               const shiftPay = WTRules.weeklyPay([s]);
               lines.push(`<div style="display:flex;justify-content:space-between"><span>${s.locationName||'Shift'} · ${WTRules.fmtHours(shiftPay.totalHours)}</span><span style="color:#fff">${WTRules.fmtMoney(shiftPay.total)}</span></div>`);
               if (shiftPay.regularHours > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span>Regular ${WTRules.fmtHours(shiftPay.regularHours)} × $${rate}/hr</span><span>${WTRules.fmtMoney(shiftPay.regularPay)}</span></div>`);
-              if (shiftPay.overtimePay > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF9F0A">OT ${WTRules.fmtHours(shiftPay.overtimeHours)} × ${shiftPay.otMultiplier}×</span><span style="color:#FF9F0A">${WTRules.fmtMoney(shiftPay.overtimePay)}</span></div>`);
+              if (shiftPay.overtimePay > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF9F0A">Overtime ${WTRules.fmtHours(shiftPay.overtimeHours)} × ${shiftPay.otMultiplier}×</span><span style="color:#FF9F0A">${WTRules.fmtMoney(shiftPay.overtimePay)}</span></div>`);
               const paidBreakMins = (s.entries||[]).reduce((a,e) => {
                 if (typeof e.breakDurationMinutes === 'number') return a + (e.breakPaid ? e.breakDurationMinutes : 0);
                 return a + (e.paidBreakMinutes||0);
@@ -2002,7 +2002,7 @@ const WorkTracker = (() => {
     const locCards = stats.perLocation.map((l, i) => _collapsibleCard(`loc-${i}`, `
         <span style="display:inline-flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:${colors[i % colors.length]}"></span>${l.locationName}</span>
       `, `
-        ${_statRow('Hours', WTRules.fmtHours(l.hours) + (l.overtimeHours > 0 ? ` (${WTRules.fmtHours(l.overtimeHours)} OT)` : ''))}
+        ${_statRow('Hours', WTRules.fmtHours(l.hours) + (l.overtimeHours > 0 ? ` (${WTRules.fmtHours(l.overtimeHours)} overtime)` : ''))}
         ${_statRow('Gross from hours', WTRules.fmtMoney(l.grossFromHours))}
         ${_statRow('CC tips', '+' + WTRules.fmtMoney(l.ccTips), '#30D158')}
         ${_statRow('Cash tips', '+' + WTRules.fmtMoney(l.cashTips), '#FF9F0A')}
@@ -2120,7 +2120,7 @@ const WorkTracker = (() => {
         <div class="wt-settings-block" style="margin-top:12px;background:rgba(255,255,255,0.04)">
           <div class="wt-settings-title">Overtime Rules for this location</div>
           <div class="wt-setting-row">
-            <label>Calculate OT by</label>
+            <label>Calculate Overtime by</label>
             <select class="wt-select-sm wt-glow" id="wt-ot-calcby">
               <option value="" selected>Not set</option>
               <option value="week">Week total</option>
@@ -5114,7 +5114,7 @@ const WorkTracker = (() => {
         <div style="margin-top:16px;background:rgba(255,255,255,0.04);border-radius:14px;padding:14px">
           <div style="font-size:11px;font-weight:700;color:#636366;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Overtime Rules</div>
           <div class="wt-setting-row">
-            <label>Calculate OT by</label>
+            <label>Calculate Overtime by</label>
             <select class="wt-select-sm" id="wt-el-calcby">
               <option value="week" ${ot.calculateBy==='week'?'selected':''}>Week total</option>
               <option value="day" ${ot.calculateBy==='day'?'selected':''}>Day total</option>
