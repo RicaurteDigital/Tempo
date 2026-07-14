@@ -1422,15 +1422,20 @@ const WorkTracker = (() => {
     const shifts = WTDb.getShiftsForDate(dateStr).filter(s => (s.workProfile || 'restaurant') === activeProf2);
     const summary = WTRules.dailySummary(shifts);
 
-    // Active (has shifts) days across ALL history — ‹ › keep working across week boundaries,
-    // not just within the current week.
+    // Simple sequential day-by-day navigation — every calendar day is reachable, not just
+    // ones with a shift or day-off already recorded. The old version jumped straight to the
+    // next date that happened to have data, silently skipping empty days in between (e.g.
+    // landing on today from the 12th, skipping the 13th entirely) — confusing since the
+    // arrows look like a plain day browser. "Next" stops at today since future days have
+    // nothing to show yet; "prev" has no lower bound.
     const weekStart = getWeekStart(new Date(dateStr + 'T12:00:00'));
     const weekLabel = formatWeekLabel(weekStart);
-    const allShiftsForNav = WTDb.getShifts().filter(s => (s.workProfile || 'restaurant') === activeProf2);
-    const dayOffDates = Object.keys(WTDb.getAllDayOffReasons(activeProf2));
-    const activeDates = [...new Set([...allShiftsForNav.map(s => s.date), ...dayOffDates])].sort();
-    const prevDate = activeDates.filter(d => d < dateStr).pop();
-    const nextDate = activeDates.filter(d => d > dateStr).shift();
+    const _fmtDs = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const prevDateObj = new Date(dateStr + 'T12:00:00'); prevDateObj.setDate(prevDateObj.getDate() - 1);
+    const prevDate = _fmtDs(prevDateObj);
+    const nextDateObj = new Date(dateStr + 'T12:00:00'); nextDateObj.setDate(nextDateObj.getDate() + 1);
+    const nextDateCandidate = _fmtDs(nextDateObj);
+    const nextDate = nextDateCandidate <= _today() ? nextDateCandidate : null;
 
     const w = document.createElement('div');
     w.className = 'wt-screen';
