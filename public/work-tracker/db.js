@@ -370,6 +370,25 @@ const WTDb = (() => {
     } catch { return false; }
   }
 
+  // Clears every wt_-prefixed localStorage key (scanned by prefix, not a hardcoded list, so
+  // dynamic per-shift keys like wt_tips_<id> are correctly caught too) plus the photos
+  // IndexedDB. Scoped strictly to the wt_ prefix — Study Tracker (st_) and Tempo Simple Mode
+  // (tempo_v1, tempo_simple_mode) live under different prefixes and are never touched.
+  function deleteAllData() {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf('wt_') === 0) keysToRemove.push(key);
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    return new Promise(resolve => {
+      const req = indexedDB.deleteDatabase(PHOTOS_DB);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(true);
+      req.onblocked = () => resolve(true);
+    });
+  }
+
   return {
     getLocations, saveLocation, deleteLocation,
     getShifts, saveShift, deleteShift, getShiftsForDate, getShiftsForWeek,
@@ -385,6 +404,7 @@ const WTDb = (() => {
     deletePhoto,
     getPayment, savePayment, deletePayment,
     getShiftsInRange, getAllPayments,
-    getLastBackupDate, setLastBackupDate
+    getLastBackupDate, setLastBackupDate,
+    deleteAllData
   };
 })();

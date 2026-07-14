@@ -2439,6 +2439,79 @@ const WorkTracker = (() => {
       WTDb.saveBudget({ monthlyExpenses: !isNaN(val) && val > 0 ? val : null });
       renderSustainResults();
     };
+
+    const dangerBlock = document.createElement('div');
+    dangerBlock.className = 'wt-settings-block';
+    dangerBlock.style.border = '1px solid rgba(255,69,58,.3)';
+    dangerBlock.innerHTML = `
+      <div class="wt-settings-header" data-standalone-header="danger">
+        <div class="wt-settings-title" style="margin-bottom:0;color:#FF453A">Danger Zone</div>
+        <span class="wt-settings-chevron" data-standalone-chevron="danger">▼</span>
+      </div>
+      <div class="wt-settings-body" data-standalone-body="danger" style="display:none;margin-top:14px">
+      <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Permanently erases every shift, tip, location, payment record, and photo in the Work Tracker on this device. Study Tracker and Tempo are not affected.</div>
+      <button class="wt-btn" style="width:100%;background:none;border:1px solid #FF453A;color:#FF453A" id="wt-danger-delete">🗑️ Delete All Work Tracker Data</button>
+      </div>
+    `;
+    w.appendChild(dangerBlock);
+    dangerBlock.querySelector('[data-standalone-header="danger"]').onclick = () => {
+      const body = dangerBlock.querySelector('[data-standalone-body="danger"]');
+      const chev = dangerBlock.querySelector('[data-standalone-chevron="danger"]');
+      const isOpen = body.style.display !== 'none';
+      body.style.display = isOpen ? 'none' : 'block';
+      chev.classList.toggle('open', !isOpen);
+    };
+    dangerBlock.querySelector('#wt-danger-delete').onclick = () => {
+      const ov = document.createElement('div');
+      ov.className = 'wt-overlay';
+      ov.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title" style="color:#FF453A">Delete All Work Tracker Data</div>
+          <div style="background:#2C2C2E;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#98989D;line-height:1.7">
+            This permanently deletes:
+            <ul style="margin:6px 0 0;padding-left:18px">
+              <li>All shifts and clock in/out history, for every work profile</li>
+              <li>All tip records and payment history</li>
+              <li>All locations, workers, and settings</li>
+              <li>All saved proof photos</li>
+            </ul>
+          </div>
+          <div style="color:#FF453A;font-size:13px;margin-bottom:14px;font-weight:600">This cannot be undone. There is no way to recover this data afterward.</div>
+          <button class="wt-btn wt-btn-secondary" style="width:100%;margin-bottom:14px" id="wt-danger-backup-first">⬇️ Back Up First</button>
+          <label class="wt-modal-label">Type DELETE to confirm</label>
+          <input id="wt-danger-confirm-input" class="wt-input" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="DELETE" style="margin-bottom:14px">
+          <div class="wt-modal-actions">
+            <button class="wt-btn wt-btn-secondary" id="wt-danger-cancel">Cancel</button>
+            <button class="wt-btn" id="wt-danger-confirm" disabled style="background:#3A3A3C;color:#8E8E93">Delete Everything</button>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      const confirmInput = ov.querySelector('#wt-danger-confirm-input');
+      const confirmBtn = ov.querySelector('#wt-danger-confirm');
+      confirmInput.addEventListener('input', () => {
+        const match = confirmInput.value.trim() === 'DELETE';
+        confirmBtn.disabled = !match;
+        confirmBtn.style.background = match ? '#FF453A' : '#3A3A3C';
+        confirmBtn.style.color = match ? '#fff' : '#8E8E93';
+      });
+      ov.querySelector('#wt-danger-backup-first').onclick = async () => {
+        const blob = new Blob([WTDb.exportData()], { type: 'application/json' });
+        const result = await _saveOrShareBlob(blob, `tempo-backup-${_today()}.json`);
+        if (result !== 'cancelled') {
+          WTDb.setLastBackupDate(new Date().toISOString());
+        }
+      };
+      ov.querySelector('#wt-danger-cancel').onclick = () => ov.remove();
+      confirmBtn.onclick = async () => {
+        if (confirmInput.value.trim() !== 'DELETE') return;
+        await WTDb.deleteAllData();
+        ov.remove();
+        alert('All Work Tracker data has been deleted.');
+        location.reload();
+      };
+    };
     function updateLastBackupLabel() {
       const el = backupBlock.querySelector('#wt-last-backup');
       const iso = WTDb.getLastBackupDate();
