@@ -3509,6 +3509,7 @@ const WorkTracker = (() => {
         if (!ok) return;
         const btn = document.querySelector(`[data-pid="${photoKey}"]`);
         if (btn) {
+          if (btn.nextSibling && btn.nextSibling.tagName === 'IMG') btn.nextSibling.remove();
           const img = document.createElement('img');
           img.src = compressed;
           img.style.cssText = 'width:100%;border-radius:10px;margin-top:8px;max-height:200px;object-fit:cover';
@@ -3809,11 +3810,13 @@ const WorkTracker = (() => {
       const reader = new FileReader();
       reader.onload = async ev => {
         const ok = await _savePhotoSafe(shiftId, photoKey, ev.target.result);
-        if (!ok) { _go('home'); return; }
+        _go('home'); // refresh immediately once the save is confirmed — don't wait on the
+                      // share sheet below, which the user might dismiss in a way that never
+                      // resolves the promise, leaving the "✓ saved" state stuck showing old
+        if (!ok) return;
         const now = new Date().toISOString().replace(/[:.]/g,'-').slice(0,16);
         const result = await _saveOrShareImage(ev.target.result, 'Tempo_clockin_' + now + '.jpg');
         if (result === 'downloaded') alert('📷 Saved — find it in Files > Downloads.');
-        _go('home');
       };
       reader.readAsDataURL(file);
     };
