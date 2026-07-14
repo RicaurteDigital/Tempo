@@ -1234,6 +1234,7 @@ const WorkTracker = (() => {
             const dayShifts = shifts.filter(s => s.date === ds);
             const dayPay = WTRules.weeklyPay(dayShifts);
             const hasWork = dayShifts.length > 0;
+            const dayTipCut = dayShifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
             const div = document.createElement('div');
             div.style.cssText = 'border-bottom:1px solid #1C1C1E';
             const dayRow = document.createElement('div');
@@ -1243,6 +1244,7 @@ const WorkTracker = (() => {
               <div style="display:flex;align-items:center;gap:8px">
                 ${hasWork ? `<span style="font-size:12px;color:#636366">${WTRules.fmtHours(dayPay.totalHours)}</span>` : ''}
                 <span style="color:${hasWork?'#30D158':'#636366'};font-weight:700">${hasWork ? WTRules.fmtMoney(dayPay.total) : '$0.00'}</span>
+                ${hasWork && dayTipCut > 0 ? `<span style="font-size:12px;color:#FF9F0A;font-weight:700">+${WTRules.fmtMoney(dayTipCut)}</span>` : ''}
                 ${hasWork ? '<span style="font-size:10px;color:#636366">▼</span>' : ''}
               </div>`;
             div.appendChild(dayRow);
