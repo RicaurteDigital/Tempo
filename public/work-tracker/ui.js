@@ -362,26 +362,47 @@ const WorkTracker = (() => {
               </div>` : `<div style="font-size:12px;color:#636366">no cut set</div>`}
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
-              ${result.payouts.map(p => {
-                // "Over" means exceeding the normal round-up ceiling — rounding 104.80 up to
-                // 105 is expected and fine; only going beyond that (e.g. to 106) is a genuine
-                // excess. Checked directly per person — even if the pool nets to zero overall,
-                // someone taking more than their ceiling (compensated by someone else taking
-                // less) is still worth flagging on its own.
-                const isCCOver = p.ccAmount > Math.ceil(p.ccExact);
-                const isCashOver = p.cashAmount > Math.ceil(p.cashExact);
-                const isOver = isCCOver || isCashOver;
+              ${(() => {
+                const workerCount = result.payouts.length;
+                // How much rounding-down "slack" the rest of the group could plausibly hand
+                // to one person absorbing the leftover — each other worker can round down by
+                // just under $1, so this scales with group size rather than being a fixed cap.
+                const roundingAllowance = Math.max(1, workerCount - 1) * 1;
+                // Counts whole-dollar boundaries crossed above the exact share (e.g. exact
+                // $97.80 rounded to $99 crosses two boundaries: 97→98, 98→99) — a simpler,
+                // more intuitive way to gauge "how many extra dollars" than raw cents.
+                const dollarSteps = (actual, exact) => Math.floor(actual) - Math.floor(exact);
+                return result.payouts.map(p => {
+                  // "Over" (red) fires on two different real problems: the pool itself being
+                  // over-allocated (catches manual-entry errors that happen to still net to
+                  // zero, e.g. +$50 to one person and -$50 to another), OR one person's
+                  // individual excess exceeding what normal group rounding could plausibly
+                  // explain. A worker absorbing a couple dollars of everyone else's rounding
+                  // is expected and not flagged red; absorbing far more than the group's size
+                  // could account for is a real anomaly worth a second look.
+                  const isCCOver = result.ccRemainder < 0 || (p.ccAmount - p.ccExact) > roundingAllowance;
+                  const isCashOver = (result.remainder - result.ccRemainder) < 0 || (p.cashAmount - p.cashExact) > roundingAllowance;
+                  const isOver = isCCOver || isCashOver;
+                  // "Warn" (orange) is a softer, informational nudge for someone who picked up
+                  // 2+ whole dollars from rounding — not a problem, just worth a glance. Never
+                  // applies once something's already red, and never applies to someone who
+                  // received less than their exact share.
+                  const isCCWarn = !isCCOver && dollarSteps(p.ccAmount, p.ccExact) >= 2;
+                  const isCashWarn = !isCashOver && dollarSteps(p.cashAmount, p.cashExact) >= 2;
+                  const isWarn = isCCWarn || isCashWarn;
                 const isClickable = isOver || p.isMe;
                 // If this person is over on cash specifically, route there — otherwise the CC row
                 // (which is also where "this is me" lands by default, since it's the primary row).
                 const gotoType = isCCOver && isCashOver ? 'both' : (isCashOver ? 'cash' : 'cc');
+                const tintColor = isOver ? '#FF453A' : (isWarn ? '#FF9F0A' : null);
                 return `
                 <div ${isClickable ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" data-goto-type="${gotoType}" style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
-                  <span style="color:${isOver ? '#FF453A' : (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
+                  <span style="color:${tintColor || (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
                   <span style="color:#636366"> · </span>
-                  <span style="color:${isOver ? '#FF453A' : '#fff'};font-weight:800${isOver ? ';font-size:12px' : ''}">$${p.amount}</span>
+                  <span style="color:${tintColor || '#fff'};font-weight:800${isOver ? ';font-size:12px' : ''}">$${p.amount}</span>
                 </div>`;
-              }).join('')}
+                }).join('');
+              })()}
             </div>
             ${result.remainder !== 0 ? `<div class="wt-shift-unalloc" data-tip-warn="${s.id}" style="font-size:11px;color:${result.remainder>=0?'#FF9F0A':'#FF453A'};margin-top:6px;font-weight:600;cursor:pointer;text-decoration:underline">⚠ ${result.remainder>=0?`$${result.remainder.toFixed(2)} unallocated`:`Over by $${Math.abs(result.remainder).toFixed(2)}`} — tap to fix</div>` : ''}
           </div>`;
