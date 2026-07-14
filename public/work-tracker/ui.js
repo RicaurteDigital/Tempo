@@ -1043,6 +1043,7 @@ const WorkTracker = (() => {
       const activeProf = (WTDb.getSettings().workProfile || 'restaurant');
       const shifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === activeProf);
       const pay = WTRules.weeklyPay(shifts);
+      const weekTipCut = shifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
       const isCur = ws.getTime() === curMs;
       const row = document.createElement('div');
       row.className = 'wt-week' + (isCur ? ' wt-week-cur' : '');
@@ -1072,6 +1073,7 @@ const WorkTracker = (() => {
         <div class="wt-week-nums">
           <span>${WTRules.fmtHours(pay.totalHours)}</span>
           <span class="wt-week-pay">${WTRules.fmtMoney(pay.total)}</span>
+          ${weekTipCut > 0 ? `<span style="color:#FF9F0A;font-weight:700">+${WTRules.fmtMoney(weekTipCut)}</span>` : ''}
           ${pay.isOvertime ? '<span class="wt-ot-pill">OT</span>' : ''}
         </div>
         <div class="wt-week-dots">${dots}</div>
