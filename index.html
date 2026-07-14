@@ -166,11 +166,12 @@
   async function tryUnlock() {
     const raw = input.value.trim().toUpperCase();
     if (!raw) return;
+    const normalized = raw.replace(/-/g, '');
     errorEl.style.display = 'none';
     submitBtn.disabled = true;
     submitBtn.textContent = 'Checking...';
 
-    if (raw === GOD_CODE) {
+    if (normalized === GOD_CODE) {
       localStorage.setItem(ACCESS_KEY, JSON.stringify({ code: 'GOD', expiresAt: null, activatedAt: new Date().toISOString() }));
       unlockApp(null);
       return;
@@ -180,7 +181,7 @@
       const res = await fetch('access-codes.json?t=' + Date.now(), { cache: 'no-store' });
       if (!res.ok) throw new Error('fetch failed');
       const data = await res.json();
-      const entry = (data.codes || []).find(c => c.code === raw && !c.used);
+      const entry = (data.codes || []).find(c => c.code.replace(/-/g, '') === normalized && !c.used);
       if (!entry) {
         showError('Invalid or already-used code. Please check and try again.');
         submitBtn.disabled = false; submitBtn.textContent = 'Unlock';
