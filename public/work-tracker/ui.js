@@ -390,13 +390,19 @@ const WorkTracker = (() => {
                   const isCCWarn = !isCCOver && dollarSteps(p.ccAmount, p.ccExact) >= 2;
                   const isCashWarn = !isCashOver && dollarSteps(p.cashAmount, p.cashExact) >= 2;
                   const isWarn = isCCWarn || isCashWarn;
-                const isClickable = isOver || p.isMe;
+                const isClickable = isOver || isWarn || p.isMe;
                 // If this person is over on cash specifically, route there — otherwise the CC row
                 // (which is also where "this is me" lands by default, since it's the primary row).
                 const gotoType = isCCOver && isCashOver ? 'both' : (isCashOver ? 'cash' : 'cc');
                 const tintColor = isOver ? '#FF453A' : (isWarn ? '#FF9F0A' : null);
+                // Warn-only rows (not also red) get a tap-to-explain instead of navigating —
+                // the raw values are stashed in data attributes so the rounding-vs-extra split
+                // can be computed at click time rather than baked into the HTML as text.
+                const warnAttrs = (isWarn && !isOver)
+                  ? `data-warn-shift="${s.id}" data-warn-name="${p.name}" data-warn-cc="${isCCWarn}" data-warn-cc-exact="${p.ccExact}" data-warn-cc-amount="${p.ccAmount}" data-warn-cash="${isCashWarn}" data-warn-cash-exact="${p.cashExact}" data-warn-cash-amount="${p.cashAmount}"`
+                  : '';
                 return `
-                <div ${isClickable ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" data-goto-type="${gotoType}" style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
+                <div ${isClickable ? `${isOver ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" data-goto-type="${gotoType}"` : warnAttrs} style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
                   <span style="color:${tintColor || (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
                   <span style="color:#636366"> · </span>
                   <span style="color:${tintColor || '#fff'};font-weight:800${isOver ? ';font-size:12px' : ''}">$${p.amount}</span>
@@ -404,6 +410,7 @@ const WorkTracker = (() => {
                 }).join('');
               })()}
             </div>
+            <div data-warn-msg="${s.id}"></div>
             ${result.remainder !== 0 ? `<div class="wt-shift-unalloc" data-tip-warn="${s.id}" style="font-size:11px;color:${result.remainder>=0?'#FF9F0A':'#FF453A'};margin-top:6px;font-weight:600;cursor:pointer;text-decoration:underline">⚠ ${result.remainder>=0?`$${result.remainder.toFixed(2)} unallocated`:`Over by $${Math.abs(result.remainder).toFixed(2)}`} — tap to fix</div>` : ''}
           </div>`;
       }).join('');
@@ -428,6 +435,34 @@ const WorkTracker = (() => {
       });
       tipBlock.querySelectorAll('[data-goto-worker]').forEach(el => {
         el.onclick = () => _showTipPool(el.dataset.gotoShift, el.dataset.gotoWorker, el.dataset.gotoType);
+      });
+      tipBlock.querySelectorAll('[data-warn-name]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          const msgEl = tipBlock.querySelector(`[data-warn-msg="${el.dataset.warnShift}"]`);
+          if (!msgEl) return;
+          if (msgEl.dataset.shownFor === el.dataset.warnName) {
+            msgEl.innerHTML = '';
+            delete msgEl.dataset.shownFor;
+            return;
+          }
+          const parts = [];
+          const splitRounding = (exact, amount) => {
+            const rounding = Math.max(0, Math.min(amount - exact, Math.ceil(exact) - exact));
+            const extra = (amount - exact) - rounding;
+            return { rounding, extra };
+          };
+          if (el.dataset.warnCc === 'true') {
+            const { rounding, extra } = splitRounding(parseFloat(el.dataset.warnCcExact), parseFloat(el.dataset.warnCcAmount));
+            parts.push(`$${rounding.toFixed(2)} was normal rounding, $${extra.toFixed(2)} was picked up from teammates' rounddowns`);
+          }
+          if (el.dataset.warnCash === 'true') {
+            const { rounding, extra } = splitRounding(parseFloat(el.dataset.warnCashExact), parseFloat(el.dataset.warnCashAmount));
+            parts.push(`(cash) $${rounding.toFixed(2)} was normal rounding, $${extra.toFixed(2)} was picked up from teammates' rounddowns`);
+          }
+          msgEl.innerHTML = `<div style="font-size:11px;color:#FF9F0A;margin-top:6px;line-height:1.4">💡 ${el.dataset.warnName} — ${parts.join('; ')}. Nothing to fix.</div>`;
+          msgEl.dataset.shownFor = el.dataset.warnName;
+        };
       });
     } else if (homeProfile.hasTips && !todayMarkedOff) {
       tipBlock.innerHTML = `
