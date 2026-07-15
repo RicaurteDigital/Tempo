@@ -1732,11 +1732,16 @@ const WorkTracker = (() => {
     const rows = items.map((it, i) => {
       const barW = Math.max(3, (it.value / maxVal) * chartW);
       const y = i * rowH;
-      return `
+      const inner = `
         <text x="0" y="${y + barH/2 + 4}" font-size="11" fill="#98989D">${it.label.length > 10 ? it.label.slice(0,9)+'…' : it.label}</text>
         <rect x="${labelW}" y="${y}" width="${chartW}" height="${barH}" rx="7" fill="rgba(255,255,255,0.06)"/>
         <rect x="${labelW}" y="${y}" width="${barW}" height="${barH}" rx="7" fill="${it.color}"/>
         <text x="${labelW + chartW + 8}" y="${y + barH/2 + 4}" font-size="12" font-weight="700" fill="#fff">${fmtFn(it.value)}</text>`;
+      if (it.dataAttrs) {
+        const attrStr = Object.entries(it.dataAttrs).map(([k, v]) => `data-${k}="${v}"`).join(' ');
+        return `<g ${attrStr} style="cursor:pointer">${inner}</g>`;
+      }
+      return inner;
     }).join('');
     return `<svg viewBox="0 0 ${labelW + chartW + 60} ${totalH}" width="100%" height="${totalH}" xmlns="http://www.w3.org/2000/svg">${rows}</svg>`;
   }
@@ -1889,6 +1894,24 @@ const WorkTracker = (() => {
       const sustainLink = resultsEl.querySelector('#wt-stats-sustain-link');
       if (sustainLink) sustainLink.onclick = (e) => { e.stopPropagation(); _go('settings'); };
       resultsEl.onclick = (e) => {
+        const barEl = e.target.closest('[data-bar-target]');
+        if (barEl) {
+          const target = barEl.dataset.barTarget;
+          const msgEl = resultsEl.querySelector(`[data-bar-msg="${target}"]`);
+          if (!msgEl) return;
+          const label = barEl.dataset.barLabel;
+          if (msgEl.dataset.shownFor === label) {
+            msgEl.innerHTML = '';
+            delete msgEl.dataset.shownFor;
+            return;
+          }
+          const wage = parseFloat(barEl.dataset.barWage);
+          const cc = parseFloat(barEl.dataset.barCc);
+          const cash = parseFloat(barEl.dataset.barCash);
+          msgEl.innerHTML = `<div style="font-size:12px;color:#98989D;margin-top:10px;padding-top:10px;border-top:1px solid #2C2C2E"><strong style="color:#fff">${label}</strong> average breakdown:<br>Hourly wage: ${WTRules.fmtMoney(wage)} · CC tips: ${WTRules.fmtMoney(cc)} · Cash tips: ${WTRules.fmtMoney(cash)}</div>`;
+          msgEl.dataset.shownFor = label;
+          return;
+        }
         const toggle = e.target.closest('[data-collapse-toggle]');
         if (!toggle) return;
         const id = toggle.dataset.collapseToggle;
@@ -1988,7 +2011,28 @@ const WorkTracker = (() => {
     const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile)
       .sort((a, b) => b.avg - a.avg);
     const dowCard = dowData.some(d => d.count > 0)
-      ? _collapsibleCard('dow', 'Best days to work', _svgBarRow(dowData.map((d, i) => ({ label: d.day, value: d.avg, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)), openCardIds.has('dow'))
+      ? _collapsibleCard('dow', 'Best days to work', `
+          <div style="font-size:11px;color:#636366;margin-bottom:10px">Includes hourly wage + CC tips + cash tips. Tap a bar for the breakdown.</div>
+          ${_svgBarRow(dowData.map((d, i) => ({
+            label: d.day, value: d.avg, color: colors[i % colors.length],
+            dataAttrs: { 'bar-target': 'dow', 'bar-label': d.day, 'bar-wage': d.avgWage.toFixed(2), 'bar-cc': d.avgCC.toFixed(2), 'bar-cash': d.avgCash.toFixed(2) }
+          })), v => WTRules.fmtMoney(v))}
+          <div data-bar-msg="dow"></div>
+        `, openCardIds.has('dow'))
+      : '';
+
+    const monthData = StatsRules.monthPattern(stats.startDate, stats.endDate, statsProfile)
+      .filter(m => m.count > 0)
+      .sort((a, b) => b.avg - a.avg);
+    const monthCard = monthData.length >= 2
+      ? _collapsibleCard('month', 'Best months to work', `
+          <div style="font-size:11px;color:#636366;margin-bottom:10px">Includes hourly wage + CC tips + cash tips. Tap a bar for the breakdown.</div>
+          ${_svgBarRow(monthData.map((m, i) => ({
+            label: m.month, value: m.avg, color: colors[i % colors.length],
+            dataAttrs: { 'bar-target': 'month', 'bar-label': m.month, 'bar-wage': m.avgWage.toFixed(2), 'bar-cc': m.avgCC.toFixed(2), 'bar-cash': m.avgCash.toFixed(2) }
+          })), v => WTRules.fmtMoney(v))}
+          <div data-bar-msg="month"></div>
+        `, openCardIds.has('month'))
       : '';
 
     const daysOff = StatsRules.daysOffInRange(stats.startDate, stats.endDate, statsProfile);
@@ -2088,7 +2132,7 @@ const WorkTracker = (() => {
       <div id="wt-stats-sustain-link" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">Edit expenses in Settings →</div>
     `, openCardIds.has('sustain')) : '';
 
-    return headlineCard + lineChartCard + dowCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards + sustainCard;
+    return headlineCard + lineChartCard + dowCard + monthCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards + sustainCard;
   }
 
   function _Settings() {

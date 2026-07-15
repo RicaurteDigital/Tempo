@@ -269,18 +269,31 @@ const StatsRules = (() => {
     const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
     const tipSettings = WTDb.getTipSettings();
     const feePercent = tipSettings.processingFeePercent || 3;
-    const byDate = _dayEarningsMap(shifts, feePercent);
-    const dowTotals = [0, 0, 0, 0, 0, 0, 0];
+    // Tracked as 3 separate components (not just the combined total) so the UI can show a
+    // wage/CC/cash breakdown per day-of-week, not just the final number.
+    const byDate = {};
+    shifts.forEach(s => {
+      const hrs = WTRules.shiftHours(s);
+      const cut = _myTipCut(s, feePercent);
+      if (!byDate[s.date]) byDate[s.date] = { wage: 0, cc: 0, cash: 0 };
+      byDate[s.date].wage += hrs * (s.hourlyRate || NYC_MIN_WAGE);
+      byDate[s.date].cc += cut.cc;
+      byDate[s.date].cash += cut.cash;
+    });
+    const dowWage = [0, 0, 0, 0, 0, 0, 0], dowCC = [0, 0, 0, 0, 0, 0, 0], dowCash = [0, 0, 0, 0, 0, 0, 0];
     const dowCounts = [0, 0, 0, 0, 0, 0, 0];
-    Object.entries(byDate).forEach(([ds, total]) => {
+    Object.entries(byDate).forEach(([ds, b]) => {
       const dow = new Date(ds + 'T12:00:00').getDay();
-      dowTotals[dow] += total;
+      dowWage[dow] += b.wage; dowCC[dow] += b.cc; dowCash[dow] += b.cash;
       dowCounts[dow]++;
     });
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return dayNames.map((name, i) => ({
       day: name,
-      avg: dowCounts[i] > 0 ? dowTotals[i] / dowCounts[i] : 0,
+      avg: dowCounts[i] > 0 ? (dowWage[i] + dowCC[i] + dowCash[i]) / dowCounts[i] : 0,
+      avgWage: dowCounts[i] > 0 ? dowWage[i] / dowCounts[i] : 0,
+      avgCC: dowCounts[i] > 0 ? dowCC[i] / dowCounts[i] : 0,
+      avgCash: dowCounts[i] > 0 ? dowCash[i] / dowCounts[i] : 0,
       count: dowCounts[i]
     }));
   }
@@ -509,9 +522,46 @@ const StatsRules = (() => {
     };
   }
 
+  // Same wage/CC/cash breakdown as dayOfWeekPattern, bucketed by calendar month name instead
+  // of day of week — aggregates across years when the selected range spans more than one
+  // (e.g. viewing "1Y" rolling), or reflects a single clean year when the range is exactly
+  // one calendar year (e.g. the "By Year" pill).
+  function monthPattern(startDate, endDate, workProfile) {
+    const profile = workProfile || 'restaurant';
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const tipSettings = WTDb.getTipSettings();
+    const feePercent = tipSettings.processingFeePercent || 3;
+    const byDate = {};
+    shifts.forEach(s => {
+      const hrs = WTRules.shiftHours(s);
+      const cut = _myTipCut(s, feePercent);
+      if (!byDate[s.date]) byDate[s.date] = { wage: 0, cc: 0, cash: 0 };
+      byDate[s.date].wage += hrs * (s.hourlyRate || NYC_MIN_WAGE);
+      byDate[s.date].cc += cut.cc;
+      byDate[s.date].cash += cut.cash;
+    });
+    const monthWage = new Array(12).fill(0), monthCC = new Array(12).fill(0), monthCash = new Array(12).fill(0);
+    const monthCounts = new Array(12).fill(0);
+    Object.entries(byDate).forEach(([ds, b]) => {
+      const month = new Date(ds + 'T12:00:00').getMonth();
+      monthWage[month] += b.wage; monthCC[month] += b.cc; monthCash[month] += b.cash;
+      monthCounts[month]++;
+    });
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return monthNames.map((name, i) => ({
+      month: name,
+      avg: monthCounts[i] > 0 ? (monthWage[i] + monthCC[i] + monthCash[i]) / monthCounts[i] : 0,
+      avgWage: monthCounts[i] > 0 ? monthWage[i] / monthCounts[i] : 0,
+      avgCC: monthCounts[i] > 0 ? monthCC[i] / monthCounts[i] : 0,
+      avgCash: monthCounts[i] > 0 ? monthCash[i] / monthCounts[i] : 0,
+      count: monthCounts[i]
+    }));
+  }
+
   return {
     rollingRange, yearRange, weekRange, activeYears,
     computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange,
-    computeShiftContext, shiftLengthPatterns, periodComparison, sustainabilityAnalysis
+    computeShiftContext, shiftLengthPatterns, periodComparison, sustainabilityAnalysis,
+    monthPattern
   };
 })();
