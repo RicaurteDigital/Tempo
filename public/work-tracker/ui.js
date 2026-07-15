@@ -4269,7 +4269,32 @@ const WorkTracker = (() => {
       });
 
       // Recalc on blur (not on input — prevents re-render interrupting typing)
+      // Lets the CC/Cash fields accept a quick calculation (e.g. "461-42" for a reversed
+      // charge, or "100+50+20" to add up several receipts) instead of requiring the user to
+      // do the math elsewhere first. Strictly whitelists characters before ever evaluating —
+      // only digits, ., +, -, *, /, (), and whitespace are allowed — so it can never run
+      // anything beyond basic arithmetic, regardless of what's typed.
+      const _safeMathEval = (expr) => {
+        const cleaned = String(expr).trim();
+        if (!cleaned || !/^[0-9.,+\-*/()\s]+$/.test(cleaned)) return null;
+        const normalized = cleaned.replace(/,/g, '.');
+        try {
+          const result = Function(`"use strict"; return (${normalized})`)();
+          return typeof result === 'number' && isFinite(result) ? result : null;
+        } catch (e) { return null; }
+      };
+      const _evalFieldIfExpr = (input) => {
+        const raw = input.value.trim();
+        // Only evaluate if it actually looks like an expression (an operator beyond a single
+        // leading minus sign, which is just a negative number) — a plain "42" is left as-is.
+        if (raw && /[-+*/]/.test(raw.replace(/^-/, ''))) {
+          const evaluated = _safeMathEval(raw);
+          if (evaluated !== null) input.value = evaluated.toFixed(2);
+        }
+      };
       const doRecalc = () => {
+        _evalFieldIfExpr(ov.querySelector('#wt-tp-cc'));
+        _evalFieldIfExpr(ov.querySelector('#wt-tp-cash'));
         const ccVal = parseFloat(ov.querySelector('#wt-tp-cc').value.replace(',','.')) || 0;
         const cashVal = parseFloat(ov.querySelector('#wt-tp-cash').value.replace(',','.')) || 0;
         // Don't wipe manualFee if it matches the gross from an active split —
