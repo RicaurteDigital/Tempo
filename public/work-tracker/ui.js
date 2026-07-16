@@ -296,11 +296,17 @@ const WorkTracker = (() => {
     // Get unique locations that have shifts this week
     const weekLocIds = [...new Set(weekShifts.map(s => s.locationId).filter(Boolean))];
     const weekLocs = locs.filter(l => weekLocIds.includes(l.id));
+    // Whether the day being viewed (which may differ from today via the ‹ › arrows) falls in
+    // the real current calendar week — determines the card's label and accent color below.
+    const isCurrentCalendarWeek = ws.getTime() === getWeekStart(new Date(realToday + 'T12:00:00')).getTime();
+    const weekCardStyle = isCurrentCalendarWeek ? '' : 'background:rgba(100,210,255,.12);border-color:rgba(100,210,255,.35);';
+    const weekLabelStyle = isCurrentCalendarWeek ? '' : 'color:#64D2FF;';
+    const weekCardTitle = isCurrentCalendarWeek ? 'This Week' : formatWeekLabel(ws);
     stats.innerHTML = `
-      <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box">
+      <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box;${weekCardStyle}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
-            <div class="wt-stat-label">This Week</div>
+            <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
             <div class="wt-stat-value">${WTRules.fmtHours(pay.totalHours)}</div>
             <div class="wt-stat-sub">${WTRules.fmtMoney(pay.total)}</div>
             ${pay.isOvertime ? `<div class="wt-ot-tag">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
