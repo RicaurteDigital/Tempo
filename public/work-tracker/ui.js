@@ -302,13 +302,20 @@ const WorkTracker = (() => {
     const weekCardStyle = isCurrentCalendarWeek ? '' : 'background:rgba(100,210,255,.12);border-color:rgba(100,210,255,.35);';
     const weekLabelStyle = isCurrentCalendarWeek ? '' : 'color:#64D2FF;';
     const weekCardTitle = isCurrentCalendarWeek ? 'This Week' : formatWeekLabel(ws);
+    // Gross components shown separately — the hourly figure alone was easy to mistake for a
+    // total, when it's actually just the wage portion, with CC and cash tips as separate gross
+    // amounts on top (none of these are net; fees/splits are handled in the tip pool itself).
+    const weekCCCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
+    const weekCashCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cash, 0);
     stats.innerHTML = `
       <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box;${weekCardStyle}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
             <div class="wt-stat-value">${WTRules.fmtHours(pay.totalHours)}</div>
-            <div class="wt-stat-sub">${WTRules.fmtMoney(pay.total)}</div>
+            <div class="wt-stat-sub">Gross H ${WTRules.fmtMoney(pay.total)}</div>
+            ${weekCCCut > 0 ? `<div class="wt-stat-sub" style="margin-top:2px">CC cut ${WTRules.fmtMoney(weekCCCut)}</div>` : ''}
+            ${weekCashCut > 0 ? `<div class="wt-stat-sub" style="margin-top:2px">Cash cut ${WTRules.fmtMoney(weekCashCut)}</div>` : ''}
             ${pay.isOvertime ? `<div class="wt-ot-tag">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
           </div>
         </div>
