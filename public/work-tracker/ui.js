@@ -1838,6 +1838,11 @@ const WorkTracker = (() => {
         ).join('')}
       </div>
       <div style="margin-bottom:12px"></div>
+      <div id="wt-stats-loc-picker" style="display:none;margin-bottom:12px">
+        <select class="wt-select-sm" id="wt-stats-loc-sel" style="width:100%">
+          <option value="">All Locations</option>
+        </select>
+      </div>
       <div id="wt-stats-year-picker" style="display:none;margin-bottom:12px">
         <select class="wt-select-sm" id="wt-stats-year-sel" style="width:100%">
           ${(years.length ? years : [curYear]).map(y => `<option value="${y}">${y}</option>`).join('')}
@@ -1868,7 +1873,27 @@ const WorkTracker = (() => {
     const weekLabelEl = w.querySelector('#wt-stats-week-label');
     const weekPrevBtn = w.querySelector('#wt-stats-week-prev');
     const weekNextBtn = w.querySelector('#wt-stats-week-next');
+    const locPicker = w.querySelector('#wt-stats-loc-picker');
+    const locSel = w.querySelector('#wt-stats-loc-sel');
     let weekOffset = 0;
+    let selectedLocationId = '';
+    let lastStart, lastEnd, lastLabel;
+
+    const currentProfileForLocs = WTDb.getSettings().workProfile || 'restaurant';
+    const statsLocations = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfileForLocs);
+    if (statsLocations.length >= 2) {
+      locPicker.style.display = 'block';
+      statsLocations.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = l.name;
+        locSel.appendChild(opt);
+      });
+      locSel.onchange = () => {
+        selectedLocationId = locSel.value;
+        if (lastStart) loadRange(lastStart, lastEnd, lastLabel);
+      };
+    }
 
     function fmtStatDate(dateStr) {
       return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1884,10 +1909,11 @@ const WorkTracker = (() => {
     }
 
     function loadRange(start, end, label) {
+      lastStart = start; lastEnd = end; lastLabel = label;
       rangeLabelEl.textContent = `${label} · ${fmtStatDate(start)} → ${fmtStatDate(end)}`;
       const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
-      const stats = StatsRules.computeAllStats(start, end, currentProfile);
-      resultsEl.innerHTML = _renderStatsResults(stats, openCardIds);
+      const stats = StatsRules.computeAllStats(start, end, currentProfile, selectedLocationId || null);
+      resultsEl.innerHTML = _renderStatsResults(stats, openCardIds, selectedLocationId || null);
       resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
         el.onclick = () => _go('day', { date: el.dataset.chartDate });
       });
@@ -1997,7 +2023,7 @@ const WorkTracker = (() => {
     </svg>`;
   }
 
-  function _renderStatsResults(stats, openCardIds) {
+  function _renderStatsResults(stats, openCardIds, locationId) {
     if (!stats.perLocation.length) {
       return '<div class="wt-empty"><strong>No data</strong>No shifts or payments in this period.</div>';
     }
@@ -2005,10 +2031,10 @@ const WorkTracker = (() => {
     const colors = ['#5E5CE6', '#30D158', '#64D2FF', '#FF9F0A', '#FF453A', '#BF5AF2'];
     const statsProfile = WTDb.getSettings().workProfile || 'restaurant';
 
-    const ts = StatsRules.timeSeries(stats.startDate, stats.endDate, statsProfile);
+    const ts = StatsRules.timeSeries(stats.startDate, stats.endDate, statsProfile, locationId);
     const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points), openCardIds.has('chart'));
 
-    const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile)
+    const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile, locationId)
       .sort((a, b) => b.avg - a.avg);
     const dowCard = dowData.some(d => d.count > 0)
       ? _collapsibleCard('dow', 'Best days to work', `
@@ -2021,7 +2047,7 @@ const WorkTracker = (() => {
         `, openCardIds.has('dow'))
       : '';
 
-    const monthData = StatsRules.monthPattern(stats.startDate, stats.endDate, statsProfile)
+    const monthData = StatsRules.monthPattern(stats.startDate, stats.endDate, statsProfile, locationId)
       .filter(m => m.count > 0)
       .sort((a, b) => b.avg - a.avg);
     const monthCard = monthData.length >= 2
@@ -2042,9 +2068,9 @@ const WorkTracker = (() => {
       ${Object.entries(daysOff.byType).map(([type, count]) => _statRow(dayOffLabels[type] || type, String(count))).join('')}
     `, openCardIds.has('daysoff')) : '';
 
-    const contextResult = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile);
+    const contextResult = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile, locationId);
     const contextInsights = contextResult.insights;
-    const cmp = StatsRules.periodComparison(stats.startDate, stats.endDate, statsProfile);
+    const cmp = StatsRules.periodComparison(stats.startDate, stats.endDate, statsProfile, locationId);
     const topDriver = contextInsights.length
       ? contextInsights.reduce((best, i) => Math.abs(i.deltaPercent) > Math.abs(best.deltaPercent) ? i : best)
       : null;
@@ -2066,7 +2092,7 @@ const WorkTracker = (() => {
         </div>`;
     }
 
-    const lengthPatterns = StatsRules.shiftLengthPatterns(stats.startDate, stats.endDate, statsProfile);
+    const lengthPatterns = StatsRules.shiftLengthPatterns(stats.startDate, stats.endDate, statsProfile, locationId);
     const contextBody = (contextInsights.length > 0 || lengthPatterns.length > 0) ? `
       <div style="font-size:11px;color:#636366;margin-bottom:14px;line-height:1.4">Each line compares your average pay in that situation against your average on everything else this period, using your real numbers.</div>
       ${contextInsights.map(_contextRow).join('')}

@@ -133,12 +133,12 @@ const StatsRules = (() => {
   }
 
   // Full picture for a date range: every active location, separately, plus a combined total.
-  function computeAllStats(startDate, endDate, workProfile) {
+  function computeAllStats(startDate, endDate, workProfile, locationId) {
     const profile = workProfile || 'restaurant';
     const allLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === profile);
     const profileLocIds = new Set(allLocs.map(l => l.id));
-    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
-    const payments = WTDb.getAllPayments().filter(p => p.weekStart >= startDate && p.weekStart <= endDate && profileLocIds.has(p.locationId));
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile && (!locationId || s.locationId === locationId));
+    const payments = WTDb.getAllPayments().filter(p => p.weekStart >= startDate && p.weekStart <= endDate && profileLocIds.has(p.locationId) && (!locationId || p.locationId === locationId));
     const tipSettings = WTDb.getTipSettings();
     const feePercent = tipSettings.processingFeePercent || 3;
 
@@ -226,9 +226,9 @@ const StatsRules = (() => {
   // ranges so a chart never has to plot more than ~52 points. Every bucket in range is
   // included (even zero-earning ones) so the line stays continuous, not just connect-the-dots
   // between worked days.
-  function timeSeries(startDate, endDate, workProfile) {
+  function timeSeries(startDate, endDate, workProfile, locationId) {
     const profile = workProfile || 'restaurant';
-    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile && (!locationId || s.locationId === locationId));
     const tipSettings = WTDb.getTipSettings();
     const feePercent = tipSettings.processingFeePercent || 3;
     const rangeStart = new Date(startDate + 'T12:00:00');
@@ -264,9 +264,9 @@ const StatsRules = (() => {
 
   // Average earnings by day of week (Sun–Sat) within the range — surfaces which days
   // tend to be worth the most, so "which days should I work" has an actual answer.
-  function dayOfWeekPattern(startDate, endDate, workProfile) {
+  function dayOfWeekPattern(startDate, endDate, workProfile, locationId) {
     const profile = workProfile || 'restaurant';
-    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile && (!locationId || s.locationId === locationId));
     const tipSettings = WTDb.getTipSettings();
     const feePercent = tipSettings.processingFeePercent || 3;
     // Tracked as 3 separate components (not just the combined total) so the UI can show a
@@ -333,9 +333,9 @@ const StatsRules = (() => {
   // "this condition pays better" — it isolates whether the condition itself changes your
   // rate, not just how many hours you happened to work. Every comparison requires at least
   // 2 shifts (or weeks) on both sides, so a single anecdote never looks like a pattern.
-  function computeShiftContext(startDate, endDate, workProfile) {
+  function computeShiftContext(startDate, endDate, workProfile, locationId) {
     const profile = workProfile || 'restaurant';
-    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile && (!locationId || s.locationId === locationId));
     const feePercent = WTDb.getTipSettings().processingFeePercent || 3;
     const rangeSpanDays = (new Date(endDate) - new Date(startDate)) / 86400000;
 
@@ -427,9 +427,9 @@ const StatsRules = (() => {
 
   // Purely descriptive (not a "good/bad" comparison): how long your shifts actually run, per
   // location, weekday vs weekend — e.g. "do I really stay later on weekends, and by how much."
-  function shiftLengthPatterns(startDate, endDate, workProfile) {
+  function shiftLengthPatterns(startDate, endDate, workProfile, locationId) {
     const profile = workProfile || 'restaurant';
-    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile && (!locationId || s.locationId === locationId));
     const byLoc = {};
     shifts.forEach(s => {
       const hrs = WTRules.shiftHours(s);
@@ -450,12 +450,12 @@ const StatsRules = (() => {
   // Current period vs the immediately preceding period of the same length (this week vs last
   // week, this month vs last month, etc.) — reuses computeAllStats for both, so the numbers
   // always agree with the rest of Stats.
-  function periodComparison(startDate, endDate, workProfile) {
+  function periodComparison(startDate, endDate, workProfile, locationId) {
     const spanDays = Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
     const prevEnd = new Date(startDate); prevEnd.setDate(prevEnd.getDate() - 1);
     const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - spanDays + 1);
-    const curGross = computeAllStats(startDate, endDate, workProfile).totals.expectedGross;
-    const prevGross = computeAllStats(_ds(prevStart), _ds(prevEnd), workProfile).totals.expectedGross;
+    const curGross = computeAllStats(startDate, endDate, workProfile, locationId).totals.expectedGross;
+    const prevGross = computeAllStats(_ds(prevStart), _ds(prevEnd), workProfile, locationId).totals.expectedGross;
     const taxSettings = WTDb.getTaxSettings();
     const curNetEst = WTRules.estimateNet(curGross, taxSettings);
     const prevNetEst = WTRules.estimateNet(prevGross, taxSettings);
@@ -526,9 +526,9 @@ const StatsRules = (() => {
   // of day of week — aggregates across years when the selected range spans more than one
   // (e.g. viewing "1Y" rolling), or reflects a single clean year when the range is exactly
   // one calendar year (e.g. the "By Year" pill).
-  function monthPattern(startDate, endDate, workProfile) {
+  function monthPattern(startDate, endDate, workProfile, locationId) {
     const profile = workProfile || 'restaurant';
-    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile);
+    const shifts = WTDb.getShiftsInRange(startDate, endDate).filter(s => (s.workProfile || 'restaurant') === profile && (!locationId || s.locationId === locationId));
     const tipSettings = WTDb.getTipSettings();
     const feePercent = tipSettings.processingFeePercent || 3;
     const byDate = {};
