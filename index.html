@@ -20,7 +20,7 @@
   input:focus{user-select:text;-webkit-user-select:text;}
   html,body{background:var(--bg);color:var(--txt);
     font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Inter',system-ui,sans-serif;
-    height:100%;overscroll-behavior:none}
+    height:100%;overscroll-behavior:none;touch-action:manipulation}
   body{padding:max(env(safe-area-inset-top),16px) 16px calc(env(safe-area-inset-bottom) + 16px)}
   .hide{display:none!important}
 
@@ -757,6 +757,18 @@ _applyMode();
 <script src="study-tracker/db.js"></script>
 <script src="study-tracker/rules.js"></script>
 <script src="study-tracker/ui.js"></script>
+<script>
+// Blocks pinch-zoom app-wide — needed because iOS Safari ignores the viewport meta tag's
+// user-scalable=no for accessibility reasons, so this is the only reliable way to stop it
+// there. Skipped entirely while the photo viewer is open (marked via a class on <body>),
+// so pinch-zoom still works normally when actually looking at a proof photo.
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1 && !document.body.classList.contains('wt-photo-zoom-ok')) e.preventDefault();
+}, { passive: false });
+document.addEventListener('gesturestart', e => {
+  if (!document.body.classList.contains('wt-photo-zoom-ok')) e.preventDefault();
+}, { passive: false });
+</script>
 <script>
 if ('serviceWorker' in navigator) {
   let refreshing = false;

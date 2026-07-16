@@ -3934,7 +3934,17 @@ const WorkTracker = (() => {
         </div>
       </div>`;
 
+    // Pinch-zoom is blocked app-wide (see index.html), except while this photo viewer is
+    // open — the observer catches removal however it happens (close button, tap-outside,
+    // or the replace flow further down), so every exit path is covered from one place.
+    document.body.classList.add('wt-photo-zoom-ok');
     document.body.appendChild(ov);
+    new MutationObserver((_muts, obs) => {
+      if (!document.body.contains(ov)) {
+        document.body.classList.remove('wt-photo-zoom-ok');
+        obs.disconnect();
+      }
+    }).observe(document.body, { childList: true });
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
 
     ov.querySelector('#wt-vp-close').onclick = () => ov.remove();
