@@ -4,6 +4,10 @@ const WorkTracker = (() => {
   let _root = null;
   let _view = 'home';
   let _date = null;
+  let _weekFocusDate = null; // set by Day view's Back button so History highlights the week
+                              // you were actually looking at, not always "today's" week —
+                              // read once and cleared, so any other path back into History
+                              // (switching tabs, tapping Home, etc.) resets to the current week
   let _heroTimer = null;
   let _weekHistoryCount = 12;
   let _settingsOpenSection = 'profile';
@@ -999,6 +1003,14 @@ const WorkTracker = (() => {
     w.className = 'wt-screen';
     const settings = WTDb.getSettings();
     const curMs = getWeekStart(new Date()).getTime();
+    // Which card gets the highlighted border — normally the same as curMs, but if we just
+    // came back from Day view, it follows whatever week that date falls in instead, so the
+    // highlight tracks where you actually were, not always "this calendar week."
+    let highlightMs = curMs;
+    if (_weekFocusDate) {
+      highlightMs = getWeekStart(new Date(_weekFocusDate + 'T12:00:00')).getTime();
+      _weekFocusDate = null;
+    }
     const weeks = WTRules.getRecentWeeks(_weekHistoryCount);
 
     // Earliest active week per location — explicit startDate wins if set, else earliest tracked shift.
@@ -1106,8 +1118,9 @@ const WorkTracker = (() => {
       const pay = WTRules.weeklyPay(shifts);
       const weekTipCut = shifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
       const isCur = ws.getTime() === curMs;
+      const isHighlighted = ws.getTime() === highlightMs;
       const row = document.createElement('div');
-      row.className = 'wt-week' + (isCur ? ' wt-week-cur' : '');
+      row.className = 'wt-week' + (isHighlighted ? ' wt-week-cur' : '');
       const dots = [0,1,2,3,4,5,6].map(i => {
         const d = new Date(ws); d.setDate(d.getDate() + i);
         const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1524,7 +1537,7 @@ const WorkTracker = (() => {
       w.appendChild(emp);
     }
     _root.appendChild(w);
-    w.querySelector('#wt-back').onclick = () => _go('week');
+    w.querySelector('#wt-back').onclick = () => { _weekFocusDate = dateStr; _go('week'); };
     w.querySelector('#wt-add-shift-day').onclick = () => _showAddShift(dateStr);
     if (prevDate) w.querySelector('#wt-day-prev').onclick = () => _go('day', { date: prevDate });
     if (nextDate) w.querySelector('#wt-day-next').onclick = () => _go('day', { date: nextDate });
