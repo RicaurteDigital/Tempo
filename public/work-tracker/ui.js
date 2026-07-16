@@ -306,8 +306,10 @@ const WorkTracker = (() => {
             ${pay.isOvertime ? `<div class="wt-ot-tag">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
           </div>
         </div>
+      </div>
+      <div style="background:rgba(28,28,30,0.5);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:14px 16px;margin-top:10px;width:100%;box-sizing:border-box">
         ${weekLocs.length > 0 ? `
-        <div style="border-top:1px solid rgba(255,255,255,0.07);margin-top:10px;padding-top:10px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:8px">
           ${weekLocs.map(l => `
             <div data-loc-payday="${l.id}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:4px 0">
               <div>
@@ -320,11 +322,9 @@ const WorkTracker = (() => {
               </div>
             </div>`).join('')}
         </div>` : `
-        <div style="border-top:1px solid rgba(255,255,255,0.07);margin-top:10px;padding-top:10px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:11px;color:#636366;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
-            <div style="font-size:13px;color:#FF9F0A;font-weight:700">${WTRules.getPayDate(ws, settings)}</div>
-          </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:11px;color:#636366;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
+          <div style="font-size:13px;color:#FF9F0A;font-weight:700">${WTRules.getPayDate(ws, settings)}</div>
         </div>`}
       </div>`;
     w.appendChild(stats);
