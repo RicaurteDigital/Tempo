@@ -1422,6 +1422,10 @@ const WorkTracker = (() => {
           numsRow.after(breakdownEl);
         };
       }
+      row.onclick = () => {
+        w.querySelectorAll('.wt-week').forEach(r => r.classList.remove('wt-week-cur'));
+        row.classList.add('wt-week-cur');
+      };
       w.appendChild(row);
     });
 
