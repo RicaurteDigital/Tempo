@@ -307,15 +307,18 @@ const WorkTracker = (() => {
     // amounts on top (none of these are net; fees/splits are handled in the tip pool itself).
     const weekCCCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
     const weekCashCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cash, 0);
+    const grossParts = [`H ${WTRules.fmtMoney(pay.total)}`];
+    if (weekCCCut > 0) grossParts.push(`<span style="color:#FF9F0A">CC ${WTRules.fmtMoney(weekCCCut)}</span>`);
+    if (weekCashCut > 0) grossParts.push(`<span style="color:#30D158">Cash ${WTRules.fmtMoney(weekCashCut)}</span>`);
+    const grossLine = grossParts.join(' <span style="color:#3a3a3c">|</span> ');
     stats.innerHTML = `
       <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box;${weekCardStyle}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
             <div class="wt-stat-value">${WTRules.fmtHours(pay.totalHours)}</div>
-            <div class="wt-stat-sub">Gross H ${WTRules.fmtMoney(pay.total)}</div>
-            ${weekCCCut > 0 ? `<div class="wt-stat-sub" style="margin-top:2px">CC cut ${WTRules.fmtMoney(weekCCCut)}</div>` : ''}
-            ${weekCashCut > 0 ? `<div class="wt-stat-sub" style="margin-top:2px">Cash cut ${WTRules.fmtMoney(weekCashCut)}</div>` : ''}
+            <div style="font-size:11px;color:#636366;text-transform:uppercase;letter-spacing:.4px;margin-top:6px">Gross</div>
+            <div style="font-size:13px;font-weight:700;color:#fff;margin-top:2px">${grossLine}</div>
             ${pay.isOvertime ? `<div class="wt-ot-tag">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
           </div>
         </div>
