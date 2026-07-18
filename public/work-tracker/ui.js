@@ -912,7 +912,7 @@ const WorkTracker = (() => {
         </div>
         <span class="wt-entry-dur">${eHrs > 0 ? WTRules.fmtHours(eHrs) : '—'}</span>
       </div>
-      <button class="wt-entry-del" data-sid="${shift.id}" data-eid="${e.id}">✕</button>`;
+      <button class="wt-entry-del" data-sid="${shift.id}" data-eid="${e.id}" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>`;
 
     if (e.note) {
       const isBreakEntry = typeof e.breakDurationMinutes === 'number';
@@ -2260,7 +2260,7 @@ const WorkTracker = (() => {
                   <div style="font-size:11px;color:#636366;margin-top:2px">${locS.paidBreaks ? '· Paid breaks · ' : ''}${otSummary}</div>
                 </div>
                 <span class="wt-loc-rate">$${l.hourlyRate}/hr</span>
-                <button class="wt-loc-del" data-lid="${l.id}" style="z-index:2">✕</button>
+                <button class="wt-loc-del" data-lid="${l.id}" style="z-index:2" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>
               </div>`;
             }).join('')}
         </div>
@@ -2397,7 +2397,7 @@ const WorkTracker = (() => {
                 onpointerup="this.style.background='none'"
                 onpointerleave="this.style.background='none'">+</button>
             </div>
-            <button data-pos-del="${i}" style="background:rgba(255,69,58,.12);border:none;border-radius:8px;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
+            <button data-pos-del="${i}" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>
           </div>`).join('')}
       </div>
       <button class="wt-btn wt-btn-secondary" style="margin-top:10px;width:100%" id="wt-tip-add-pos">+ Add Position</button>
@@ -4284,7 +4284,7 @@ const WorkTracker = (() => {
                     <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''} <span style="font-size:11px;color:#5E5CE6">edit</span></span>
                     <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.isFixed ? `<span style="color:#FF9F0A">${(p.impliedPoints||0).toFixed(2)} pts (fixed)</span>` : `${p.points} pts`} · CC exact: <span style="color:#FF9F0A">$${(p.ccExact ?? p.exact).toFixed(2)}</span></div>
                   </div>
-                  <button data-del="${i}" data-del-name="${p.name}" style="background:rgba(255,69,58,.12);border:none;border-radius:8px;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
+                  <button data-del="${i}" data-del-name="${p.name}" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:space-between">
                   <div style="display:flex;align-items:center;gap:0;background:#1C1C1E;border-radius:12px;overflow:hidden;border:1px solid #38383A">
@@ -4689,7 +4689,7 @@ const WorkTracker = (() => {
                   <input data-sa-exempt="${i}" type="checkbox" ${a.feeExempt?'checked':''} style="width:16px;height:16px;cursor:pointer">
                   No fee
                 </label>
-                ${amounts.length > 1 ? `<button data-sa-del="${i}" style="background:rgba(255,69,58,.12);border:none;border-radius:8px;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>` : ''}
+                ${amounts.length > 1 ? `<button data-sa-del="${i}" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>` : ''}
               </div>`).join('')}
           </div>
           <button id="wt-sa-add" type="button" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;margin-bottom:14px">+ Add amount</button>
@@ -4874,7 +4874,7 @@ const WorkTracker = (() => {
                   <button data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
                     ${already ? '✓ Added — tap to remove' : '+ Add'}
                   </button>
-                  ${already ? '' : `<button data-roster-delete="${i}" title="Remove from roster" style="background:rgba(255,69,58,.12);border:none;border-radius:8px;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>`}
+                  ${already ? '' : `<button data-roster-delete="${i}" title="Remove from roster" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>`}
                 </div>
               </div>`;
             }).join('')
