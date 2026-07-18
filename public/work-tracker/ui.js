@@ -4874,7 +4874,7 @@ const WorkTracker = (() => {
                   <button data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
                     ${already ? '✓ Added — tap to remove' : '+ Add'}
                   </button>
-                  ${already ? '' : `<button data-roster-delete="${i}" title="Remove from roster" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>`}
+                  <button data-roster-delete="${i}" title="Remove from roster" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease;display:${already?'none':'inline-flex'}" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>
                 </div>
               </div>`;
             }).join('')
@@ -4902,6 +4902,8 @@ const WorkTracker = (() => {
           btn.style.background = 'rgba(48,209,88,.15)';
           btn.style.color = '#30D158';
           btn.parentElement.style.opacity = '1';
+          const delBtn = btn.parentElement.querySelector('[data-roster-delete]');
+          if (delBtn) delBtn.style.display = 'inline-flex';
           return;
         }
 
@@ -4922,6 +4924,8 @@ const WorkTracker = (() => {
         btn.style.background = 'rgba(255,69,58,.12)';
         btn.style.color = '#FF453A';
         btn.parentElement.style.opacity = '0.6';
+        const delBtn = btn.parentElement.querySelector('[data-roster-delete]');
+        if (delBtn) delBtn.style.display = 'none';
       };
     });
 
