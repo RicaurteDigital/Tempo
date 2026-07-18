@@ -309,7 +309,7 @@
   text-align: right;
 }
 .wt-entry-del {
-  background: none;
+  background: rgba(255,69,58,.12);
   border: none;
   color: #FF453A;
   font-size: 16px;
@@ -596,7 +596,7 @@
 .wt-loc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .wt-loc-name { flex: 1; font-size: 15px; font-weight: 600; }
 .wt-loc-rate { font-size: 13px; color: #636366; margin-right: 8px; }
-.wt-loc-del { background: none; border: none; color: #FF453A; font-size: 16px; cursor: pointer; padding: 2px 6px; }
+.wt-loc-del { background: rgba(255,69,58,.12); border: none; color: #FF453A; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 8px; }
 .wt-add-form { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .wt-input {
   background: #2C2C2E;
