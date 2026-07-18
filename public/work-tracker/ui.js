@@ -489,18 +489,6 @@ const WorkTracker = (() => {
           msgEl.dataset.shownFor = el.dataset.warnName;
         };
       });
-    } else if (homeProfile.hasTips && !todayMarkedOff) {
-      tipBlock.innerHTML = `
-        <button id="wt-tip-new" style="width:100%;background:rgba(255,149,0,.08);border:1px dashed rgba(255,149,0,.3);border-radius:20px;padding:16px;color:#FF9F0A;font-size:15px;font-weight:700;cursor:pointer;text-align:center">
-          💰 Add Today's Tips
-        </button>`;
-      tipBlock.querySelector('#wt-tip-new').onclick = () => {
-        if (todayShifts.length === 1) {
-          _showTipPool(todayShifts[0].id);
-        } else if (todayShifts.length > 1) {
-          _showShiftSelector(todayShifts, _showTipPool);
-        }
-      };
     }
     w.appendChild(tipBlock);
 
@@ -4091,27 +4079,6 @@ const WorkTracker = (() => {
     input.click();
   }
 
-  function _showShiftSelector(shifts, callback) {
-    const ov = document.createElement('div');
-    ov.className = 'wt-overlay';
-    ov.innerHTML = `
-      <div class="wt-modal">
-        <div class="wt-modal-handle"></div>
-        <div class="wt-modal-title">Which shift?</div>
-        ${shifts.map(s => `
-          <button data-sid="${s.id}" style="width:100%;background:rgba(44,44,46,0.8);border:1px solid #38383A;border-radius:14px;color:#fff;font-size:15px;font-weight:700;padding:14px;cursor:pointer;margin-bottom:8px;text-align:left">
-            ${s.locationName||'Shift'} · ${s.shiftType||''} · $${s.hourlyRate}/hr
-          </button>`).join('')}
-        <button class="wt-btn wt-btn-secondary" id="wt-ss-cancel" style="margin-top:4px">Cancel</button>
-      </div>`;
-    document.body.appendChild(ov);
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
-    ov.querySelectorAll('[data-sid]').forEach(btn => {
-      btn.onclick = () => { ov.remove(); callback(btn.dataset.sid); };
-    });
-    ov.querySelector('#wt-ss-cancel').onclick = () => ov.remove();
-  }
-
   function _showTipPool(dayKey, highlightName, highlightType) {
     const __shifts = WTDb.getShifts();
     const __shift = __shifts.find(s => s.id === dayKey);
@@ -4315,7 +4282,7 @@ const WorkTracker = (() => {
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                   <div style="cursor:pointer" data-edit="${i}" data-edit-name="${p.name}">
                     <span style="font-size:15px;font-weight:700;color:${p.isMe?'#64D2FF':'#fff'}">${p.name} ${p.isMe?'⭐':''} <span style="font-size:11px;color:#5E5CE6">edit</span></span>
-                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.isFixed ? `<span style="color:#FF9F0A">${(p.impliedPoints||0).toFixed(2)} pts (fixed)</span>` : `${p.points} pts`} · CC exact: <span style="color:#FF9F0A">$${(p.ccExact||p.exact).toFixed(2)}</span></div>
+                    <div style="font-size:12px;color:#636366;margin-top:2px">${p.position} · ${p.isFixed ? `<span style="color:#FF9F0A">${(p.impliedPoints||0).toFixed(2)} pts (fixed)</span>` : `${p.points} pts`} · CC exact: <span style="color:#FF9F0A">$${(p.ccExact ?? p.exact).toFixed(2)}</span></div>
                   </div>
                   <button data-del="${i}" data-del-name="${p.name}" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>
                 </div>
@@ -4898,14 +4865,17 @@ const WorkTracker = (() => {
           : roster.map((m, i) => {
               const already = TipRules.isAlreadyInWorkers(m.name, saved.workers || []);
               return `
-              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px;${already?'opacity:0.6':''}">
+              <div data-roster-row="${i}" style="display:flex;align-items:center;justify-content:space-between;background:rgba(28,28,30,0.6);border-radius:14px;padding:12px 14px;margin-bottom:8px;${already?'opacity:0.6':''}">
                 <div>
                   <div style="font-size:15px;font-weight:700;color:${m.isMe?'#64D2FF':'#fff'}">${m.name} ${m.isMe?'⭐':''}</div>
                   <div style="font-size:12px;color:#636366;margin-top:2px">${m.position || ''} · ${m.points || 1} pts</div>
                 </div>
-                <button data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
-                  ${already ? '✓ Added — tap to remove' : '+ Add'}
-                </button>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <button data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
+                    ${already ? '✓ Added — tap to remove' : '+ Add'}
+                  </button>
+                  <button data-roster-delete="${i}" title="Remove from roster" style="background:none;border:none;color:#636366;font-size:16px;cursor:pointer;padding:4px">🗑</button>
+                </div>
               </div>`;
             }).join('')
         }
@@ -4952,6 +4922,19 @@ const WorkTracker = (() => {
         btn.style.background = 'rgba(255,69,58,.12)';
         btn.style.color = '#FF453A';
         btn.parentElement.style.opacity = '0.6';
+      };
+    });
+
+    ov.querySelectorAll('[data-roster-delete]').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const i = parseInt(btn.dataset.rosterDelete);
+        const member = roster[i];
+        if (!member) return;
+        if (!confirm(`Remove ${member.name} from your roster? Past tip pools they were part of won't be affected.`)) return;
+        WTDb.deleteRosterMember(locationId, member.name);
+        const row = ov.querySelector(`[data-roster-row="${i}"]`);
+        if (row) row.remove();
       };
     });
   }

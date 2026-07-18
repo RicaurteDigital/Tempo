@@ -332,6 +332,17 @@ const WTDb = (() => {
     return member;
   }
 
+  function deleteRosterMember(locationId, memberName) {
+    try {
+      const all = JSON.parse(localStorage.getItem(ROSTER_KEY)) || {};
+      if (!all[locationId]) return;
+      all[locationId] = all[locationId].filter(m =>
+        (m.name || '').trim().toLowerCase() !== (memberName || '').trim().toLowerCase()
+      );
+      localStorage.setItem(ROSTER_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
   function getLastBackupDate() {
     return localStorage.getItem('wt_last_backup');
   }
@@ -400,7 +411,7 @@ const WTDb = (() => {
     getTipSettings, saveTipSettings,
     getTipsForShift, saveTipsForShift, deleteTipsForShift, cleanOrphanedTips,
     getDayOffReason, saveDayOffReason, deleteDayOffReason, getAllDayOffReasons,
-    getRoster, saveRosterMember,
+    getRoster, saveRosterMember, deleteRosterMember,
     deletePhoto,
     getPayment, savePayment, deletePayment,
     getShiftsInRange, getAllPayments,
