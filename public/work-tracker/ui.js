@@ -4273,6 +4273,7 @@ const WorkTracker = (() => {
             ${locationId ? `<button id="wt-tp-roster" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:7px 12px;cursor:pointer">👥 Roster</button>` : ''}
             <button id="wt-tp-add" class="${workers.length === 0 ? 'wt-glow' : ''}" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">+ Add</button>
           </div>
+          ${workers.length > 0 && !(ccTotal > 0 || cashTotal > 0) ? `<div style="font-size:12px;color:#636366;margin:-4px 0 10px">${result.totalPoints} pts total</div>` : ''}
 
           <div id="wt-tp-workers-list">
           ${workers.length === 0
