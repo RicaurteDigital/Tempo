@@ -4874,7 +4874,7 @@ const WorkTracker = (() => {
                   <button data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
                     ${already ? '✓ Added — tap to remove' : '+ Add'}
                   </button>
-                  <button data-roster-delete="${i}" title="Remove from roster" style="background:none;border:none;color:#636366;font-size:16px;cursor:pointer;padding:4px">🗑</button>
+                  <button data-roster-delete="${i}" title="Remove from roster" style="background:none;border:none;color:#FF453A;font-size:16px;cursor:pointer;padding:4px">✕</button>
                 </div>
               </div>`;
             }).join('')
