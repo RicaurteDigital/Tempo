@@ -2251,6 +2251,7 @@ const WorkTracker = (() => {
       <div id="wt-fp-history-row" style="display:${editMode ? 'flex' : 'none'};gap:8px;margin-bottom:10px">
         <button id="wt-fp-undo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer">↺</button>
         <button id="wt-fp-redo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer">↻</button>
+        <button id="wt-fp-bulk" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer">+ Multiple</button>
         <div style="flex:1"></div>
         <button id="wt-fp-clear" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer">Clear All</button>
       </div>
@@ -2433,8 +2434,10 @@ const WorkTracker = (() => {
         const onUp = () => {
           document.removeEventListener('pointermove', onMove);
           document.removeEventListener('pointerup', onUp);
-          if (moved) { persist(); renderCanvas(); renderToolbar(); }
+          if (moved) { persist(); }
           else { undoStack.pop(); }
+          renderCanvas();
+          renderToolbar();
           updateHistoryButtons();
         };
         document.addEventListener('pointermove', onMove);
@@ -2683,6 +2686,48 @@ const WorkTracker = (() => {
       persist();
       renderCanvas();
       renderToolbar();
+    };
+
+    w.querySelector('#wt-fp-bulk').onclick = () => {
+      const ov = document.createElement('div');
+      ov.className = 'wt-overlay';
+      ov.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title">Add multiple</div>
+          <div style="font-size:13px;color:#636366;margin-bottom:14px">Pick a shape first, then how many.</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            ${FLOORPLAN_PALETTE.map((p, i) => `<button data-bulk-type="${i}" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:12px;font-weight:600;padding:10px 12px;cursor:pointer">${p.label}</button>`).join('')}
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      ov.querySelectorAll('[data-bulk-type]').forEach(btn => {
+        btn.onclick = () => {
+          ov.remove();
+          const tpl = FLOORPLAN_PALETTE[parseInt(btn.dataset.bulkType)];
+          const count = parseInt(prompt(`How many ${tpl.label.toLowerCase()}?`, '4'), 10);
+          if (!count || count < 1) return;
+          const needsFreeSpot = tpl.type === 'mesa' || tpl.type === 'silla' || tpl.type === 'barra';
+          snapshotBefore();
+          let lastId = null;
+          for (let i = 0; i < count; i++) {
+            const spot = needsFreeSpot ? findFreeSpot(50, 50, tpl.w, tpl.h) : { x: 50, y: 50 };
+            const newEl = {
+              id: 'fp_' + Math.random().toString(36).slice(2, 10),
+              type: tpl.type, shape: tpl.shape,
+              label: tpl.numbered ? String(nextNumber(tpl.type)) : `${tpl.label} ${plan.elements.filter(e => e.type === tpl.type).length + 1}`,
+              x: spot.x, y: spot.y, w: tpl.w, h: tpl.h, rotation: 0
+            };
+            plan.elements.push(newEl);
+            lastId = newEl.id;
+          }
+          selectedId = lastId;
+          persist();
+          renderCanvas();
+          renderToolbar();
+        };
+      });
     };
 
     const locSel = w.querySelector('#wt-fp-loc');
