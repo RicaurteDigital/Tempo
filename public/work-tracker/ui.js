@@ -2190,18 +2190,23 @@ const WorkTracker = (() => {
   }
 
   const FLOORPLAN_PALETTE = [
-    { type: 'mesa', shape: 'circle', label: 'Round table', defaultName: 'Table', w: 10, h: 10 },
-    { type: 'mesa', shape: 'square', label: 'Square table', defaultName: 'Table', w: 10, h: 10 },
-    { type: 'mesa', shape: 'rect', label: 'Rect table', defaultName: 'Table', w: 16, h: 9 },
-    { type: 'barra', shape: 'rect', label: 'Bar', defaultName: 'Bar', w: 26, h: 6 },
-    { type: 'columna', shape: 'square', label: 'Column', defaultName: 'Column', w: 6, h: 6 },
-    { type: 'pared', shape: 'rect', label: 'Wall', defaultName: 'Wall', w: 24, h: 3 },
+    { type: 'mesa', shape: 'circle', label: 'Round table', numbered: true, w: 10, h: 10 },
+    { type: 'mesa', shape: 'square', label: 'Square table', numbered: true, w: 10, h: 10 },
+    { type: 'mesa', shape: 'rect', label: 'Rect table', numbered: true, w: 16, h: 9 },
+    { type: 'silla', shape: 'circle', label: 'Chair', numbered: true, w: 4, h: 4 },
+    { type: 'barra', shape: 'rect', label: 'Bar', numbered: true, w: 26, h: 6 },
+    { type: 'columna', shape: 'square', label: 'Column', numbered: false, w: 6, h: 6 },
+    { type: 'pared', shape: 'rect', label: 'Wall', numbered: false, w: 24, h: 3 },
+    { type: 'espacio', shape: 'rect', label: 'Empty space', numbered: false, w: 14, h: 10 },
+    { type: 'escaleras', shape: 'rect', label: 'Stairs', numbered: false, w: 10, h: 14 },
   ];
+  const FLOORPLAN_STRUCTURE_TYPES = ['columna', 'pared', 'espacio', 'escaleras'];
 
   function _floorPlanElStyle(el) {
-    const isStructure = el.type === 'columna' || el.type === 'pared';
-    // Structure (columns/walls) is solid gray and non-interactive-looking — "nothing here".
-    // Tables/bar are a tenuous gray at rest, ready to shift color once service state is wired up.
+    const isStructure = FLOORPLAN_STRUCTURE_TYPES.includes(el.type);
+    // Structure (columns/walls/empty space/stairs) is solid gray and non-interactive-looking —
+    // "nothing here". Tables/chairs/bar are a tenuous gray at rest, ready to shift color once
+    // service state is wired up.
     const bg = isStructure ? '#3A3A3C' : 'rgba(255,255,255,0.07)';
     const border = isStructure ? '1px solid #48484A' : '1.5px solid rgba(255,255,255,0.18)';
     const radius = el.shape === 'circle' ? '50%' : (el.shape === 'square' || el.shape === 'rect') ? '6px' : '2px';
@@ -2260,7 +2265,7 @@ const WorkTracker = (() => {
         const box = document.createElement('div');
         box.dataset.elId = el.id;
         box.style.cssText = _floorPlanElStyle(el) + (selectedId === el.id ? ';outline:2px solid #5E5CE6;outline-offset:2px' : '');
-        box.innerHTML = `<span style="font-size:11px;font-weight:700;color:#fff;text-align:center;padding:2px;pointer-events:none;transform:rotate(${-(el.rotation||0)}deg)">${el.label}</span>`;
+        box.innerHTML = FLOORPLAN_STRUCTURE_TYPES.includes(el.type) ? '' : `<span style="font-size:11px;font-weight:700;color:#fff;text-align:center;padding:2px;pointer-events:none;transform:rotate(${-(el.rotation||0)}deg)">${el.label}</span>`;
         canvas.appendChild(box);
 
         if (editMode) {
@@ -2271,7 +2276,7 @@ const WorkTracker = (() => {
             box.appendChild(handle);
             wireResize(handle, box, el);
           }
-        } else if (el.type === 'mesa' || el.type === 'barra') {
+        } else if (!FLOORPLAN_STRUCTURE_TYPES.includes(el.type)) {
           box.onclick = () => showTableInfo(el);
         }
       });
@@ -2335,10 +2340,11 @@ const WorkTracker = (() => {
     function renderToolbar() {
       const el = plan.elements.find(e => e.id === selectedId);
       if (!editMode || !el) { toolbar.style.display = 'none'; toolbar.innerHTML = ''; return; }
+      const isStructure = FLOORPLAN_STRUCTURE_TYPES.includes(el.type);
       toolbar.style.display = 'flex';
       toolbar.innerHTML = `
         <button id="wt-fp-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">↻ Rotate 45°</button>
-        <button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">✏️ Rename</button>
+        ${isStructure ? '' : '<button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">✏️ Rename</button>'}
         <button id="wt-fp-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">Delete</button>
       `;
       toolbar.querySelector('#wt-fp-rotate').onclick = () => {
@@ -2346,12 +2352,13 @@ const WorkTracker = (() => {
         persist();
         renderCanvas();
       };
-      toolbar.querySelector('#wt-fp-rename').onclick = () => {
-        const name = prompt('Name', el.label);
+      const renameBtn = toolbar.querySelector('#wt-fp-rename');
+      if (renameBtn) renameBtn.onclick = () => {
+        const name = prompt('Number / name', el.label);
         if (name && name.trim()) { el.label = name.trim(); persist(); renderCanvas(); }
       };
       toolbar.querySelector('#wt-fp-delete').onclick = () => {
-        if (!confirm(`Remove "${el.label}" from the plan?`)) return;
+        if (!confirm(`Remove this piece from the plan?`)) return;
         plan.elements = plan.elements.filter(e => e.id !== el.id);
         selectedId = null;
         persist();
@@ -2380,7 +2387,7 @@ const WorkTracker = (() => {
         const newEl = {
           id: 'fp_' + Math.random().toString(36).slice(2, 10),
           type: tpl.type, shape: tpl.shape,
-          label: `${tpl.defaultName} ${sameTypeCount + 1}`,
+          label: tpl.numbered ? String(sameTypeCount + 1) : `${tpl.label} ${sameTypeCount + 1}`,
           x: 50, y: 50, w: tpl.w, h: tpl.h, rotation: 0
         };
         plan.elements.push(newEl);
