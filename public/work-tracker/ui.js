@@ -2231,6 +2231,8 @@ const WorkTracker = (() => {
     let plan = locationId ? WTDb.getFloorPlan(locationId) : { elements: [] };
     let editMode = false;
     let selectedId = null;
+    let undoStack = [];
+    let redoStack = [];
 
     w.innerHTML = `
       <div class="wt-hdr">
@@ -2246,6 +2248,12 @@ const WorkTracker = (() => {
         <div style="font-size:13px;color:#636366">${editMode ? 'Tap a piece to select it. Drag to move.' : 'Tap a table to view it.'}</div>
         <button id="wt-fp-mode" style="background:${editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)'};border:none;border-radius:10px;color:${editMode ? '#30D158' : '#5E5CE6'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">${editMode ? '✓ Done Editing' : '✏️ Edit Plan'}</button>
       </div>
+      <div id="wt-fp-history-row" style="display:${editMode ? 'flex' : 'none'};gap:8px;margin-bottom:10px">
+        <button id="wt-fp-undo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer">↺</button>
+        <button id="wt-fp-redo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer">↻</button>
+        <div style="flex:1"></div>
+        <button id="wt-fp-clear" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer">Clear All</button>
+      </div>
       <div id="wt-fp-palette" style="display:${editMode ? 'flex' : 'none'};gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px"></div>
       <div id="wt-fp-canvas" style="position:relative;width:100%;height:60vh;background:#141416;border:1px solid #2C2C2E;border-radius:16px;overflow:hidden"></div>
       <div id="wt-fp-toolbar" style="display:none;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
@@ -2256,6 +2264,7 @@ const WorkTracker = (() => {
     const canvas = w.querySelector('#wt-fp-canvas');
     const toolbar = w.querySelector('#wt-fp-toolbar');
     const paletteEl = w.querySelector('#wt-fp-palette');
+    const historyRow = w.querySelector('#wt-fp-history-row');
 
     paletteEl.innerHTML = FLOORPLAN_PALETTE.map((p, i) => `
       <button data-palette="${i}" style="flex-shrink:0;background:#1C1C1E;border:1px solid #38383A;border-radius:12px;color:#fff;font-size:11px;font-weight:600;padding:10px 12px;cursor:pointer;white-space:nowrap">${p.label}</button>
@@ -2263,6 +2272,55 @@ const WorkTracker = (() => {
 
     function persist() {
       if (locationId) WTDb.saveFloorPlan(locationId, plan);
+    }
+
+    // Call before any mutation to plan.elements — captures a snapshot so it can be undone.
+    // Any new snapshot invalidates the redo stack (standard undo/redo behavior).
+    function snapshotBefore() {
+      undoStack.push(JSON.stringify(plan.elements));
+      if (undoStack.length > 50) undoStack.shift();
+      redoStack = [];
+      updateHistoryButtons();
+    }
+
+    function updateHistoryButtons() {
+      const undoBtn = w.querySelector('#wt-fp-undo');
+      const redoBtn = w.querySelector('#wt-fp-redo');
+      if (undoBtn) { undoBtn.disabled = undoStack.length === 0; undoBtn.style.opacity = undoStack.length === 0 ? '0.35' : '1'; }
+      if (redoBtn) { redoBtn.disabled = redoStack.length === 0; redoBtn.style.opacity = redoStack.length === 0 ? '0.35' : '1'; }
+    }
+
+    function boxesOverlap(a, b) {
+      const aLeft = a.x - a.w / 2, aRight = a.x + a.w / 2, aTop = a.y - a.h / 2, aBottom = a.y + a.h / 2;
+      const bLeft = b.x - b.w / 2, bRight = b.x + b.w / 2, bTop = b.y - b.h / 2, bBottom = b.y + b.h / 2;
+      return aLeft < bRight && aRight > bLeft && aTop < bBottom && aBottom > bTop;
+    }
+
+    // New pieces always try to spawn at the same default spot (center), but if something's
+    // already there, spiral outward in 8-percent steps to find the nearest free spot instead
+    // of silently stacking on top of the existing piece.
+    function findFreeSpot(candidateX, candidateY, w2, h2) {
+      const step = 8;
+      const trySpots = [{ x: candidateX, y: candidateY }];
+      for (let ring = 1; ring < 8; ring++) {
+        [[ring, 0], [-ring, 0], [0, ring], [0, -ring], [ring, ring], [-ring, -ring], [ring, -ring], [-ring, ring]]
+          .forEach(([dx, dy]) => trySpots.push({ x: candidateX + dx * step, y: candidateY + dy * step }));
+      }
+      for (const spot of trySpots) {
+        const clampedX = Math.max(w2 / 2, Math.min(100 - w2 / 2, spot.x));
+        const clampedY = Math.max(h2 / 2, Math.min(100 - h2 / 2, spot.y));
+        const candidate = { x: clampedX, y: clampedY, w: w2, h: h2 };
+        if (!plan.elements.some(e => boxesOverlap(candidate, e))) return { x: clampedX, y: clampedY };
+      }
+      return { x: candidateX, y: candidateY };
+    }
+
+    // Continues from the highest existing number of that type (e.g. renamed to 21 → next is
+    // 22), rather than just counting how many elements exist — so manual renumbering to
+    // match a real, non-sequential floor plan doesn't get overridden by later additions.
+    function nextNumber(type) {
+      const nums = plan.elements.filter(e => e.type === type).map(e => parseInt(e.label, 10)).filter(n => !isNaN(n));
+      return nums.length > 0 ? Math.max(...nums) + 1 : 1;
     }
 
     function renderCanvas() {
@@ -2324,11 +2382,30 @@ const WorkTracker = (() => {
       input.focus();
       input.select();
       const commit = () => {
-        if (input.value.trim()) { el.label = input.value.trim(); persist(); }
+        const trimmed = input.value.trim();
+        if (trimmed && trimmed !== el.label) { snapshotBefore(); el.label = trimmed; persist(); }
         renderCanvas();
       };
       input.onblur = commit;
       input.onkeydown = (e) => { if (e.key === 'Enter') input.blur(); };
+    }
+
+    // Recomputes the positions of any chairs still linked to this bar (via parentId), using
+    // the same side/index/count metadata stored when they were auto-generated — so moving or
+    // resizing the bar carries its seats along instead of leaving them stranded.
+    function repositionAttachedSeats(barEl) {
+      const canvasRect = canvas.getBoundingClientRect();
+      const attached = plan.elements.filter(e => e.parentId === barEl.id);
+      const sides = [...new Set(attached.map(e => e.seatSide))];
+      sides.forEach(side => {
+        const seatsOnSide = attached.filter(e => e.seatSide === side);
+        if (!seatsOnSide.length) return;
+        const count = seatsOnSide[0].seatCount;
+        const positions = computeSeatPositions(canvasRect.width, canvasRect.height, barEl, side, count);
+        seatsOnSide.forEach(seat => {
+          if (positions[seat.seatIndex]) { seat.x = positions[seat.seatIndex].x; seat.y = positions[seat.seatIndex].y; }
+        });
+      });
     }
 
     function wireDrag(box, el) {
@@ -2336,6 +2413,10 @@ const WorkTracker = (() => {
         if (e.target !== box && e.target.parentElement !== box) return;
         e.preventDefault();
         selectedId = el.id;
+        snapshotBefore();
+        // Dragging a chair individually detaches it from whatever bar auto-generated it —
+        // respects a manual nudge instead of snapping it back the next time the bar moves.
+        if (el.type === 'silla' && el.parentId) delete el.parentId;
         const canvasRect = canvas.getBoundingClientRect();
         const startX = e.clientX, startY = e.clientY;
         const startElX = el.x, startElY = el.y;
@@ -2346,15 +2427,15 @@ const WorkTracker = (() => {
           const dy = ((ev.clientY - startY) / canvasRect.height) * 100;
           el.x = Math.max(0, Math.min(100, startElX + dx));
           el.y = Math.max(0, Math.min(100, startElY + dy));
-          box.style.left = el.x + '%';
-          box.style.top = el.y + '%';
+          if (el.type === 'barra') { repositionAttachedSeats(el); renderCanvas(); }
+          else { box.style.left = el.x + '%'; box.style.top = el.y + '%'; }
         };
         const onUp = () => {
           document.removeEventListener('pointermove', onMove);
           document.removeEventListener('pointerup', onUp);
-          if (moved) persist();
-          renderCanvas();
-          renderToolbar();
+          if (moved) { persist(); renderCanvas(); renderToolbar(); }
+          else { undoStack.pop(); }
+          updateHistoryButtons();
         };
         document.addEventListener('pointermove', onMove);
         document.addEventListener('pointerup', onUp);
@@ -2365,21 +2446,26 @@ const WorkTracker = (() => {
       handle.onpointerdown = (e) => {
         e.preventDefault();
         e.stopPropagation();
+        snapshotBefore();
         const canvasRect = canvas.getBoundingClientRect();
         const startX = e.clientX, startY = e.clientY;
         const startW = el.w, startH = el.h;
+        let resized = false;
         const onMove = (ev) => {
+          resized = true;
           const dw = ((ev.clientX - startX) / canvasRect.width) * 100;
           const dh = ((ev.clientY - startY) / canvasRect.height) * 100;
           el.w = Math.max(4, startW + dw * 2);
           el.h = Math.max(4, startH + dh * 2);
-          box.style.width = el.w + '%';
-          box.style.height = el.h + '%';
+          if (el.type === 'barra') { repositionAttachedSeats(el); renderCanvas(); }
+          else { box.style.width = el.w + '%'; box.style.height = el.h + '%'; }
         };
         const onUp = () => {
           document.removeEventListener('pointermove', onMove);
           document.removeEventListener('pointerup', onUp);
-          persist();
+          if (resized) { persist(); renderCanvas(); }
+          else { undoStack.pop(); }
+          updateHistoryButtons();
         };
         document.addEventListener('pointermove', onMove);
         document.addEventListener('pointerup', onUp);
@@ -2390,26 +2476,37 @@ const WorkTracker = (() => {
       const el = plan.elements.find(e => e.id === selectedId);
       if (!editMode || !el) { toolbar.style.display = 'none'; toolbar.innerHTML = ''; return; }
       const isDoor = el.type === 'puerta';
+      const isNumbered = !FLOORPLAN_STRUCTURE_TYPES.includes(el.type) && !isDoor;
       toolbar.style.display = 'flex';
       toolbar.innerHTML = `
         <button id="wt-fp-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">↻ Rotate 45°</button>
+        ${isNumbered ? '<button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">✏️ Rename</button>' : ''}
         ${isDoor ? '<button id="wt-fp-mirror" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">⇄ Mirror</button>' : ''}
         <button id="wt-fp-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">Delete</button>
       `;
       toolbar.querySelector('#wt-fp-rotate').onclick = () => {
+        snapshotBefore();
         el.rotation = ((el.rotation || 0) + 45) % 360;
         persist();
         renderCanvas();
       };
+      const renameBtn = toolbar.querySelector('#wt-fp-rename');
+      if (renameBtn) renameBtn.onclick = () => {
+        const box = canvas.querySelector(`[data-el-id="${el.id}"]`);
+        const span = box && box.querySelector('span');
+        if (box && span) startInlineEdit(box, span, el);
+      };
       const mirrorBtn = toolbar.querySelector('#wt-fp-mirror');
       if (mirrorBtn) mirrorBtn.onclick = () => {
+        snapshotBefore();
         el.flipped = !el.flipped;
         persist();
         renderCanvas();
       };
       toolbar.querySelector('#wt-fp-delete').onclick = () => {
         if (!confirm(`Remove this piece from the plan?`)) return;
-        plan.elements = plan.elements.filter(e => e.id !== el.id);
+        snapshotBefore();
+        plan.elements = plan.elements.filter(e => e.id !== el.id && e.parentId !== el.id);
         selectedId = null;
         persist();
         renderCanvas();
@@ -2436,11 +2533,17 @@ const WorkTracker = (() => {
       const wPx = (el.w / 100) * canvasW;
       const hPx = (el.h / 100) * canvasH;
       const seatOffsetPx = 14;
-      const yLocal = side === 'top' ? -hPx / 2 - seatOffsetPx : hPx / 2 + seatOffsetPx;
       const rad = (el.rotation || 0) * Math.PI / 180;
       const positions = [];
       for (let i = 0; i < count; i++) {
-        const xLocal = -wPx / 2 + wPx * (i + 0.5) / count;
+        let xLocal, yLocal;
+        if (side === 'top' || side === 'bottom') {
+          xLocal = -wPx / 2 + wPx * (i + 0.5) / count;
+          yLocal = side === 'top' ? -hPx / 2 - seatOffsetPx : hPx / 2 + seatOffsetPx;
+        } else {
+          yLocal = -hPx / 2 + hPx * (i + 0.5) / count;
+          xLocal = side === 'left' ? -wPx / 2 - seatOffsetPx : wPx / 2 + seatOffsetPx;
+        }
         const xRot = xLocal * Math.cos(rad) - yLocal * Math.sin(rad);
         const yRot = xLocal * Math.sin(rad) + yLocal * Math.cos(rad);
         positions.push({ x: ((cxPx + xRot) / canvasW) * 100, y: ((cyPx + yRot) / canvasH) * 100 });
@@ -2449,40 +2552,77 @@ const WorkTracker = (() => {
     }
 
     function generateSeatsForBar(barEl) {
-      const canvasRect = canvas.getBoundingClientRect();
-      const sides = [];
-      if (confirm('Add seats to the front of this bar?')) {
-        const n = parseInt(prompt('How many seats on the front?', '4'), 10);
-        if (n > 0) sides.push({ side: 'top', count: n });
-      }
-      if (confirm('Add seats to the back of this bar?')) {
-        const n = parseInt(prompt('How many seats on the back?', '4'), 10);
-        if (n > 0) sides.push({ side: 'bottom', count: n });
-      }
-      sides.forEach(({ side, count }) => {
-        computeSeatPositions(canvasRect.width, canvasRect.height, barEl, side, count).forEach(pos => {
-          const sameTypeCount = plan.elements.filter(e => e.type === 'silla').length;
-          plan.elements.push({
-            id: 'fp_' + Math.random().toString(36).slice(2, 10),
-            type: 'silla', shape: 'circle',
-            label: String(sameTypeCount + 1),
-            x: pos.x, y: pos.y, w: 4, h: 4, rotation: 0
+      const ov = document.createElement('div');
+      ov.className = 'wt-overlay';
+      const sideBtnStyle = 'background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:12px;cursor:pointer';
+      ov.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title">Add seats to this bar?</div>
+          <div style="font-size:13px;color:#636366;margin-bottom:14px">Choose up to 2 sides — most bars only have seating on one or two.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+            <button data-side="top" class="wt-fp-side-btn" style="${sideBtnStyle}">Top</button>
+            <button data-side="bottom" class="wt-fp-side-btn" style="${sideBtnStyle}">Bottom</button>
+            <button data-side="left" class="wt-fp-side-btn" style="${sideBtnStyle}">Left</button>
+            <button data-side="right" class="wt-fp-side-btn" style="${sideBtnStyle}">Right</button>
+          </div>
+          <button class="wt-btn wt-btn-primary" id="wt-fp-seats-continue">Continue</button>
+          <button class="wt-btn wt-btn-secondary" id="wt-fp-seats-skip" style="margin-top:8px">No seats for now</button>
+        </div>`;
+      document.body.appendChild(ov);
+      const selected = new Set();
+      ov.querySelectorAll('.wt-fp-side-btn').forEach(btn => {
+        btn.onclick = () => {
+          const side = btn.dataset.side;
+          if (selected.has(side)) {
+            selected.delete(side);
+            btn.style.background = '#1C1C1E'; btn.style.color = '#fff'; btn.style.borderColor = '#38383A';
+          } else {
+            if (selected.size >= 2) return;
+            selected.add(side);
+            btn.style.background = 'rgba(94,92,230,.2)'; btn.style.color = '#5E5CE6'; btn.style.borderColor = '#5E5CE6';
+          }
+        };
+      });
+      ov.querySelector('#wt-fp-seats-skip').onclick = () => ov.remove();
+      ov.querySelector('#wt-fp-seats-continue').onclick = () => {
+        ov.remove();
+        if (selected.size === 0) return;
+        const canvasRect = canvas.getBoundingClientRect();
+        const counts = [];
+        selected.forEach(side => {
+          const n = parseInt(prompt(`How many seats on the ${side}?`, '4'), 10);
+          if (n > 0) counts.push({ side, count: n });
+        });
+        if (!counts.length) return;
+        snapshotBefore();
+        counts.forEach(({ side, count }) => {
+          computeSeatPositions(canvasRect.width, canvasRect.height, barEl, side, count).forEach((pos, i) => {
+            plan.elements.push({
+              id: 'fp_' + Math.random().toString(36).slice(2, 10),
+              type: 'silla', shape: 'circle',
+              label: String(nextNumber('silla')),
+              x: pos.x, y: pos.y, w: 4, h: 4, rotation: 0,
+              parentId: barEl.id, seatSide: side, seatIndex: i, seatCount: count
+            });
           });
         });
-      });
-      persist();
-      renderCanvas();
+        persist();
+        renderCanvas();
+      };
     }
 
     paletteEl.querySelectorAll('[data-palette]').forEach(btn => {
       btn.onclick = () => {
         const tpl = FLOORPLAN_PALETTE[parseInt(btn.dataset.palette)];
-        const sameTypeCount = plan.elements.filter(e => e.type === tpl.type).length;
+        snapshotBefore();
+        const needsFreeSpot = tpl.type === 'mesa' || tpl.type === 'silla' || tpl.type === 'barra';
+        const spot = needsFreeSpot ? findFreeSpot(50, 50, tpl.w, tpl.h) : { x: 50, y: 50 };
         const newEl = {
           id: 'fp_' + Math.random().toString(36).slice(2, 10),
           type: tpl.type, shape: tpl.shape,
-          label: tpl.numbered ? String(sameTypeCount + 1) : `${tpl.label} ${sameTypeCount + 1}`,
-          x: 50, y: 50, w: tpl.w, h: tpl.h, rotation: 0
+          label: tpl.numbered ? String(nextNumber(tpl.type)) : `${tpl.label} ${plan.elements.filter(e => e.type === tpl.type).length + 1}`,
+          x: spot.x, y: spot.y, w: tpl.w, h: tpl.h, rotation: 0
         };
         plan.elements.push(newEl);
         selectedId = newEl.id;
@@ -2497,9 +2637,42 @@ const WorkTracker = (() => {
       editMode = !editMode;
       selectedId = null;
       paletteEl.style.display = editMode ? 'flex' : 'none';
+      historyRow.style.display = editMode ? 'flex' : 'none';
       w.querySelector('#wt-fp-mode').textContent = editMode ? '✓ Done Editing' : '✏️ Edit Plan';
       w.querySelector('#wt-fp-mode').style.background = editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)';
       w.querySelector('#wt-fp-mode').style.color = editMode ? '#30D158' : '#5E5CE6';
+      renderCanvas();
+      renderToolbar();
+      updateHistoryButtons();
+    };
+
+    w.querySelector('#wt-fp-undo').onclick = () => {
+      if (!undoStack.length) return;
+      redoStack.push(JSON.stringify(plan.elements));
+      plan.elements = JSON.parse(undoStack.pop());
+      selectedId = null;
+      persist();
+      renderCanvas();
+      renderToolbar();
+      updateHistoryButtons();
+    };
+    w.querySelector('#wt-fp-redo').onclick = () => {
+      if (!redoStack.length) return;
+      undoStack.push(JSON.stringify(plan.elements));
+      plan.elements = JSON.parse(redoStack.pop());
+      selectedId = null;
+      persist();
+      renderCanvas();
+      renderToolbar();
+      updateHistoryButtons();
+    };
+    w.querySelector('#wt-fp-clear').onclick = () => {
+      if (!plan.elements.length) return;
+      if (!confirm('Remove every piece from this floor plan? This clears the whole layout, not just one item.')) return;
+      snapshotBefore();
+      plan.elements = [];
+      selectedId = null;
+      persist();
       renderCanvas();
       renderToolbar();
     };
@@ -2513,6 +2686,7 @@ const WorkTracker = (() => {
     }
 
     w.querySelector('#wt-back').onclick = () => _go('home');
+    updateHistoryButtons();
     renderCanvas();
   }
 
