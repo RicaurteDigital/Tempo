@@ -400,6 +400,23 @@ const WTDb = (() => {
     });
   }
 
+  const FLOORPLAN_KEY = 'wt_floorplan_v1';
+
+  function getFloorPlan(locationId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(FLOORPLAN_KEY)) || {};
+      return all[locationId] || { elements: [] };
+    } catch { return { elements: [] }; }
+  }
+
+  function saveFloorPlan(locationId, plan) {
+    try {
+      const all = JSON.parse(localStorage.getItem(FLOORPLAN_KEY)) || {};
+      all[locationId] = plan;
+      localStorage.setItem(FLOORPLAN_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
   return {
     getLocations, saveLocation, deleteLocation,
     getShifts, saveShift, deleteShift, getShiftsForDate, getShiftsForWeek,
@@ -416,6 +433,7 @@ const WTDb = (() => {
     getPayment, savePayment, deletePayment,
     getShiftsInRange, getAllPayments,
     getLastBackupDate, setLastBackupDate,
-    deleteAllData
+    deleteAllData,
+    getFloorPlan, saveFloorPlan
   };
 })();

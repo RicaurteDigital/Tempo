@@ -8,6 +8,7 @@ const WorkTracker = (() => {
                               // you were actually looking at, not always "today's" week —
                               // read once and cleared, so any other path back into History
                               // (switching tabs, tapping Home, etc.) resets to the current week
+  let _floorPlanLocationId = null;
   let _heroTimer = null;
   let _weekHistoryCount = 12;
   let _settingsOpenSection = 'profile';
@@ -26,7 +27,7 @@ const WorkTracker = (() => {
     clearInterval(_heroTimer);
     if (!_root) return;
     _root.innerHTML = '';
-    ({ home: _Home, week: _Week, day: _Day, preview: _Preview, settings: _Settings, stats: _Stats }[view] || _Home)();
+    ({ home: _Home, week: _Week, day: _Day, preview: _Preview, settings: _Settings, stats: _Stats, floorplan: _FloorPlan }[view] || _Home)();
   }
 
   function _today() {
@@ -519,6 +520,11 @@ const WorkTracker = (() => {
       <button class="wt-btn wt-btn-primary" id="wt-export-btn">📊 Export</button>`;
     w.appendChild(acts);
 
+    const fpRow = document.createElement('div');
+    fpRow.style.cssText = 'margin-top:10px';
+    fpRow.innerHTML = `<button id="wt-floorplan-btn" style="width:100%;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:14px;color:#98989D;font-size:14px;font-weight:700;padding:12px;cursor:pointer">🪑 Floor Plan</button>`;
+    w.appendChild(fpRow);
+
     _root.appendChild(w);
 
     w.querySelector('#wt-settings-btn').onclick = () => _go('settings');
@@ -538,6 +544,7 @@ const WorkTracker = (() => {
     });
     w.querySelector('#wt-week-btn').onclick = () => _go('week');
     w.querySelector('#wt-stats-btn').onclick = () => _go('stats');
+    w.querySelector('#wt-floorplan-btn').onclick = () => _go('floorplan');
     w.querySelector('#wt-export-btn').onclick = () => _go('preview');
     const addBtn = w.querySelector('#wt-add-shift');
     if (addBtn) addBtn.onclick = () => _showAddShift(today);
@@ -2180,6 +2187,231 @@ const WorkTracker = (() => {
     `, openCardIds.has('sustain')) : '';
 
     return headlineCard + lineChartCard + dowCard + monthCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards + sustainCard;
+  }
+
+  const FLOORPLAN_PALETTE = [
+    { type: 'mesa', shape: 'circle', label: 'Round table', defaultName: 'Table', w: 10, h: 10 },
+    { type: 'mesa', shape: 'square', label: 'Square table', defaultName: 'Table', w: 10, h: 10 },
+    { type: 'mesa', shape: 'rect', label: 'Rect table', defaultName: 'Table', w: 16, h: 9 },
+    { type: 'barra', shape: 'rect', label: 'Bar', defaultName: 'Bar', w: 26, h: 6 },
+    { type: 'columna', shape: 'square', label: 'Column', defaultName: 'Column', w: 6, h: 6 },
+    { type: 'pared', shape: 'rect', label: 'Wall', defaultName: 'Wall', w: 24, h: 3 },
+  ];
+
+  function _floorPlanElStyle(el) {
+    const isStructure = el.type === 'columna' || el.type === 'pared';
+    // Structure (columns/walls) is solid gray and non-interactive-looking — "nothing here".
+    // Tables/bar are a tenuous gray at rest, ready to shift color once service state is wired up.
+    const bg = isStructure ? '#3A3A3C' : 'rgba(255,255,255,0.07)';
+    const border = isStructure ? '1px solid #48484A' : '1.5px solid rgba(255,255,255,0.18)';
+    const radius = el.shape === 'circle' ? '50%' : (el.shape === 'square' || el.shape === 'rect') ? '6px' : '2px';
+    return `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;transform:translate(-50%,-50%) rotate(${el.rotation||0}deg);background:${bg};border:${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none`;
+  }
+
+  function _FloorPlan() {
+    const w = document.createElement('div');
+    w.className = 'wt-screen';
+    const settings = WTDb.getSettings();
+    const currentProfile = settings.workProfile || 'restaurant';
+    const allLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === currentProfile);
+    let locationId = _floorPlanLocationId || (allLocs[0] && allLocs[0].id) || null;
+    _floorPlanLocationId = locationId;
+
+    let plan = locationId ? WTDb.getFloorPlan(locationId) : { elements: [] };
+    let editMode = false;
+    let selectedId = null;
+
+    w.innerHTML = `
+      <div class="wt-hdr">
+        <button class="wt-back" id="wt-back">‹ Back</button>
+        <div style="font-size:18px;font-weight:800">Floor Plan</div>
+        <div style="width:36px"></div>
+      </div>
+      ${allLocs.length > 1 ? `
+      <select id="wt-fp-loc" class="wt-select-sm" style="width:100%;margin-bottom:12px">
+        ${allLocs.map(l => `<option value="${l.id}" ${l.id === locationId ? 'selected' : ''}>${l.name}</option>`).join('')}
+      </select>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:13px;color:#636366">${editMode ? 'Tap a piece to select it. Drag to move.' : 'Tap a table to view it.'}</div>
+        <button id="wt-fp-mode" style="background:${editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)'};border:none;border-radius:10px;color:${editMode ? '#30D158' : '#5E5CE6'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">${editMode ? '✓ Done Editing' : '✏️ Edit Plan'}</button>
+      </div>
+      <div id="wt-fp-palette" style="display:${editMode ? 'flex' : 'none'};gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px"></div>
+      <div id="wt-fp-canvas" style="position:relative;width:100%;height:60vh;background:#141416;border:1px solid #2C2C2E;border-radius:16px;overflow:hidden"></div>
+      <div id="wt-fp-toolbar" style="display:none;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
+      ${allLocs.length === 0 ? '<div class="wt-empty" style="margin-top:16px"><strong>No locations yet</strong>Add a work location in Settings first.</div>' : ''}
+    `;
+    _root.appendChild(w);
+
+    const canvas = w.querySelector('#wt-fp-canvas');
+    const toolbar = w.querySelector('#wt-fp-toolbar');
+    const paletteEl = w.querySelector('#wt-fp-palette');
+
+    paletteEl.innerHTML = FLOORPLAN_PALETTE.map((p, i) => `
+      <button data-palette="${i}" style="flex-shrink:0;background:#1C1C1E;border:1px solid #38383A;border-radius:12px;color:#fff;font-size:11px;font-weight:600;padding:10px 12px;cursor:pointer;white-space:nowrap">${p.label}</button>
+    `).join('');
+
+    function persist() {
+      if (locationId) WTDb.saveFloorPlan(locationId, plan);
+    }
+
+    function renderCanvas() {
+      canvas.innerHTML = '';
+      plan.elements.forEach(el => {
+        const box = document.createElement('div');
+        box.dataset.elId = el.id;
+        box.style.cssText = _floorPlanElStyle(el) + (selectedId === el.id ? ';outline:2px solid #5E5CE6;outline-offset:2px' : '');
+        box.innerHTML = `<span style="font-size:11px;font-weight:700;color:#fff;text-align:center;padding:2px;pointer-events:none;transform:rotate(${-(el.rotation||0)}deg)">${el.label}</span>`;
+        canvas.appendChild(box);
+
+        if (editMode) {
+          wireDrag(box, el);
+          if (selectedId === el.id) {
+            const handle = document.createElement('div');
+            handle.style.cssText = 'position:absolute;right:-8px;bottom:-8px;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #5E5CE6;cursor:pointer;touch-action:none';
+            box.appendChild(handle);
+            wireResize(handle, box, el);
+          }
+        } else if (el.type === 'mesa' || el.type === 'barra') {
+          box.onclick = () => showTableInfo(el);
+        }
+      });
+    }
+
+    function wireDrag(box, el) {
+      box.onpointerdown = (e) => {
+        if (e.target !== box && e.target.parentElement !== box) return;
+        e.preventDefault();
+        selectedId = el.id;
+        const canvasRect = canvas.getBoundingClientRect();
+        const startX = e.clientX, startY = e.clientY;
+        const startElX = el.x, startElY = el.y;
+        let moved = false;
+        const onMove = (ev) => {
+          moved = true;
+          const dx = ((ev.clientX - startX) / canvasRect.width) * 100;
+          const dy = ((ev.clientY - startY) / canvasRect.height) * 100;
+          el.x = Math.max(0, Math.min(100, startElX + dx));
+          el.y = Math.max(0, Math.min(100, startElY + dy));
+          box.style.left = el.x + '%';
+          box.style.top = el.y + '%';
+        };
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          if (moved) persist();
+          renderCanvas();
+          renderToolbar();
+        };
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      };
+    }
+
+    function wireResize(handle, box, el) {
+      handle.onpointerdown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const canvasRect = canvas.getBoundingClientRect();
+        const startX = e.clientX, startY = e.clientY;
+        const startW = el.w, startH = el.h;
+        const onMove = (ev) => {
+          const dw = ((ev.clientX - startX) / canvasRect.width) * 100;
+          const dh = ((ev.clientY - startY) / canvasRect.height) * 100;
+          el.w = Math.max(4, startW + dw * 2);
+          el.h = Math.max(4, startH + dh * 2);
+          box.style.width = el.w + '%';
+          box.style.height = el.h + '%';
+        };
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          persist();
+        };
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      };
+    }
+
+    function renderToolbar() {
+      const el = plan.elements.find(e => e.id === selectedId);
+      if (!editMode || !el) { toolbar.style.display = 'none'; toolbar.innerHTML = ''; return; }
+      toolbar.style.display = 'flex';
+      toolbar.innerHTML = `
+        <button id="wt-fp-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">↻ Rotate 45°</button>
+        <button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">✏️ Rename</button>
+        <button id="wt-fp-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">Delete</button>
+      `;
+      toolbar.querySelector('#wt-fp-rotate').onclick = () => {
+        el.rotation = ((el.rotation || 0) + 45) % 360;
+        persist();
+        renderCanvas();
+      };
+      toolbar.querySelector('#wt-fp-rename').onclick = () => {
+        const name = prompt('Name', el.label);
+        if (name && name.trim()) { el.label = name.trim(); persist(); renderCanvas(); }
+      };
+      toolbar.querySelector('#wt-fp-delete').onclick = () => {
+        if (!confirm(`Remove "${el.label}" from the plan?`)) return;
+        plan.elements = plan.elements.filter(e => e.id !== el.id);
+        selectedId = null;
+        persist();
+        renderCanvas();
+        renderToolbar();
+      };
+    }
+
+    function showTableInfo(el) {
+      alert(`${el.label}\n\nOrder tracking isn't set up yet — coming in a future update.`);
+    }
+
+    canvas.onclick = (e) => {
+      if (!editMode) return;
+      if (e.target === canvas) {
+        selectedId = null;
+        renderCanvas();
+        renderToolbar();
+      }
+    };
+
+    paletteEl.querySelectorAll('[data-palette]').forEach(btn => {
+      btn.onclick = () => {
+        const tpl = FLOORPLAN_PALETTE[parseInt(btn.dataset.palette)];
+        const sameTypeCount = plan.elements.filter(e => e.type === tpl.type).length;
+        const newEl = {
+          id: 'fp_' + Math.random().toString(36).slice(2, 10),
+          type: tpl.type, shape: tpl.shape,
+          label: `${tpl.defaultName} ${sameTypeCount + 1}`,
+          x: 50, y: 50, w: tpl.w, h: tpl.h, rotation: 0
+        };
+        plan.elements.push(newEl);
+        selectedId = newEl.id;
+        persist();
+        renderCanvas();
+        renderToolbar();
+      };
+    });
+
+    w.querySelector('#wt-fp-mode').onclick = () => {
+      editMode = !editMode;
+      selectedId = null;
+      paletteEl.style.display = editMode ? 'flex' : 'none';
+      w.querySelector('#wt-fp-mode').textContent = editMode ? '✓ Done Editing' : '✏️ Edit Plan';
+      w.querySelector('#wt-fp-mode').style.background = editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)';
+      w.querySelector('#wt-fp-mode').style.color = editMode ? '#30D158' : '#5E5CE6';
+      renderCanvas();
+      renderToolbar();
+    };
+
+    const locSel = w.querySelector('#wt-fp-loc');
+    if (locSel) {
+      locSel.onchange = () => {
+        _floorPlanLocationId = locSel.value;
+        _go('floorplan');
+      };
+    }
+
+    w.querySelector('#wt-back').onclick = () => _go('home');
+    renderCanvas();
   }
 
   function _Settings() {
