@@ -2193,7 +2193,7 @@ const WorkTracker = (() => {
     { type: 'mesa', shape: 'circle', label: 'Round table', numbered: true, w: 10, h: 10 },
     { type: 'mesa', shape: 'square', label: 'Square table', numbered: true, w: 10, h: 10 },
     { type: 'mesa', shape: 'rect', label: 'Rect table', numbered: true, w: 16, h: 9 },
-    { type: 'silla', shape: 'circle', label: 'Chair', numbered: true, w: 4, h: 4 },
+    { type: 'silla', shape: 'circle', label: 'Chair', numbered: true, w: 5.5, h: 5.5 },
     { type: 'barra', shape: 'rect', label: 'Bar', numbered: true, w: 26, h: 6 },
     { type: 'columna', shape: 'square', label: 'Column', numbered: false, w: 6, h: 6 },
     { type: 'pared', shape: 'rect', label: 'Wall', numbered: false, w: 24, h: 3 },
@@ -2450,11 +2450,19 @@ const WorkTracker = (() => {
         const canvasRect = canvas.getBoundingClientRect();
         const startX = e.clientX, startY = e.clientY;
         const startW = el.w, startH = el.h;
+        // Un-rotate the raw screen-space drag into the element's own local frame — without
+        // this, dragging the handle on a rotated piece changes the wrong dimension (e.g. a
+        // 90°-rotated element would grow in width when the finger moves vertically), which is
+        // exactly the "feels backwards" sensation on anything that isn't at 0°.
+        const rad = -(el.rotation || 0) * Math.PI / 180;
         let resized = false;
         const onMove = (ev) => {
           resized = true;
-          const dw = ((ev.clientX - startX) / canvasRect.width) * 100;
-          const dh = ((ev.clientY - startY) / canvasRect.height) * 100;
+          const dxPx = ev.clientX - startX, dyPx = ev.clientY - startY;
+          const dxLocal = dxPx * Math.cos(rad) - dyPx * Math.sin(rad);
+          const dyLocal = dxPx * Math.sin(rad) + dyPx * Math.cos(rad);
+          const dw = (dxLocal / canvasRect.width) * 100;
+          const dh = (dyLocal / canvasRect.height) * 100;
           el.w = Math.max(4, startW + dw * 2);
           el.h = Math.max(4, startH + dh * 2);
           if (el.type === 'barra') { repositionAttachedSeats(el); renderCanvas(); }
@@ -2532,7 +2540,7 @@ const WorkTracker = (() => {
       const cyPx = (el.y / 100) * canvasH;
       const wPx = (el.w / 100) * canvasW;
       const hPx = (el.h / 100) * canvasH;
-      const seatOffsetPx = 14;
+      const seatOffsetPx = 18;
       const rad = (el.rotation || 0) * Math.PI / 180;
       const positions = [];
       for (let i = 0; i < count; i++) {
@@ -2602,7 +2610,7 @@ const WorkTracker = (() => {
               id: 'fp_' + Math.random().toString(36).slice(2, 10),
               type: 'silla', shape: 'circle',
               label: String(nextNumber('silla')),
-              x: pos.x, y: pos.y, w: 4, h: 4, rotation: 0,
+              x: pos.x, y: pos.y, w: 5.5, h: 5.5, rotation: 0,
               parentId: barEl.id, seatSide: side, seatIndex: i, seatCount: count
             });
           });
