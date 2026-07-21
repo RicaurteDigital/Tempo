@@ -2199,15 +2199,21 @@ const WorkTracker = (() => {
     { type: 'pared', shape: 'rect', label: 'Wall', numbered: false, w: 24, h: 3 },
     { type: 'espacio', shape: 'rect', label: 'Empty space', numbered: false, w: 14, h: 10 },
     { type: 'escaleras', shape: 'rect', label: 'Stairs', numbered: false, w: 10, h: 14 },
+    { type: 'puerta', shape: 'rect', label: 'Door', numbered: false, w: 8, h: 8 },
   ];
   const FLOORPLAN_STRUCTURE_TYPES = ['columna', 'pared', 'espacio', 'escaleras'];
 
   function _floorPlanElStyle(el) {
     const isStructure = FLOORPLAN_STRUCTURE_TYPES.includes(el.type);
-    // Structure (columns/walls/empty space/stairs) is solid gray and non-interactive-looking —
-    // "nothing here". Tables/chairs/bar are a tenuous gray at rest, ready to shift color once
-    // service state is wired up.
-    const bg = isStructure ? '#3A3A3C' : 'rgba(255,255,255,0.07)';
+    // Each structure type gets its own real drafting symbol instead of all looking like the
+    // same plain gray box: diagonal hatching for empty space, horizontal step-lines for
+    // stairs, plain solid for columns/walls. Tables/chairs/bar stay a tenuous gray at rest,
+    // ready to shift color once service state is wired up. Doors render custom SVG elsewhere
+    // and never reach this function.
+    let bg = 'rgba(255,255,255,0.07)';
+    if (el.type === 'espacio') bg = 'repeating-linear-gradient(45deg, #48484A 0px, #48484A 1.5px, transparent 1.5px, transparent 9px)';
+    else if (el.type === 'escaleras') bg = 'repeating-linear-gradient(0deg, #48484A 0px, #48484A 1.5px, transparent 1.5px, transparent 8px)';
+    else if (isStructure) bg = '#3A3A3C';
     const border = isStructure ? '1px solid #48484A' : '1.5px solid rgba(255,255,255,0.18)';
     const radius = el.shape === 'circle' ? '50%' : (el.shape === 'square' || el.shape === 'rect') ? '6px' : '2px';
     return `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;transform:translate(-50%,-50%) rotate(${el.rotation||0}deg);background:${bg};border:${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none`;
@@ -2264,8 +2270,34 @@ const WorkTracker = (() => {
       plan.elements.forEach(el => {
         const box = document.createElement('div');
         box.dataset.elId = el.id;
-        box.style.cssText = _floorPlanElStyle(el) + (selectedId === el.id ? ';outline:2px solid #5E5CE6;outline-offset:2px' : '');
-        box.innerHTML = FLOORPLAN_STRUCTURE_TYPES.includes(el.type) ? '' : `<span style="font-size:11px;font-weight:700;color:#fff;text-align:center;padding:2px;pointer-events:none;transform:rotate(${-(el.rotation||0)}deg)">${el.label}</span>`;
+        const isDoor = el.type === 'puerta';
+        let styleStr = _floorPlanElStyle(el);
+        if (isDoor) styleStr += ';background:none;border:none';
+        box.style.cssText = styleStr + (selectedId === el.id ? ';outline:2px solid #5E5CE6;outline-offset:2px' : '');
+
+        if (isDoor) {
+          const flip = el.flipped ? -1 : 1;
+          box.innerHTML = `<svg viewBox="0 0 100 100" style="width:100%;height:100%;overflow:visible;transform:scaleX(${flip});pointer-events:none">
+            <line x1="0" y1="100" x2="100" y2="100" stroke="#8E8E93" stroke-width="4"/>
+            <line x1="0" y1="100" x2="0" y2="0" stroke="#fff" stroke-width="3"/>
+            <path d="M 0 0 A 100 100 0 0 1 100 100" fill="none" stroke="#636366" stroke-width="1.5" stroke-dasharray="4,3"/>
+          </svg>`;
+        } else if (!FLOORPLAN_STRUCTURE_TYPES.includes(el.type)) {
+          const span = document.createElement('span');
+          span.textContent = el.label;
+          span.style.cssText = `font-size:11px;font-weight:700;color:#fff;text-align:center;padding:2px;transform:rotate(${-(el.rotation||0)}deg)`;
+          if (editMode) {
+            span.style.cursor = 'text';
+            span.onpointerdown = (e) => e.stopPropagation();
+            span.onclick = (e) => {
+              e.stopPropagation();
+              startInlineEdit(box, span, el);
+            };
+          } else {
+            span.style.pointerEvents = 'none';
+          }
+          box.appendChild(span);
+        }
         canvas.appendChild(box);
 
         if (editMode) {
@@ -2276,10 +2308,27 @@ const WorkTracker = (() => {
             box.appendChild(handle);
             wireResize(handle, box, el);
           }
-        } else if (!FLOORPLAN_STRUCTURE_TYPES.includes(el.type)) {
+        } else if (!FLOORPLAN_STRUCTURE_TYPES.includes(el.type) && el.type !== 'puerta') {
           box.onclick = () => showTableInfo(el);
         }
       });
+    }
+
+    function startInlineEdit(box, span, el) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = el.label;
+      input.style.cssText = 'width:90%;background:#000;border:1px solid #5E5CE6;border-radius:4px;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:1px;outline:none';
+      input.onclick = (e) => e.stopPropagation();
+      box.replaceChild(input, span);
+      input.focus();
+      input.select();
+      const commit = () => {
+        if (input.value.trim()) { el.label = input.value.trim(); persist(); }
+        renderCanvas();
+      };
+      input.onblur = commit;
+      input.onkeydown = (e) => { if (e.key === 'Enter') input.blur(); };
     }
 
     function wireDrag(box, el) {
@@ -2340,11 +2389,11 @@ const WorkTracker = (() => {
     function renderToolbar() {
       const el = plan.elements.find(e => e.id === selectedId);
       if (!editMode || !el) { toolbar.style.display = 'none'; toolbar.innerHTML = ''; return; }
-      const isStructure = FLOORPLAN_STRUCTURE_TYPES.includes(el.type);
+      const isDoor = el.type === 'puerta';
       toolbar.style.display = 'flex';
       toolbar.innerHTML = `
         <button id="wt-fp-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">↻ Rotate 45°</button>
-        ${isStructure ? '' : '<button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">✏️ Rename</button>'}
+        ${isDoor ? '<button id="wt-fp-mirror" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">⇄ Mirror</button>' : ''}
         <button id="wt-fp-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">Delete</button>
       `;
       toolbar.querySelector('#wt-fp-rotate').onclick = () => {
@@ -2352,10 +2401,11 @@ const WorkTracker = (() => {
         persist();
         renderCanvas();
       };
-      const renameBtn = toolbar.querySelector('#wt-fp-rename');
-      if (renameBtn) renameBtn.onclick = () => {
-        const name = prompt('Number / name', el.label);
-        if (name && name.trim()) { el.label = name.trim(); persist(); renderCanvas(); }
+      const mirrorBtn = toolbar.querySelector('#wt-fp-mirror');
+      if (mirrorBtn) mirrorBtn.onclick = () => {
+        el.flipped = !el.flipped;
+        persist();
+        renderCanvas();
       };
       toolbar.querySelector('#wt-fp-delete').onclick = () => {
         if (!confirm(`Remove this piece from the plan?`)) return;
@@ -2380,6 +2430,50 @@ const WorkTracker = (() => {
       }
     };
 
+    function computeSeatPositions(canvasW, canvasH, el, side, count) {
+      const cxPx = (el.x / 100) * canvasW;
+      const cyPx = (el.y / 100) * canvasH;
+      const wPx = (el.w / 100) * canvasW;
+      const hPx = (el.h / 100) * canvasH;
+      const seatOffsetPx = 14;
+      const yLocal = side === 'top' ? -hPx / 2 - seatOffsetPx : hPx / 2 + seatOffsetPx;
+      const rad = (el.rotation || 0) * Math.PI / 180;
+      const positions = [];
+      for (let i = 0; i < count; i++) {
+        const xLocal = -wPx / 2 + wPx * (i + 0.5) / count;
+        const xRot = xLocal * Math.cos(rad) - yLocal * Math.sin(rad);
+        const yRot = xLocal * Math.sin(rad) + yLocal * Math.cos(rad);
+        positions.push({ x: ((cxPx + xRot) / canvasW) * 100, y: ((cyPx + yRot) / canvasH) * 100 });
+      }
+      return positions;
+    }
+
+    function generateSeatsForBar(barEl) {
+      const canvasRect = canvas.getBoundingClientRect();
+      const sides = [];
+      if (confirm('Add seats to the front of this bar?')) {
+        const n = parseInt(prompt('How many seats on the front?', '4'), 10);
+        if (n > 0) sides.push({ side: 'top', count: n });
+      }
+      if (confirm('Add seats to the back of this bar?')) {
+        const n = parseInt(prompt('How many seats on the back?', '4'), 10);
+        if (n > 0) sides.push({ side: 'bottom', count: n });
+      }
+      sides.forEach(({ side, count }) => {
+        computeSeatPositions(canvasRect.width, canvasRect.height, barEl, side, count).forEach(pos => {
+          const sameTypeCount = plan.elements.filter(e => e.type === 'silla').length;
+          plan.elements.push({
+            id: 'fp_' + Math.random().toString(36).slice(2, 10),
+            type: 'silla', shape: 'circle',
+            label: String(sameTypeCount + 1),
+            x: pos.x, y: pos.y, w: 4, h: 4, rotation: 0
+          });
+        });
+      });
+      persist();
+      renderCanvas();
+    }
+
     paletteEl.querySelectorAll('[data-palette]').forEach(btn => {
       btn.onclick = () => {
         const tpl = FLOORPLAN_PALETTE[parseInt(btn.dataset.palette)];
@@ -2395,6 +2489,7 @@ const WorkTracker = (() => {
         persist();
         renderCanvas();
         renderToolbar();
+        if (tpl.type === 'barra') generateSeatsForBar(newEl);
       };
     });
 
