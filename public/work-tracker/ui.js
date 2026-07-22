@@ -2235,30 +2235,31 @@ const WorkTracker = (() => {
     let redoStack = [];
 
     w.innerHTML = `
-      <div class="wt-hdr">
-        <button class="wt-back" id="wt-back">‹ Back</button>
-        <div style="font-size:18px;font-weight:800">Floor Plan</div>
-        <div style="width:36px"></div>
+      <div style="position:fixed;inset:0;background:#141416;z-index:1">
+        <div id="wt-fp-canvas" style="position:absolute;inset:0"></div>
+
+        <button class="wt-back" id="wt-back" style="position:absolute;top:14px;left:14px;width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">‹</button>
+
+        ${allLocs.length > 1 ? `
+        <select id="wt-fp-loc" style="position:absolute;top:14px;left:58px;max-width:calc(100% - 130px);background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:8px 10px;z-index:2">
+          ${allLocs.map(l => `<option value="${l.id}" ${l.id === locationId ? 'selected' : ''}>${l.name}</option>`).join('')}
+        </select>` : ''}
+
+        <button id="wt-fp-mode" style="position:absolute;top:14px;right:14px;background:${editMode ? '#1C1C1E' : 'rgba(94,92,230,.9)'};border:${editMode ? '1px solid #38383A' : 'none'};border-radius:20px;color:${editMode ? '#98989D' : '#fff'};font-size:13px;font-weight:700;padding:9px 16px;cursor:pointer;transition:transform .1s,background .25s,color .25s;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? 'Done' : '✏️ Edit Plan'}</button>
+
+        <div id="wt-fp-history-row" style="position:absolute;top:60px;right:14px;left:14px;display:${editMode ? 'flex' : 'none'};gap:8px;justify-content:flex-end;z-index:2">
+          <button id="wt-fp-undo" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↺</button>
+          <button id="wt-fp-redo" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻</button>
+          <button id="wt-fp-bulk" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">+ Multiple</button>
+          <button id="wt-fp-clear" style="background:rgba(255,69,58,.15);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Clear All</button>
+        </div>
+
+        <div id="wt-fp-toolbar" style="position:absolute;bottom:${editMode ? '90px' : '14px'};left:14px;right:14px;display:none;gap:8px;flex-wrap:wrap;z-index:2"></div>
+
+        <div id="wt-fp-palette" style="position:absolute;bottom:14px;left:14px;right:14px;display:${editMode ? 'flex' : 'none'};gap:8px;overflow-x:auto;z-index:2"></div>
+
+        ${allLocs.length === 0 ? '<div class="wt-empty" style="position:absolute;top:50%;left:14px;right:14px;transform:translateY(-50%);z-index:2"><strong>No locations yet</strong>Add a work location in Settings first.</div>' : ''}
       </div>
-      ${allLocs.length > 1 ? `
-      <select id="wt-fp-loc" class="wt-select-sm" style="width:100%;margin-bottom:12px">
-        ${allLocs.map(l => `<option value="${l.id}" ${l.id === locationId ? 'selected' : ''}>${l.name}</option>`).join('')}
-      </select>` : ''}
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-size:13px;color:#636366">${editMode ? 'Tap a piece to select it. Drag to move.' : 'Tap a table to view it.'}</div>
-        <button id="wt-fp-mode" style="background:${editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)'};border:none;border-radius:10px;color:${editMode ? '#30D158' : '#5E5CE6'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? '✓ Done Editing' : '✏️ Edit Plan'}</button>
-      </div>
-      <div id="wt-fp-history-row" style="display:${editMode ? 'flex' : 'none'};gap:8px;margin-bottom:10px">
-        <button id="wt-fp-undo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↺</button>
-        <button id="wt-fp-redo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻</button>
-        <button id="wt-fp-bulk" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">+ Multiple</button>
-        <div style="flex:1"></div>
-        <button id="wt-fp-clear" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Clear All</button>
-      </div>
-      <div id="wt-fp-palette" style="display:${editMode ? 'flex' : 'none'};gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px"></div>
-      <div id="wt-fp-canvas" style="position:relative;width:100%;height:60vh;background:#141416;border:1px solid #2C2C2E;border-radius:16px;overflow:hidden"></div>
-      <div id="wt-fp-toolbar" style="display:none;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
-      ${allLocs.length === 0 ? '<div class="wt-empty" style="margin-top:16px"><strong>No locations yet</strong>Add a work location in Settings first.</div>' : ''}
     `;
     _root.appendChild(w);
 
@@ -2409,31 +2410,58 @@ const WorkTracker = (() => {
       });
     }
 
+    function getAlignmentSnap(movingEl) {
+      const threshold = 1.4;
+      let snapX = null, snapY = null;
+      plan.elements.forEach(other => {
+        if (other.id === movingEl.id) return;
+        if (snapX === null && Math.abs(other.x - movingEl.x) < threshold) snapX = other.x;
+        if (snapY === null && Math.abs(other.y - movingEl.y) < threshold) snapY = other.y;
+      });
+      return { snapX, snapY };
+    }
+
     function wireDrag(box, el) {
       box.onpointerdown = (e) => {
         if (e.target !== box && e.target.parentElement !== box) return;
         e.preventDefault();
         selectedId = el.id;
         snapshotBefore();
-        // Dragging a chair individually detaches it from whatever bar auto-generated it —
-        // respects a manual nudge instead of snapping it back the next time the bar moves.
         if (el.type === 'silla' && el.parentId) delete el.parentId;
         const canvasRect = canvas.getBoundingClientRect();
         const startX = e.clientX, startY = e.clientY;
         const startElX = el.x, startElY = el.y;
         let moved = false;
+        const guideV = document.createElement('div');
+        guideV.style.cssText = 'position:absolute;top:0;bottom:0;width:1px;background:#FF9F0A;display:none;pointer-events:none;z-index:5';
+        const guideH = document.createElement('div');
+        guideH.style.cssText = 'position:absolute;left:0;right:0;height:1px;background:#FF9F0A;display:none;pointer-events:none;z-index:5';
+        canvas.appendChild(guideV);
+        canvas.appendChild(guideH);
         const onMove = (ev) => {
           moved = true;
           const dx = ((ev.clientX - startX) / canvasRect.width) * 100;
           const dy = ((ev.clientY - startY) / canvasRect.height) * 100;
           el.x = Math.max(0, Math.min(100, startElX + dx));
           el.y = Math.max(0, Math.min(100, startElY + dy));
-          if (el.type === 'barra') { repositionAttachedSeats(el); renderCanvas(); }
+          const { snapX, snapY } = getAlignmentSnap(el);
+          if (snapX !== null) { el.x = snapX; guideV.style.left = snapX + '%'; guideV.style.display = 'block'; }
+          else { guideV.style.display = 'none'; }
+          if (snapY !== null) { el.y = snapY; guideH.style.top = snapY + '%'; guideH.style.display = 'block'; }
+          else { guideH.style.display = 'none'; }
+          if (el.type === 'barra') {
+            repositionAttachedSeats(el);
+            renderCanvas();
+            canvas.appendChild(guideV);
+            canvas.appendChild(guideH);
+          }
           else { box.style.left = el.x + '%'; box.style.top = el.y + '%'; }
         };
         const onUp = () => {
           document.removeEventListener('pointermove', onMove);
           document.removeEventListener('pointerup', onUp);
+          guideV.remove();
+          guideH.remove();
           if (moved) { persist(); }
           else { undoStack.pop(); }
           renderCanvas();
@@ -2646,13 +2674,29 @@ const WorkTracker = (() => {
     });
 
     w.querySelector('#wt-fp-mode').onclick = () => {
+      const wasEditing = editMode;
       editMode = !editMode;
       selectedId = null;
       paletteEl.style.display = editMode ? 'flex' : 'none';
       historyRow.style.display = editMode ? 'flex' : 'none';
-      w.querySelector('#wt-fp-mode').textContent = editMode ? '✓ Done Editing' : '✏️ Edit Plan';
-      w.querySelector('#wt-fp-mode').style.background = editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)';
-      w.querySelector('#wt-fp-mode').style.color = editMode ? '#30D158' : '#5E5CE6';
+      toolbar.style.bottom = editMode ? '90px' : '14px';
+      const modeBtn = w.querySelector('#wt-fp-mode');
+      if (wasEditing) {
+        modeBtn.textContent = '✓ Saved';
+        modeBtn.style.background = 'rgba(48,209,88,.15)';
+        modeBtn.style.border = 'none';
+        modeBtn.style.color = '#30D158';
+        setTimeout(() => {
+          modeBtn.textContent = '✏️ Edit Plan';
+          modeBtn.style.background = 'rgba(94,92,230,.15)';
+          modeBtn.style.color = '#5E5CE6';
+        }, 700);
+      } else {
+        modeBtn.textContent = 'Done';
+        modeBtn.style.background = '#1C1C1E';
+        modeBtn.style.border = '1px solid #38383A';
+        modeBtn.style.color = '#98989D';
+      }
       renderCanvas();
       renderToolbar();
       updateHistoryButtons();
@@ -2709,16 +2753,48 @@ const WorkTracker = (() => {
           const tpl = FLOORPLAN_PALETTE[parseInt(btn.dataset.bulkType)];
           const count = parseInt(prompt(`How many ${tpl.label.toLowerCase()}?`, '4'), 10);
           if (!count || count < 1) return;
+          showBulkSizeStep(tpl, count);
+        };
+      });
+    };
+
+    function showBulkSizeStep(tpl, count) {
+      let sizeW = tpl.w, sizeH = tpl.h;
+      const ov = document.createElement('div');
+      ov.className = 'wt-overlay';
+      document.body.appendChild(ov);
+      const radius = tpl.shape === 'circle' ? '50%' : (tpl.shape === 'square' || tpl.shape === 'rect') ? '18%' : '6%';
+      function paint() {
+        const previewPx = Math.round(sizeW * 3);
+        const previewPxH = Math.round(sizeH * 3);
+        ov.innerHTML = `
+          <div class="wt-modal">
+            <div class="wt-modal-handle"></div>
+            <div class="wt-modal-title">Size for ${count} ${tpl.label.toLowerCase()}</div>
+            <div style="display:flex;align-items:center;justify-content:center;padding:24px 0;min-height:100px">
+              <div style="width:${previewPx}px;height:${previewPxH}px;background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.25);border-radius:${radius}"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:0;background:#1C1C1E;border-radius:14px;overflow:hidden;border:1px solid #38383A;margin:0 auto 16px;width:160px">
+              <button id="wt-bulk-size-minus" style="width:48px;height:48px;background:none;border:none;color:#98989D;font-size:24px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">−</button>
+              <span style="flex:1;text-align:center;color:#fff;font-weight:700;font-size:15px">${sizeW.toFixed(1)}%</span>
+              <button id="wt-bulk-size-plus" style="width:48px;height:48px;background:none;border:none;color:#98989D;font-size:20px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">+</button>
+            </div>
+            <button class="wt-btn wt-btn-primary" id="wt-bulk-create" style="width:100%">Create ${count}</button>
+          </div>`;
+        ov.querySelector('#wt-bulk-size-minus').onclick = () => { sizeW = Math.max(3, sizeW - 1); sizeH = Math.max(3, sizeH - (tpl.h / tpl.w)); paint(); };
+        ov.querySelector('#wt-bulk-size-plus').onclick = () => { sizeW = sizeW + 1; sizeH = sizeH + (tpl.h / tpl.w); paint(); };
+        ov.querySelector('#wt-bulk-create').onclick = () => {
+          ov.remove();
           const needsFreeSpot = tpl.type === 'mesa' || tpl.type === 'silla' || tpl.type === 'barra';
           snapshotBefore();
           let lastId = null;
           for (let i = 0; i < count; i++) {
-            const spot = needsFreeSpot ? findFreeSpot(50, 50, tpl.w, tpl.h) : { x: 50, y: 50 };
+            const spot = needsFreeSpot ? findFreeSpot(50, 50, sizeW, sizeH) : { x: 50, y: 50 };
             const newEl = {
               id: 'fp_' + Math.random().toString(36).slice(2, 10),
               type: tpl.type, shape: tpl.shape,
               label: tpl.numbered ? String(nextNumber(tpl.type)) : `${tpl.label} ${plan.elements.filter(e => e.type === tpl.type).length + 1}`,
-              x: spot.x, y: spot.y, w: tpl.w, h: tpl.h, rotation: 0
+              x: spot.x, y: spot.y, w: sizeW, h: sizeH, rotation: 0
             };
             plan.elements.push(newEl);
             lastId = newEl.id;
@@ -2728,8 +2804,10 @@ const WorkTracker = (() => {
           renderCanvas();
           renderToolbar();
         };
-      });
-    };
+      }
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      paint();
+    }
 
     const locSel = w.querySelector('#wt-fp-loc');
     if (locSel) {
