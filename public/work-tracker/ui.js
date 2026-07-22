@@ -2486,6 +2486,7 @@ const WorkTracker = (() => {
         // 90°-rotated element would grow in width when the finger moves vertically), which is
         // exactly the "feels backwards" sensation on anything that isn't at 0°.
         const rad = -(el.rotation || 0) * Math.PI / 180;
+        const minSize = FLOORPLAN_STRUCTURE_TYPES.includes(el.type) ? 1 : 4;
         let resized = false;
         const onMove = (ev) => {
           resized = true;
@@ -2494,8 +2495,8 @@ const WorkTracker = (() => {
           const dyLocal = dxPx * Math.sin(rad) + dyPx * Math.cos(rad);
           const dw = (dxLocal / canvasRect.width) * 100;
           const dh = (dyLocal / canvasRect.height) * 100;
-          el.w = Math.max(4, startW + dw * 2);
-          el.h = Math.max(4, startH + dh * 2);
+          el.w = Math.max(minSize, startW + dw * 2);
+          el.h = Math.max(minSize, startH + dh * 2);
           if (el.type === 'barra') { repositionAttachedSeats(el); renderCanvas(); }
           else { box.style.width = el.w + '%'; box.style.height = el.h + '%'; }
         };
