@@ -2246,14 +2246,14 @@ const WorkTracker = (() => {
       </select>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:13px;color:#636366">${editMode ? 'Tap a piece to select it. Drag to move.' : 'Tap a table to view it.'}</div>
-        <button id="wt-fp-mode" style="background:${editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)'};border:none;border-radius:10px;color:${editMode ? '#30D158' : '#5E5CE6'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">${editMode ? '✓ Done Editing' : '✏️ Edit Plan'}</button>
+        <button id="wt-fp-mode" style="background:${editMode ? 'rgba(48,209,88,.15)' : 'rgba(94,92,230,.15)'};border:none;border-radius:10px;color:${editMode ? '#30D158' : '#5E5CE6'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? '✓ Done Editing' : '✏️ Edit Plan'}</button>
       </div>
       <div id="wt-fp-history-row" style="display:${editMode ? 'flex' : 'none'};gap:8px;margin-bottom:10px">
-        <button id="wt-fp-undo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer">↺</button>
-        <button id="wt-fp-redo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer">↻</button>
-        <button id="wt-fp-bulk" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer">+ Multiple</button>
+        <button id="wt-fp-undo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↺</button>
+        <button id="wt-fp-redo" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻</button>
+        <button id="wt-fp-bulk" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">+ Multiple</button>
         <div style="flex:1"></div>
-        <button id="wt-fp-clear" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer">Clear All</button>
+        <button id="wt-fp-clear" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Clear All</button>
       </div>
       <div id="wt-fp-palette" style="display:${editMode ? 'flex' : 'none'};gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px"></div>
       <div id="wt-fp-canvas" style="position:relative;width:100%;height:60vh;background:#141416;border:1px solid #2C2C2E;border-radius:16px;overflow:hidden"></div>
@@ -2268,7 +2268,7 @@ const WorkTracker = (() => {
     const historyRow = w.querySelector('#wt-fp-history-row');
 
     paletteEl.innerHTML = FLOORPLAN_PALETTE.map((p, i) => `
-      <button data-palette="${i}" style="flex-shrink:0;background:#1C1C1E;border:1px solid #38383A;border-radius:12px;color:#fff;font-size:11px;font-weight:600;padding:10px 12px;cursor:pointer;white-space:nowrap">${p.label}</button>
+      <button data-palette="${i}" style="flex-shrink:0;background:#1C1C1E;border:1px solid #38383A;border-radius:12px;color:#fff;font-size:11px;font-weight:600;padding:10px 12px;cursor:pointer;white-space:nowrap;transition:transform .1s" onpointerdown="this.style.transform='scale(.94)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${p.label}</button>
     `).join('');
 
     function persist() {
@@ -2490,10 +2490,10 @@ const WorkTracker = (() => {
       const isNumbered = !FLOORPLAN_STRUCTURE_TYPES.includes(el.type) && !isDoor;
       toolbar.style.display = 'flex';
       toolbar.innerHTML = `
-        <button id="wt-fp-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">↻ Rotate 45°</button>
-        ${isNumbered ? '<button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">✏️ Rename</button>' : ''}
-        ${isDoor ? '<button id="wt-fp-mirror" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">⇄ Mirror</button>' : ''}
-        <button id="wt-fp-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer">Delete</button>
+        <button id="wt-fp-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻ Rotate 45°</button>
+        ${isNumbered ? '<button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform=\'scale(.96)\'" onpointerup="this.style.transform=\'scale(1)\'" onpointerleave="this.style.transform=\'scale(1)\'">✏️ Rename</button>' : ''}
+        ${isDoor ? '<button id="wt-fp-mirror" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform=\'scale(.96)\'" onpointerup="this.style.transform=\'scale(1)\'" onpointerleave="this.style.transform=\'scale(1)\'">⇄ Mirror</button>' : ''}
+        <button id="wt-fp-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Delete</button>
       `;
       toolbar.querySelector('#wt-fp-rotate').onclick = () => {
         snapshotBefore();
@@ -2565,17 +2565,18 @@ const WorkTracker = (() => {
     function generateSeatsForBar(barEl) {
       const ov = document.createElement('div');
       ov.className = 'wt-overlay';
-      const sideBtnStyle = 'background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:12px;cursor:pointer';
+      const sideBtnStyle = 'background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:12px;cursor:pointer;transition:transform .1s';
+      const pressAttrs = `onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'"`;
       ov.innerHTML = `
         <div class="wt-modal">
           <div class="wt-modal-handle"></div>
           <div class="wt-modal-title">Add seats to this bar?</div>
           <div style="font-size:13px;color:#636366;margin-bottom:14px">Choose up to 2 sides — most bars only have seating on one or two.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-            <button data-side="top" class="wt-fp-side-btn" style="${sideBtnStyle}">Top</button>
-            <button data-side="bottom" class="wt-fp-side-btn" style="${sideBtnStyle}">Bottom</button>
-            <button data-side="left" class="wt-fp-side-btn" style="${sideBtnStyle}">Left</button>
-            <button data-side="right" class="wt-fp-side-btn" style="${sideBtnStyle}">Right</button>
+            <button data-side="top" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Top</button>
+            <button data-side="bottom" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Bottom</button>
+            <button data-side="left" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Left</button>
+            <button data-side="right" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Right</button>
           </div>
           <button class="wt-btn wt-btn-primary" id="wt-fp-seats-continue">Continue</button>
           <button class="wt-btn wt-btn-secondary" id="wt-fp-seats-skip" style="margin-top:8px">No seats for now</button>
@@ -2697,7 +2698,7 @@ const WorkTracker = (() => {
           <div class="wt-modal-title">Add multiple</div>
           <div style="font-size:13px;color:#636366;margin-bottom:14px">Pick a shape first, then how many.</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
-            ${FLOORPLAN_PALETTE.map((p, i) => `<button data-bulk-type="${i}" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:12px;font-weight:600;padding:10px 12px;cursor:pointer">${p.label}</button>`).join('')}
+            ${FLOORPLAN_PALETTE.map((p, i) => `<button data-bulk-type="${i}" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:12px;font-weight:600;padding:10px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${p.label}</button>`).join('')}
           </div>
         </div>`;
       document.body.appendChild(ov);
