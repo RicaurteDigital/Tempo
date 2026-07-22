@@ -2519,6 +2519,7 @@ const WorkTracker = (() => {
       toolbar.style.display = 'flex';
       toolbar.innerHTML = `
         <button id="wt-fp-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻ Rotate 45°</button>
+        <button id="wt-fp-duplicate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">⧉ Duplicate</button>
         ${isNumbered ? '<button id="wt-fp-rename" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform=\'scale(.96)\'" onpointerup="this.style.transform=\'scale(1)\'" onpointerleave="this.style.transform=\'scale(1)\'">✏️ Rename</button>' : ''}
         ${isDoor ? '<button id="wt-fp-mirror" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform=\'scale(.96)\'" onpointerup="this.style.transform=\'scale(1)\'" onpointerleave="this.style.transform=\'scale(1)\'">⇄ Mirror</button>' : ''}
         <button id="wt-fp-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Delete</button>
@@ -2528,6 +2529,19 @@ const WorkTracker = (() => {
         el.rotation = ((el.rotation || 0) + 45) % 360;
         persist();
         renderCanvas();
+      };
+      toolbar.querySelector('#wt-fp-duplicate').onclick = () => {
+        snapshotBefore();
+        const needsFreeSpot = el.type === 'mesa' || el.type === 'silla' || el.type === 'barra';
+        const spot = needsFreeSpot ? findFreeSpot(el.x, el.y, el.w, el.h) : { x: Math.min(96, el.x + 6), y: Math.min(96, el.y + 6) };
+        const newEl = { ...el, id: 'fp_' + Math.random().toString(36).slice(2, 10), x: spot.x, y: spot.y };
+        delete newEl.parentId; delete newEl.seatSide; delete newEl.seatIndex; delete newEl.seatCount;
+        if (!FLOORPLAN_STRUCTURE_TYPES.includes(el.type) && el.type !== 'puerta') newEl.label = String(nextNumber(el.type));
+        plan.elements.push(newEl);
+        selectedId = newEl.id;
+        persist();
+        renderCanvas();
+        renderToolbar();
       };
       const renameBtn = toolbar.querySelector('#wt-fp-rename');
       if (renameBtn) renameBtn.onclick = () => {
