@@ -2259,7 +2259,19 @@ const WorkTracker = (() => {
     let locationId = _floorPlanLocationId || (allLocs[0] && allLocs[0].id) || null;
     _floorPlanLocationId = locationId;
 
-    let plan = locationId ? WTDb.getFloorPlan(locationId) : { elements: [] };
+    const rawFpStorage = locationId ? WTDb.getFloorPlan(locationId) : null;
+    let seasonsData;
+    if (rawFpStorage && rawFpStorage.seasons) {
+      seasonsData = rawFpStorage;
+    } else {
+      const seasonId = 'season_' + Math.random().toString(36).slice(2, 10);
+      seasonsData = {
+        activeSeasonId: seasonId,
+        seasons: { [seasonId]: { name: 'Default', elements: (rawFpStorage && rawFpStorage.elements) || [], customized: (rawFpStorage && rawFpStorage.customized) || false } }
+      };
+    }
+    let activeSeasonId = seasonsData.activeSeasonId;
+    let plan = seasonsData.seasons[activeSeasonId];
     let isSampleMode = false;
     if (locationId && !plan.customized && (!plan.elements || plan.elements.length === 0)) {
       plan = { elements: JSON.parse(JSON.stringify(FLOORPLAN_SAMPLE)), customized: false };
@@ -2288,13 +2300,24 @@ const WorkTracker = (() => {
 
         <button id="wt-fp-mode" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;background:${editMode ? '#1C1C1E' : 'rgba(94,92,230,.9)'};border:${editMode ? '1px solid #38383A' : 'none'};border-radius:20px;color:${editMode ? '#98989D' : '#fff'};font-size:13px;font-weight:700;padding:9px 16px;cursor:pointer;transition:transform .1s,background .25s,color .25s;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? 'Done' : '✏️ Edit Plan'}</button>
 
+        <div id="wt-fp-season-row" style="position:absolute;top:calc(env(safe-area-inset-top) + 60px);left:14px;right:14px;display:flex;gap:8px;align-items:center;z-index:2">
+          <select id="wt-fp-season" style="flex:1;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#FF9F0A;font-size:12px;font-weight:700;padding:8px 10px;max-width:200px">
+            ${Object.keys(seasonsData.seasons).map(sid => `<option value="${sid}" ${sid === activeSeasonId ? 'selected' : ''}>🗓 ${seasonsData.seasons[sid].name}</option>`).join('')}
+            <option value="__new__">+ New Season</option>
+          </select>
+          ${editMode ? `
+          <button id="wt-fp-season-rename" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:13px;padding:7px 9px;cursor:pointer">✏️</button>
+          ${Object.keys(seasonsData.seasons).length > 1 ? `<button id="wt-fp-season-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;padding:7px 9px;cursor:pointer">🗑</button>` : ''}
+          ` : ''}
+        </div>
+
         ${isSampleMode ? `
-        <div id="wt-fp-sample-banner" style="position:absolute;top:${editMode && !controlsMinimized ? 'calc(env(safe-area-inset-top) + 106px)' : 'calc(env(safe-area-inset-top) + 60px)'};right:14px;left:14px;display:flex;align-items:center;gap:8px;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 10px;z-index:2">
+        <div id="wt-fp-sample-banner" style="position:absolute;top:${editMode && !controlsMinimized ? 'calc(env(safe-area-inset-top) + 152px)' : 'calc(env(safe-area-inset-top) + 106px)'};right:14px;left:14px;display:flex;align-items:center;gap:8px;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 10px;z-index:2">
           <span style="font-size:11px;color:#98989D;font-weight:700;flex:1">📋 Example — a sample layout to explore</span>
           <button id="wt-fp-new-map" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:11px;font-weight:700;padding:7px 10px;cursor:pointer;white-space:nowrap;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Create New Map</button>
         </div>` : ''}
 
-        <div id="wt-fp-history-row" style="position:absolute;top:calc(env(safe-area-inset-top) + 60px);right:14px;left:14px;display:${editMode && !controlsMinimized ? 'flex' : 'none'};gap:8px;justify-content:flex-end;z-index:2">
+        <div id="wt-fp-history-row" style="position:absolute;top:calc(env(safe-area-inset-top) + 106px);right:14px;left:14px;display:${editMode && !controlsMinimized ? 'flex' : 'none'};gap:8px;justify-content:flex-end;z-index:2">
           <button id="wt-fp-undo" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↺</button>
           <button id="wt-fp-redo" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻</button>
           <button id="wt-fp-bulk" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">+ Multiple</button>
@@ -2323,7 +2346,9 @@ const WorkTracker = (() => {
 
     function persist() {
       if (isSampleMode) { isSampleMode = false; plan.customized = true; }
-      if (locationId) WTDb.saveFloorPlan(locationId, plan);
+      seasonsData.seasons[activeSeasonId] = plan;
+      seasonsData.activeSeasonId = activeSeasonId;
+      if (locationId) WTDb.saveFloorPlan(locationId, seasonsData);
     }
 
     // Call before any mutation to plan.elements — captures a snapshot so it can be undone.
@@ -3187,6 +3212,50 @@ const WorkTracker = (() => {
     if (locSel) {
       locSel.onchange = () => {
         _floorPlanLocationId = locSel.value;
+        _go('floorplan');
+      };
+    }
+
+    w.querySelector('#wt-fp-season').onchange = (e) => {
+      const val = e.target.value;
+      if (val === '__new__') {
+        const name = prompt('Name this new season (e.g. "Winter"):');
+        if (!name || !name.trim()) { e.target.value = activeSeasonId; return; }
+        persist();
+        const newSeasonId = 'season_' + Math.random().toString(36).slice(2, 10);
+        seasonsData.seasons[newSeasonId] = { name: name.trim(), elements: JSON.parse(JSON.stringify(plan.elements)), customized: true };
+        seasonsData.activeSeasonId = newSeasonId;
+        if (locationId) WTDb.saveFloorPlan(locationId, seasonsData);
+        _go('floorplan');
+        return;
+      }
+      persist();
+      seasonsData.activeSeasonId = val;
+      if (locationId) WTDb.saveFloorPlan(locationId, seasonsData);
+      _go('floorplan');
+    };
+
+    const seasonRenameBtn = w.querySelector('#wt-fp-season-rename');
+    if (seasonRenameBtn) {
+      seasonRenameBtn.onclick = () => {
+        const current = seasonsData.seasons[activeSeasonId];
+        const name = prompt('Rename this season:', current.name);
+        if (!name || !name.trim()) return;
+        current.name = name.trim();
+        persist();
+        _go('floorplan');
+      };
+    }
+
+    const seasonDeleteBtn = w.querySelector('#wt-fp-season-delete');
+    if (seasonDeleteBtn) {
+      seasonDeleteBtn.onclick = () => {
+        const current = seasonsData.seasons[activeSeasonId];
+        if (!confirm(`Delete the "${current.name}" season? This can't be undone.`)) return;
+        delete seasonsData.seasons[activeSeasonId];
+        const remainingIds = Object.keys(seasonsData.seasons);
+        seasonsData.activeSeasonId = remainingIds[0];
+        if (locationId) WTDb.saveFloorPlan(locationId, seasonsData);
         _go('floorplan');
       };
     }
