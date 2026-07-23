@@ -2384,6 +2384,48 @@ const WorkTracker = (() => {
       return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY };
     }
 
+    function wireGroupMove(target) {
+      target.onpointerdown = (e) => {
+        if (e.target !== target) return;
+        e.preventDefault();
+        snapshotBefore();
+        const canvasRect = canvas.getBoundingClientRect();
+        const startX = e.clientX, startY = e.clientY;
+        const originals = new Map();
+        multiSelectedIds.forEach(id => {
+          const m = plan.elements.find(x => x.id === id);
+          if (m) originals.set(id, { x: m.x, y: m.y });
+        });
+        let moved = false;
+        const startPointerId = e.pointerId;
+        const onMove = (ev) => {
+          if (ev.pointerId !== startPointerId || pinchState) return;
+          moved = true;
+          const dx = ((ev.clientX - startX) / canvasRect.width) * 100;
+          const dy = ((ev.clientY - startY) / canvasRect.height) * 100;
+          multiSelectedIds.forEach(id => {
+            const m = plan.elements.find(x => x.id === id);
+            const orig = originals.get(id);
+            if (!m || !orig) return;
+            m.x = Math.max(0, Math.min(100, orig.x + dx));
+            m.y = Math.max(0, Math.min(100, orig.y + dy));
+          });
+          renderCanvas();
+        };
+        const onUp = (ev) => {
+          if (ev.pointerId !== startPointerId) return;
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          if (pinchState) return;
+          if (moved) { persist(); renderCanvas(); }
+          else { undoStack.pop(); }
+          updateHistoryButtons();
+        };
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      };
+    }
+
     function wireGroupResize(handle) {
       handle.onpointerdown = (e) => {
         e.preventDefault();
@@ -2430,6 +2472,21 @@ const WorkTracker = (() => {
 
     function renderCanvas() {
       canvas.innerHTML = '';
+
+      if (editMode && multiSelectedIds.size > 1) {
+        const bounds = computeGroupBounds();
+        if (bounds) {
+          const groupBox = document.createElement('div');
+          groupBox.style.cssText = `position:absolute;left:${bounds.minX}%;top:${bounds.minY}%;width:${bounds.width}%;height:${bounds.height}%;border:1.5px dashed #FF9F0A;background:rgba(255,159,10,.06);cursor:grab;touch-action:none`;
+          canvas.appendChild(groupBox);
+          wireGroupMove(groupBox);
+          const groupHandle = document.createElement('div');
+          groupHandle.style.cssText = `position:absolute;left:${bounds.maxX}%;top:${bounds.maxY}%;width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;background:#FF9F0A;border:2px solid #fff;cursor:pointer;touch-action:none;z-index:5`;
+          canvas.appendChild(groupHandle);
+          wireGroupResize(groupHandle);
+        }
+      }
+
       plan.elements.forEach(el => {
         const box = document.createElement('div');
         box.dataset.elId = el.id;
@@ -2476,19 +2533,6 @@ const WorkTracker = (() => {
           box.onclick = () => showTableInfo(el);
         }
       });
-
-      if (editMode && multiSelectedIds.size > 1) {
-        const bounds = computeGroupBounds();
-        if (bounds) {
-          const groupBox = document.createElement('div');
-          groupBox.style.cssText = `position:absolute;left:${bounds.minX}%;top:${bounds.minY}%;width:${bounds.width}%;height:${bounds.height}%;border:1.5px dashed #FF9F0A;pointer-events:none;z-index:4`;
-          canvas.appendChild(groupBox);
-          const groupHandle = document.createElement('div');
-          groupHandle.style.cssText = `position:absolute;left:${bounds.maxX}%;top:${bounds.maxY}%;width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;background:#FF9F0A;border:2px solid #fff;cursor:pointer;touch-action:none;z-index:5`;
-          canvas.appendChild(groupHandle);
-          wireGroupResize(groupHandle);
-        }
-      }
     }
 
     function startInlineEdit(box, span, el) {
