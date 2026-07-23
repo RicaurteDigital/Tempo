@@ -2269,6 +2269,7 @@ const WorkTracker = (() => {
     let controlsMinimized = false;
     let selectedId = null;
     let multiSelectedIds = new Set();
+    let activeInlineEdit = null;
     let activePointers = new Map();
     let pinchState = null;
     let undoStack = [];
@@ -2544,11 +2545,16 @@ const WorkTracker = (() => {
       box.replaceChild(input, span);
       input.focus();
       input.select();
+      let committed = false;
       const commit = () => {
+        if (committed) return;
+        committed = true;
         const trimmed = input.value.trim();
         if (trimmed && trimmed !== el.label) { snapshotBefore(); el.label = trimmed; persist(); }
+        activeInlineEdit = null;
         renderCanvas();
       };
+      activeInlineEdit = { commit };
       input.onblur = commit;
       input.onkeydown = (e) => { if (e.key === 'Enter') input.blur(); };
     }
@@ -2585,6 +2591,7 @@ const WorkTracker = (() => {
     function wireDrag(box, el) {
       box.onpointerdown = (e) => {
         if (e.target !== box && e.target.parentElement !== box) return;
+        if (activeInlineEdit && e.target.tagName !== 'INPUT') activeInlineEdit.commit();
         e.preventDefault();
 
         if (multiSelectedIds.has(el.id) && multiSelectedIds.size > 1) {
@@ -2804,6 +2811,7 @@ const WorkTracker = (() => {
     }
 
     canvas.onpointerdown = (e) => {
+      if (activeInlineEdit && e.target.tagName !== 'INPUT') activeInlineEdit.commit();
       if (!editMode) return;
       if (e.target !== canvas) return;
       const canvasRect = canvas.getBoundingClientRect();
