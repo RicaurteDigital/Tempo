@@ -2247,7 +2247,7 @@ const WorkTracker = (() => {
     else if (isStructure) bg = '#3A3A3C';
     const border = isStructure ? '1px solid #48484A' : '1.5px solid rgba(255,255,255,0.18)';
     const radius = el.shape === 'circle' ? '50%' : (el.shape === 'square' || el.shape === 'rect') ? '6px' : '2px';
-    return `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;height:${el.h}%;transform:translate(-50%,-50%) rotate(${el.rotation||0}deg);background:${bg};border:${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none`;
+    return `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;aspect-ratio:${el.w}/${el.h};transform:translate(-50%,-50%) rotate(${el.rotation||0}deg);background:${bg};border:${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none`;
   }
 
   function _FloorPlan() {
@@ -2705,7 +2705,7 @@ const WorkTracker = (() => {
           el.w = Math.max(minSize, startW + dw * 2);
           el.h = Math.max(minSize, startH + dh * 2);
           if (el.type === 'barra') { repositionAttachedSeats(el); renderCanvas(); }
-          else { box.style.width = el.w + '%'; box.style.height = el.h + '%'; }
+          else { box.style.width = el.w + '%'; box.style.aspectRatio = el.w + '/' + el.h; }
         };
         const onUp = () => {
           document.removeEventListener('pointermove', onMove);
