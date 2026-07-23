@@ -2329,6 +2329,60 @@ const WorkTracker = (() => {
       return nums.length > 0 ? Math.max(...nums) + 1 : 1;
     }
 
+    function computeGroupBounds() {
+      const els = plan.elements.filter(e => multiSelectedIds.has(e.id));
+      if (!els.length) return null;
+      const minX = Math.min(...els.map(e => e.x - e.w / 2));
+      const maxX = Math.max(...els.map(e => e.x + e.w / 2));
+      const minY = Math.min(...els.map(e => e.y - e.h / 2));
+      const maxY = Math.max(...els.map(e => e.y + e.h / 2));
+      return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY };
+    }
+
+    function wireGroupResize(handle) {
+      handle.onpointerdown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        snapshotBefore();
+        const canvasRect = canvas.getBoundingClientRect();
+        const startX = e.clientX, startY = e.clientY;
+        const startBounds = computeGroupBounds();
+        if (!startBounds) return;
+        const originals = new Map();
+        multiSelectedIds.forEach(id => {
+          const el = plan.elements.find(x => x.id === id);
+          if (el) originals.set(id, { x: el.x, y: el.y, w: el.w, h: el.h });
+        });
+        let resized = false;
+        const onMove = (ev) => {
+          resized = true;
+          const dw = ((ev.clientX - startX) / canvasRect.width) * 100;
+          const scaleFactor = Math.max(0.15, (startBounds.width + dw) / startBounds.width);
+          multiSelectedIds.forEach(id => {
+            const el = plan.elements.find(x => x.id === id);
+            const orig = originals.get(id);
+            if (!el || !orig) return;
+            const relX = orig.x - startBounds.minX;
+            const relY = orig.y - startBounds.minY;
+            el.x = startBounds.minX + relX * scaleFactor;
+            el.y = startBounds.minY + relY * scaleFactor;
+            el.w = Math.max(2, orig.w * scaleFactor);
+            el.h = Math.max(2, orig.h * scaleFactor);
+          });
+          renderCanvas();
+        };
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          if (resized) { persist(); renderCanvas(); }
+          else { undoStack.pop(); }
+          updateHistoryButtons();
+        };
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      };
+    }
+
     function renderCanvas() {
       canvas.innerHTML = '';
       plan.elements.forEach(el => {
@@ -2337,7 +2391,7 @@ const WorkTracker = (() => {
         const isDoor = el.type === 'puerta';
         let styleStr = _floorPlanElStyle(el);
         if (isDoor) styleStr += ';background:none;border:none';
-        box.style.cssText = styleStr + (selectedId === el.id ? ';outline:2px solid #5E5CE6;outline-offset:2px' : '');
+        box.style.cssText = styleStr + (selectedId === el.id ? ';outline:2px solid #5E5CE6;outline-offset:2px' : multiSelectedIds.has(el.id) ? ';outline:2px solid #FF9F0A;outline-offset:2px' : '');
 
         if (isDoor) {
           const flip = el.flipped ? -1 : 1;
@@ -2376,6 +2430,19 @@ const WorkTracker = (() => {
           box.onclick = () => showTableInfo(el);
         }
       });
+
+      if (editMode && multiSelectedIds.size > 1) {
+        const bounds = computeGroupBounds();
+        if (bounds) {
+          const groupBox = document.createElement('div');
+          groupBox.style.cssText = `position:absolute;left:${bounds.minX}%;top:${bounds.minY}%;width:${bounds.width}%;height:${bounds.height}%;border:1.5px dashed #FF9F0A;pointer-events:none;z-index:4`;
+          canvas.appendChild(groupBox);
+          const groupHandle = document.createElement('div');
+          groupHandle.style.cssText = `position:absolute;left:${bounds.maxX}%;top:${bounds.maxY}%;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:50%;background:#FF9F0A;border:2px solid #fff;cursor:pointer;touch-action:none;z-index:5`;
+          canvas.appendChild(groupHandle);
+          wireGroupResize(groupHandle);
+        }
+      }
     }
 
     function startInlineEdit(box, span, el) {
@@ -2429,7 +2496,44 @@ const WorkTracker = (() => {
       box.onpointerdown = (e) => {
         if (e.target !== box && e.target.parentElement !== box) return;
         e.preventDefault();
+
+        if (multiSelectedIds.has(el.id) && multiSelectedIds.size > 1) {
+          snapshotBefore();
+          const canvasRect = canvas.getBoundingClientRect();
+          const startX = e.clientX, startY = e.clientY;
+          const originals = new Map();
+          multiSelectedIds.forEach(id => {
+            const m = plan.elements.find(x => x.id === id);
+            if (m) originals.set(id, { x: m.x, y: m.y });
+          });
+          let moved = false;
+          const onGroupMove = (ev) => {
+            moved = true;
+            const dx = ((ev.clientX - startX) / canvasRect.width) * 100;
+            const dy = ((ev.clientY - startY) / canvasRect.height) * 100;
+            multiSelectedIds.forEach(id => {
+              const m = plan.elements.find(x => x.id === id);
+              const orig = originals.get(id);
+              if (!m || !orig) return;
+              m.x = Math.max(0, Math.min(100, orig.x + dx));
+              m.y = Math.max(0, Math.min(100, orig.y + dy));
+            });
+            renderCanvas();
+          };
+          const onGroupUp = () => {
+            document.removeEventListener('pointermove', onGroupMove);
+            document.removeEventListener('pointerup', onGroupUp);
+            if (moved) { persist(); renderCanvas(); }
+            else { undoStack.pop(); }
+            updateHistoryButtons();
+          };
+          document.addEventListener('pointermove', onGroupMove);
+          document.addEventListener('pointerup', onGroupUp);
+          return;
+        }
+
         selectedId = el.id;
+        multiSelectedIds.clear();
         snapshotBefore();
         if (el.type === 'silla' && el.parentId) delete el.parentId;
         const canvasRect = canvas.getBoundingClientRect();
@@ -2517,6 +2621,30 @@ const WorkTracker = (() => {
     }
 
     function renderToolbar() {
+      if (controlsMinimized) { toolbar.style.display = 'none'; toolbar.innerHTML = ''; return; }
+      if (editMode && multiSelectedIds.size > 1) {
+        toolbar.style.display = 'flex';
+        toolbar.innerHTML = `
+          <div style="background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:10px;color:#FF9F0A;font-size:13px;font-weight:700;padding:8px 12px">${multiSelectedIds.size} selected</div>
+          <button id="wt-fp-multi-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Delete Selected</button>
+          <button id="wt-fp-multi-clear" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Deselect</button>
+        `;
+        toolbar.querySelector('#wt-fp-multi-delete').onclick = () => {
+          if (!confirm(`Remove these ${multiSelectedIds.size} pieces from the plan?`)) return;
+          snapshotBefore();
+          plan.elements = plan.elements.filter(e => !multiSelectedIds.has(e.id) && !multiSelectedIds.has(e.parentId));
+          multiSelectedIds.clear();
+          persist();
+          renderCanvas();
+          renderToolbar();
+        };
+        toolbar.querySelector('#wt-fp-multi-clear').onclick = () => {
+          multiSelectedIds.clear();
+          renderCanvas();
+          renderToolbar();
+        };
+        return;
+      }
       const el = plan.elements.find(e => e.id === selectedId);
       if (!editMode || !el) { toolbar.style.display = 'none'; toolbar.innerHTML = ''; return; }
       const isDoor = el.type === 'puerta';
@@ -2576,13 +2704,48 @@ const WorkTracker = (() => {
       alert(`${el.label}\n\nOrder tracking isn't set up yet — coming in a future update.`);
     }
 
-    canvas.onclick = (e) => {
+    canvas.onpointerdown = (e) => {
       if (!editMode) return;
-      if (e.target === canvas) {
-        selectedId = null;
+      if (e.target !== canvas) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const startX = e.clientX, startY = e.clientY;
+      let moved = false;
+      const selRect = document.createElement('div');
+      selRect.style.cssText = 'position:absolute;border:1.5px dashed #5E5CE6;background:rgba(94,92,230,.12);pointer-events:none;z-index:6;display:none';
+      canvas.appendChild(selRect);
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
+        if (!moved) return;
+        selRect.style.display = 'block';
+        selRect.style.left = (Math.min(startX, ev.clientX) - canvasRect.left) + 'px';
+        selRect.style.top = (Math.min(startY, ev.clientY) - canvasRect.top) + 'px';
+        selRect.style.width = Math.abs(dx) + 'px';
+        selRect.style.height = Math.abs(dy) + 'px';
+      };
+      const onUp = (ev) => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        selRect.remove();
+        if (moved) {
+          const rectLeft = ((Math.min(startX, ev.clientX) - canvasRect.left) / canvasRect.width) * 100;
+          const rectRight = ((Math.max(startX, ev.clientX) - canvasRect.left) / canvasRect.width) * 100;
+          const rectTop = ((Math.min(startY, ev.clientY) - canvasRect.top) / canvasRect.height) * 100;
+          const rectBottom = ((Math.max(startY, ev.clientY) - canvasRect.top) / canvasRect.height) * 100;
+          multiSelectedIds = new Set(plan.elements.filter(el => {
+            const l = el.x - el.w / 2, r = el.x + el.w / 2, t = el.y - el.h / 2, b = el.y + el.h / 2;
+            return l < rectRight && r > rectLeft && t < rectBottom && b > rectTop;
+          }).map(el => el.id));
+          selectedId = null;
+        } else {
+          multiSelectedIds.clear();
+          selectedId = null;
+        }
         renderCanvas();
         renderToolbar();
-      }
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
     };
 
     function computeSeatPositions(canvasW, canvasH, el, side, count) {
@@ -2696,6 +2859,7 @@ const WorkTracker = (() => {
       const wasEditing = editMode;
       editMode = !editMode;
       selectedId = null;
+      multiSelectedIds.clear();
       if (!wasEditing) controlsMinimized = false;
       paletteEl.style.display = editMode && !controlsMinimized ? 'flex' : 'none';
       historyRow.style.display = editMode && !controlsMinimized ? 'flex' : 'none';
