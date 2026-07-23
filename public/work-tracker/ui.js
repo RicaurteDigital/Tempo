@@ -2203,6 +2203,37 @@ const WorkTracker = (() => {
   ];
   const FLOORPLAN_STRUCTURE_TYPES = ['columna', 'pared', 'espacio', 'escaleras'];
 
+  const FLOORPLAN_SAMPLE = [
+    { id: 'ex_wall_top', type: 'pared', shape: 'rect', label: 'Wall', x: 50, y: 6, w: 88, h: 2, rotation: 0 },
+    { id: 'ex_wall_left', type: 'pared', shape: 'rect', label: 'Wall', x: 6, y: 50, w: 2, h: 88, rotation: 0 },
+    { id: 'ex_wall_right', type: 'pared', shape: 'rect', label: 'Wall', x: 94, y: 50, w: 2, h: 88, rotation: 0 },
+    { id: 'ex_wall_bl', type: 'pared', shape: 'rect', label: 'Wall', x: 27, y: 94, w: 42, h: 2, rotation: 0 },
+    { id: 'ex_wall_br', type: 'pared', shape: 'rect', label: 'Wall', x: 80, y: 94, w: 28, h: 2, rotation: 0 },
+    { id: 'ex_door', type: 'puerta', shape: 'rect', label: 'Door', x: 63, y: 94, w: 8, h: 8, rotation: 0 },
+    { id: 'ex_bar', type: 'barra', shape: 'rect', label: '1', x: 25, y: 16, w: 30, h: 6, rotation: 0 },
+    { id: 'ex_bar_s1', type: 'silla', shape: 'circle', label: '1', x: 15, y: 22, w: 5.5, h: 5.5, rotation: 0, parentId: 'ex_bar', seatSide: 'bottom', seatIndex: 0, seatCount: 3 },
+    { id: 'ex_bar_s2', type: 'silla', shape: 'circle', label: '2', x: 25, y: 22, w: 5.5, h: 5.5, rotation: 0, parentId: 'ex_bar', seatSide: 'bottom', seatIndex: 1, seatCount: 3 },
+    { id: 'ex_bar_s3', type: 'silla', shape: 'circle', label: '3', x: 35, y: 22, w: 5.5, h: 5.5, rotation: 0, parentId: 'ex_bar', seatSide: 'bottom', seatIndex: 2, seatCount: 3 },
+    { id: 'ex_t1', type: 'mesa', shape: 'circle', label: '1', x: 25, y: 45, w: 11, h: 11, rotation: 0 },
+    { id: 'ex_t1_c1', type: 'silla', shape: 'circle', label: '4', x: 25, y: 35, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t1_c2', type: 'silla', shape: 'circle', label: '5', x: 25, y: 55, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t1_c3', type: 'silla', shape: 'circle', label: '6', x: 17, y: 45, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t1_c4', type: 'silla', shape: 'circle', label: '7', x: 33, y: 45, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t2', type: 'mesa', shape: 'circle', label: '2', x: 55, y: 45, w: 11, h: 11, rotation: 0 },
+    { id: 'ex_t2_c1', type: 'silla', shape: 'circle', label: '8', x: 55, y: 35, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t2_c2', type: 'silla', shape: 'circle', label: '9', x: 55, y: 55, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t2_c3', type: 'silla', shape: 'circle', label: '10', x: 47, y: 45, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t2_c4', type: 'silla', shape: 'circle', label: '11', x: 63, y: 45, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t3', type: 'mesa', shape: 'square', label: '3', x: 80, y: 45, w: 9, h: 9, rotation: 0 },
+    { id: 'ex_t3_c1', type: 'silla', shape: 'circle', label: '12', x: 80, y: 37, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t3_c2', type: 'silla', shape: 'circle', label: '13', x: 80, y: 53, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t4', type: 'mesa', shape: 'rect', label: '4', x: 45, y: 75, w: 18, h: 9, rotation: 0 },
+    { id: 'ex_t4_c1', type: 'silla', shape: 'circle', label: '14', x: 45, y: 68, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_t4_c2', type: 'silla', shape: 'circle', label: '15', x: 45, y: 82, w: 5.5, h: 5.5, rotation: 0 },
+    { id: 'ex_column', type: 'columna', shape: 'square', label: 'Column', x: 70, y: 70, w: 5, h: 5, rotation: 0 },
+    { id: 'ex_host', type: 'espacio', shape: 'rect', label: 'Empty space', x: 15, y: 80, w: 12, h: 10, rotation: 0 },
+  ];
+
   function _floorPlanElStyle(el) {
     const isStructure = FLOORPLAN_STRUCTURE_TYPES.includes(el.type);
     // Each structure type gets its own real drafting symbol instead of all looking like the
@@ -2229,6 +2260,11 @@ const WorkTracker = (() => {
     _floorPlanLocationId = locationId;
 
     let plan = locationId ? WTDb.getFloorPlan(locationId) : { elements: [] };
+    let isSampleMode = false;
+    if (locationId && !plan.customized && (!plan.elements || plan.elements.length === 0)) {
+      plan = { elements: JSON.parse(JSON.stringify(FLOORPLAN_SAMPLE)), customized: false };
+      isSampleMode = true;
+    }
     let editMode = false;
     let controlsMinimized = false;
     let selectedId = null;
@@ -2248,6 +2284,12 @@ const WorkTracker = (() => {
         </select>` : ''}
 
         <button id="wt-fp-mode" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;background:${editMode ? '#1C1C1E' : 'rgba(94,92,230,.9)'};border:${editMode ? '1px solid #38383A' : 'none'};border-radius:20px;color:${editMode ? '#98989D' : '#fff'};font-size:13px;font-weight:700;padding:9px 16px;cursor:pointer;transition:transform .1s,background .25s,color .25s;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? 'Done' : '✏️ Edit Plan'}</button>
+
+        ${isSampleMode ? `
+        <div id="wt-fp-sample-banner" style="position:absolute;top:${editMode && !controlsMinimized ? 'calc(env(safe-area-inset-top) + 106px)' : 'calc(env(safe-area-inset-top) + 60px)'};right:14px;left:14px;display:flex;align-items:center;gap:8px;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:8px 10px;z-index:2">
+          <span style="font-size:11px;color:#98989D;font-weight:700;flex:1">📋 Example — a sample layout to explore</span>
+          <button id="wt-fp-new-map" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:11px;font-weight:700;padding:7px 10px;cursor:pointer;white-space:nowrap;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Create New Map</button>
+        </div>` : ''}
 
         <div id="wt-fp-history-row" style="position:absolute;top:calc(env(safe-area-inset-top) + 60px);right:14px;left:14px;display:${editMode && !controlsMinimized ? 'flex' : 'none'};gap:8px;justify-content:flex-end;z-index:2">
           <button id="wt-fp-undo" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↺</button>
@@ -2277,6 +2319,7 @@ const WorkTracker = (() => {
     `).join('');
 
     function persist() {
+      if (isSampleMode) { isSampleMode = false; plan.customized = true; }
       if (locationId) WTDb.saveFloorPlan(locationId, plan);
     }
 
@@ -2534,6 +2577,11 @@ const WorkTracker = (() => {
 
         selectedId = el.id;
         multiSelectedIds.clear();
+        if (isSampleMode && !localStorage.getItem('wt_fp_sample_glow_shown')) {
+          localStorage.setItem('wt_fp_sample_glow_shown', '1');
+          const newMapBtn = w.querySelector('#wt-fp-new-map');
+          if (newMapBtn) newMapBtn.classList.add('wt-glow');
+        }
         snapshotBefore();
         if (el.type === 'silla' && el.parentId) delete el.parentId;
         const canvasRect = canvas.getBoundingClientRect();
@@ -3028,6 +3076,20 @@ const WorkTracker = (() => {
       locSel.onchange = () => {
         _floorPlanLocationId = locSel.value;
         _go('floorplan');
+      };
+    }
+
+    if (isSampleMode) {
+      w.querySelector('#wt-fp-new-map').onclick = () => {
+        plan = { elements: [], customized: true };
+        isSampleMode = false;
+        selectedId = null;
+        multiSelectedIds.clear();
+        persist();
+        const banner = w.querySelector('#wt-fp-sample-banner');
+        if (banner) banner.remove();
+        renderCanvas();
+        renderToolbar();
       };
     }
 
