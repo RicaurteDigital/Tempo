@@ -2744,13 +2744,42 @@ const WorkTracker = (() => {
     };
     w.querySelector('#wt-fp-clear').onclick = () => {
       if (!plan.elements.length) return;
-      if (!confirm('Remove every piece from this floor plan? This clears the whole layout, not just one item.')) return;
-      snapshotBefore();
-      plan.elements = [];
-      selectedId = null;
-      persist();
-      renderCanvas();
-      renderToolbar();
+      const count = plan.elements.length;
+      const ov = document.createElement('div');
+      ov.className = 'wt-overlay';
+      ov.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title" style="color:#FF453A">Clear Entire Floor Plan</div>
+          <div style="color:#98989D;font-size:13px;margin-bottom:14px;line-height:1.5">This removes all ${count} piece${count !== 1 ? 's' : ''} from this floor plan — every table, chair, wall, and everything else you've placed. This cannot be undone once you leave this screen.</div>
+          <label class="wt-modal-label">Type DELETE to confirm</label>
+          <input id="wt-fp-clear-confirm-input" class="wt-input" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="DELETE" style="margin-bottom:14px">
+          <div class="wt-modal-actions">
+            <button class="wt-btn wt-btn-secondary" id="wt-fp-clear-cancel">Cancel</button>
+            <button class="wt-btn" id="wt-fp-clear-confirm" disabled style="background:#3A3A3C;color:#8E8E93">Delete All</button>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+      ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+      const confirmInput = ov.querySelector('#wt-fp-clear-confirm-input');
+      const confirmBtn = ov.querySelector('#wt-fp-clear-confirm');
+      confirmInput.addEventListener('input', () => {
+        const match = confirmInput.value.trim() === 'DELETE';
+        confirmBtn.disabled = !match;
+        confirmBtn.style.background = match ? '#FF453A' : '#3A3A3C';
+        confirmBtn.style.color = match ? '#fff' : '#8E8E93';
+      });
+      ov.querySelector('#wt-fp-clear-cancel').onclick = () => ov.remove();
+      confirmBtn.onclick = () => {
+        if (confirmInput.value.trim() !== 'DELETE') return;
+        snapshotBefore();
+        plan.elements = [];
+        selectedId = null;
+        persist();
+        renderCanvas();
+        renderToolbar();
+        ov.remove();
+      };
     };
 
     w.querySelector('#wt-fp-bulk').onclick = () => {
