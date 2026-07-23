@@ -2302,11 +2302,11 @@ const WorkTracker = (() => {
 
         <div id="wt-fp-season-row" style="position:absolute;top:calc(env(safe-area-inset-top) + 60px);left:14px;right:14px;display:flex;gap:8px;align-items:center;z-index:2">
           <select id="wt-fp-season" style="flex:1;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#FF9F0A;font-size:12px;font-weight:700;padding:8px 10px;max-width:200px">
-            ${Object.keys(seasonsData.seasons).map(sid => `<option value="${sid}" ${sid === activeSeasonId ? 'selected' : ''}>🗓 ${seasonsData.seasons[sid].name}</option>`).join('')}
+            ${Object.keys(seasonsData.seasons).map(sid => `<option value="${sid}" ${sid === activeSeasonId ? 'selected' : ''}>${seasonsData.seasons[sid].name}</option>`).join('')}
             <option value="__new__">+ New Season</option>
           </select>
-          <button id="wt-fp-season-rename" style="display:${editMode ? 'inline-block' : 'none'};background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:13px;padding:7px 9px;cursor:pointer">✏️</button>
-          ${Object.keys(seasonsData.seasons).length > 1 ? `<button id="wt-fp-season-delete" style="display:${editMode ? 'inline-block' : 'none'};background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;padding:7px 9px;cursor:pointer">🗑</button>` : ''}
+          <button id="wt-fp-season-rename" style="display:${editMode ? 'inline-flex' : 'none'};align-items:center;justify-content:center;background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;padding:7px 9px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+          ${Object.keys(seasonsData.seasons).length > 1 ? `<button id="wt-fp-season-delete" style="display:${editMode ? 'inline-block' : 'none'};background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:7px 9px;border-radius:8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>` : ''}
         </div>
 
         ${isSampleMode ? `
@@ -3118,7 +3118,7 @@ const WorkTracker = (() => {
       historyRow.style.display = editMode && !controlsMinimized ? 'flex' : 'none';
       w.querySelector('#wt-fp-minimize').style.display = editMode ? 'flex' : 'none';
       const seasonRenameEl = w.querySelector('#wt-fp-season-rename');
-      if (seasonRenameEl) seasonRenameEl.style.display = editMode ? 'inline-block' : 'none';
+      if (seasonRenameEl) seasonRenameEl.style.display = editMode ? 'inline-flex' : 'none';
       const seasonDeleteEl = w.querySelector('#wt-fp-season-delete');
       if (seasonDeleteEl) seasonDeleteEl.style.display = editMode ? 'inline-block' : 'none';
       toolbar.style.bottom = editMode && !controlsMinimized ? '90px' : '14px';
