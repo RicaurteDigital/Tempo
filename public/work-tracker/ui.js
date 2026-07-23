@@ -2757,9 +2757,70 @@ const WorkTracker = (() => {
         toolbar.style.display = 'flex';
         toolbar.innerHTML = `
           <div style="background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.3);border-radius:10px;color:#FF9F0A;font-size:13px;font-weight:700;padding:8px 12px">${multiSelectedIds.size} selected</div>
+          <button id="wt-fp-multi-rotate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻ Rotate 45°</button>
+          <button id="wt-fp-multi-mirror" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">⇄ Mirror</button>
+          <button id="wt-fp-multi-duplicate" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#fff;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">⧉ Duplicate</button>
           <button id="wt-fp-multi-delete" style="background:rgba(255,69,58,.12);border:none;border-radius:10px;color:#FF453A;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Delete Selected</button>
           <button id="wt-fp-multi-clear" style="background:#1C1C1E;border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:13px;font-weight:600;padding:8px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Deselect</button>
         `;
+        toolbar.querySelector('#wt-fp-multi-rotate').onclick = () => {
+          const bounds = computeGroupBounds();
+          if (!bounds) return;
+          const centerX = (bounds.minX + bounds.maxX) / 2;
+          const centerY = (bounds.minY + bounds.maxY) / 2;
+          const rad = 45 * Math.PI / 180;
+          snapshotBefore();
+          multiSelectedIds.forEach(id => {
+            const el = plan.elements.find(e => e.id === id);
+            if (!el) return;
+            const dx = el.x - centerX, dy = el.y - centerY;
+            el.x = centerX + dx * Math.cos(rad) - dy * Math.sin(rad);
+            el.y = centerY + dx * Math.sin(rad) + dy * Math.cos(rad);
+            el.rotation = ((el.rotation || 0) + 45) % 360;
+          });
+          persist();
+          renderCanvas();
+        };
+        toolbar.querySelector('#wt-fp-multi-mirror').onclick = () => {
+          const bounds = computeGroupBounds();
+          if (!bounds) return;
+          const centerX = (bounds.minX + bounds.maxX) / 2;
+          snapshotBefore();
+          multiSelectedIds.forEach(id => {
+            const el = plan.elements.find(e => e.id === id);
+            if (!el) return;
+            el.x = 2 * centerX - el.x;
+            el.rotation = (360 - (el.rotation || 0)) % 360;
+            if (el.type === 'puerta') el.flipped = !el.flipped;
+          });
+          persist();
+          renderCanvas();
+        };
+        toolbar.querySelector('#wt-fp-multi-duplicate').onclick = () => {
+          const bounds = computeGroupBounds();
+          if (!bounds) return;
+          const groupW = bounds.width, groupH = bounds.height;
+          const spot = findFreeSpot(bounds.minX + groupW / 2, bounds.minY + groupH / 2, groupW, groupH);
+          const offsetX = spot.x - (bounds.minX + groupW / 2);
+          const offsetY = spot.y - (bounds.minY + groupH / 2);
+          const idMap = new Map();
+          const selectedEls = plan.elements.filter(e => multiSelectedIds.has(e.id));
+          selectedEls.forEach(el => idMap.set(el.id, 'fp_' + Math.random().toString(36).slice(2, 10)));
+          snapshotBefore();
+          const newIds = [];
+          selectedEls.forEach(el => {
+            const newEl = { ...el, id: idMap.get(el.id), x: el.x + offsetX, y: el.y + offsetY };
+            if (!FLOORPLAN_STRUCTURE_TYPES.includes(el.type) && el.type !== 'puerta') newEl.label = String(nextNumber(el.type));
+            if (newEl.parentId && idMap.has(newEl.parentId)) newEl.parentId = idMap.get(newEl.parentId);
+            else { delete newEl.parentId; delete newEl.seatSide; delete newEl.seatIndex; delete newEl.seatCount; }
+            plan.elements.push(newEl);
+            newIds.push(newEl.id);
+          });
+          multiSelectedIds = new Set(newIds);
+          persist();
+          renderCanvas();
+          renderToolbar();
+        };
         toolbar.querySelector('#wt-fp-multi-delete').onclick = () => {
           if (!confirm(`Remove these ${multiSelectedIds.size} pieces from the plan?`)) return;
           snapshotBefore();
@@ -2885,6 +2946,7 @@ const WorkTracker = (() => {
       if (!canvas.contains(e.target)) return;
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (activePointers.size === 2) {
+        e.preventDefault();
         const pts = [...activePointers.values()];
         const startDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
         const startBounds = computeGroupBounds();
@@ -2902,6 +2964,7 @@ const WorkTracker = (() => {
       if (!activePointers.has(e.pointerId)) return;
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pinchState && activePointers.size === 2) {
+        e.preventDefault();
         const pts = [...activePointers.values()];
         const currentDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
         const scaleFactor = Math.max(0.15, currentDist / pinchState.startDist);
