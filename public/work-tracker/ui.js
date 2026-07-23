@@ -2232,6 +2232,7 @@ const WorkTracker = (() => {
     let editMode = false;
     let controlsMinimized = false;
     let selectedId = null;
+    let multiSelectedIds = new Set();
     let undoStack = [];
     let redoStack = [];
 
@@ -2239,27 +2240,27 @@ const WorkTracker = (() => {
       <div style="position:fixed;inset:0;background:#141416;z-index:1">
         <div id="wt-fp-canvas" style="position:absolute;inset:0"></div>
 
-        <button class="wt-back" id="wt-back" style="position:absolute;top:14px;left:14px;width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">‹</button>
+        <button class="wt-back" id="wt-back" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:14px;width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">‹</button>
 
         ${allLocs.length > 1 ? `
-        <select id="wt-fp-loc" style="position:absolute;top:14px;left:58px;max-width:calc(100% - 130px);background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:8px 10px;z-index:2">
+        <select id="wt-fp-loc" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:58px;max-width:calc(100% - 130px);background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:8px 10px;z-index:2">
           ${allLocs.map(l => `<option value="${l.id}" ${l.id === locationId ? 'selected' : ''}>${l.name}</option>`).join('')}
         </select>` : ''}
 
-        <button id="wt-fp-mode" style="position:absolute;top:14px;right:14px;background:${editMode ? '#1C1C1E' : 'rgba(94,92,230,.9)'};border:${editMode ? '1px solid #38383A' : 'none'};border-radius:20px;color:${editMode ? '#98989D' : '#fff'};font-size:13px;font-weight:700;padding:9px 16px;cursor:pointer;transition:transform .1s,background .25s,color .25s;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? 'Done' : '✏️ Edit Plan'}</button>
+        <button id="wt-fp-mode" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;background:${editMode ? '#1C1C1E' : 'rgba(94,92,230,.9)'};border:${editMode ? '1px solid #38383A' : 'none'};border-radius:20px;color:${editMode ? '#98989D' : '#fff'};font-size:13px;font-weight:700;padding:9px 16px;cursor:pointer;transition:transform .1s,background .25s,color .25s;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? 'Done' : '✏️ Edit Plan'}</button>
 
-        <div id="wt-fp-history-row" style="position:absolute;top:60px;right:14px;left:14px;display:${editMode && !controlsMinimized ? 'flex' : 'none'};gap:8px;justify-content:flex-end;z-index:2">
+        <div id="wt-fp-history-row" style="position:absolute;top:calc(env(safe-area-inset-top) + 60px);right:14px;left:14px;display:${editMode && !controlsMinimized ? 'flex' : 'none'};gap:8px;justify-content:flex-end;z-index:2">
           <button id="wt-fp-undo" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↺</button>
           <button id="wt-fp-redo" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#636366;font-size:16px;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">↻</button>
           <button id="wt-fp-bulk" style="background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">+ Multiple</button>
           <button id="wt-fp-clear" style="background:rgba(255,69,58,.15);border:none;border-radius:10px;color:#FF453A;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Clear All</button>
         </div>
 
-        <div id="wt-fp-toolbar" style="position:absolute;bottom:${editMode && !controlsMinimized ? '90px' : '14px'};left:14px;right:14px;display:none;gap:8px;flex-wrap:wrap;z-index:2"></div>
+        <div id="wt-fp-toolbar" style="position:absolute;bottom:${editMode && !controlsMinimized ? 'calc(env(safe-area-inset-bottom) + 90px)' : 'calc(env(safe-area-inset-bottom) + 14px)'};left:14px;right:14px;display:none;gap:8px;flex-wrap:wrap;z-index:2"></div>
 
-        <div id="wt-fp-palette" style="position:absolute;bottom:14px;left:14px;right:60px;display:${editMode && !controlsMinimized ? 'flex' : 'none'};gap:8px;overflow-x:auto;z-index:2"></div>
+        <div id="wt-fp-palette" style="position:absolute;bottom:calc(env(safe-area-inset-bottom) + 14px);left:14px;right:60px;display:${editMode && !controlsMinimized ? 'flex' : 'none'};gap:8px;overflow-x:auto;z-index:2"></div>
 
-        <button id="wt-fp-minimize" style="position:absolute;bottom:14px;right:14px;width:38px;height:38px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer;display:${editMode ? 'flex' : 'none'};align-items:center;justify-content:center;transition:transform .1s;z-index:2" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${controlsMinimized ? '⊕' : '⊖'}</button>
+        <button id="wt-fp-minimize" style="position:absolute;bottom:calc(env(safe-area-inset-bottom) + 14px);right:14px;width:38px;height:38px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer;display:${editMode ? 'flex' : 'none'};align-items:center;justify-content:center;transition:transform .1s;z-index:2" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${controlsMinimized ? '⊕' : '⊖'}</button>
 
         ${allLocs.length === 0 ? '<div class="wt-empty" style="position:absolute;top:50%;left:14px;right:14px;transform:translateY(-50%);z-index:2"><strong>No locations yet</strong>Add a work location in Settings first.</div>' : ''}
       </div>
