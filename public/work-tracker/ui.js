@@ -2288,7 +2288,7 @@ const WorkTracker = (() => {
     let redoStack = [];
 
     w.innerHTML = `
-      <div style="position:fixed;inset:0;background:#141416;z-index:1;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">
+      <div style="position:fixed;inset:0;background:#141416;z-index:1;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-x pan-y">
         <div id="wt-fp-canvas" style="position:absolute;inset:0;touch-action:none"></div>
 
         <button class="wt-back" id="wt-back" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:14px;width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">‹</button>
@@ -2998,7 +2998,7 @@ const WorkTracker = (() => {
       const cxPx = (el.x / 100) * canvasW;
       const cyPx = (el.y / 100) * canvasH;
       const wPx = (el.w / 100) * canvasW;
-      const hPx = (el.h / 100) * canvasH;
+      const hPx = wPx * (el.h / el.w);
       const seatOffsetPx = 18;
       const rad = (el.rotation || 0) * Math.PI / 180;
       const positions = [];
@@ -3065,12 +3065,19 @@ const WorkTracker = (() => {
         if (!counts.length) return;
         snapshotBefore();
         counts.forEach(({ side, count }) => {
+          const wPx = (barEl.w / 100) * canvasRect.width;
+          const hPx = wPx * (barEl.h / barEl.w);
+          const availablePx = (side === 'top' || side === 'bottom') ? wPx : hPx;
+          const defaultSeatPx = (5.5 / 100) * canvasRect.width;
+          const maxFitPx = (availablePx / count) * 0.85;
+          const seatPx = Math.min(defaultSeatPx, maxFitPx);
+          const seatSize = Math.max(2, (seatPx / canvasRect.width) * 100);
           computeSeatPositions(canvasRect.width, canvasRect.height, barEl, side, count).forEach((pos, i) => {
             plan.elements.push({
               id: 'fp_' + Math.random().toString(36).slice(2, 10),
               type: 'silla', shape: 'circle',
               label: String(nextNumber('silla')),
-              x: pos.x, y: pos.y, w: 5.5, h: 5.5, rotation: 0,
+              x: pos.x, y: pos.y, w: seatSize, h: seatSize, rotation: 0,
               parentId: barEl.id, seatSide: side, seatIndex: i, seatCount: count
             });
           });
