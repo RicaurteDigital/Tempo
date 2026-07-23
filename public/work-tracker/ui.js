@@ -2269,6 +2269,8 @@ const WorkTracker = (() => {
     let controlsMinimized = false;
     let selectedId = null;
     let multiSelectedIds = new Set();
+    let activePointers = new Map();
+    let pinchState = null;
     let undoStack = [];
     let redoStack = [];
 
@@ -2447,7 +2449,8 @@ const WorkTracker = (() => {
           const span = document.createElement('span');
           span.textContent = el.label;
           span.style.cssText = `font-size:11px;font-weight:700;color:#fff;text-align:center;padding:2px;transform:rotate(${-(el.rotation||0)}deg)`;
-          if (editMode) {
+          const isInGroup = multiSelectedIds.size > 1 && multiSelectedIds.has(el.id);
+          if (editMode && !isInGroup) {
             span.style.cursor = 'text';
             span.onpointerdown = (e) => e.stopPropagation();
             span.onclick = (e) => {
@@ -2481,7 +2484,7 @@ const WorkTracker = (() => {
           groupBox.style.cssText = `position:absolute;left:${bounds.minX}%;top:${bounds.minY}%;width:${bounds.width}%;height:${bounds.height}%;border:1.5px dashed #FF9F0A;pointer-events:none;z-index:4`;
           canvas.appendChild(groupBox);
           const groupHandle = document.createElement('div');
-          groupHandle.style.cssText = `position:absolute;left:${bounds.maxX}%;top:${bounds.maxY}%;width:22px;height:22px;transform:translate(-50%,-50%);border-radius:50%;background:#FF9F0A;border:2px solid #fff;cursor:pointer;touch-action:none;z-index:5`;
+          groupHandle.style.cssText = `position:absolute;left:${bounds.maxX}%;top:${bounds.maxY}%;width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;background:#FF9F0A;border:2px solid #fff;cursor:pointer;touch-action:none;z-index:5`;
           canvas.appendChild(groupHandle);
           wireGroupResize(groupHandle);
         }
@@ -2550,7 +2553,9 @@ const WorkTracker = (() => {
             if (m) originals.set(id, { x: m.x, y: m.y });
           });
           let moved = false;
+          const startPointerId = e.pointerId;
           const onGroupMove = (ev) => {
+            if (ev.pointerId !== startPointerId || pinchState) return;
             moved = true;
             const dx = ((ev.clientX - startX) / canvasRect.width) * 100;
             const dy = ((ev.clientY - startY) / canvasRect.height) * 100;
@@ -2563,9 +2568,11 @@ const WorkTracker = (() => {
             });
             renderCanvas();
           };
-          const onGroupUp = () => {
+          const onGroupUp = (ev) => {
+            if (ev.pointerId !== startPointerId) return;
             document.removeEventListener('pointermove', onGroupMove);
             document.removeEventListener('pointerup', onGroupUp);
+            if (pinchState) return;
             if (moved) { persist(); renderCanvas(); }
             else { undoStack.pop(); }
             updateHistoryButtons();
@@ -2795,6 +2802,59 @@ const WorkTracker = (() => {
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
     };
+
+    document.addEventListener('pointerdown', (e) => {
+      if (!editMode || multiSelectedIds.size <= 1) return;
+      if (!canvas.contains(e.target)) return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 2) {
+        const pts = [...activePointers.values()];
+        const startDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        const startBounds = computeGroupBounds();
+        if (!startBounds || startDist < 1) return;
+        const originals = new Map();
+        multiSelectedIds.forEach(id => {
+          const el = plan.elements.find(x => x.id === id);
+          if (el) originals.set(id, { x: el.x, y: el.y, w: el.w, h: el.h });
+        });
+        snapshotBefore();
+        pinchState = { startDist, startBounds, originals };
+      }
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinchState && activePointers.size === 2) {
+        const pts = [...activePointers.values()];
+        const currentDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        const scaleFactor = Math.max(0.15, currentDist / pinchState.startDist);
+        multiSelectedIds.forEach(id => {
+          const el = plan.elements.find(x => x.id === id);
+          const orig = pinchState.originals.get(id);
+          if (!el || !orig) return;
+          const relX = orig.x - pinchState.startBounds.minX;
+          const relY = orig.y - pinchState.startBounds.minY;
+          el.x = pinchState.startBounds.minX + relX * scaleFactor;
+          el.y = pinchState.startBounds.minY + relY * scaleFactor;
+          el.w = Math.max(2, orig.w * scaleFactor);
+          el.h = Math.max(2, orig.h * scaleFactor);
+        });
+        renderCanvas();
+      }
+    });
+    const endPinchPointer = (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.delete(e.pointerId);
+      if (pinchState && activePointers.size < 2) {
+        persist();
+        renderCanvas();
+        renderToolbar();
+        pinchState = null;
+        updateHistoryButtons();
+      }
+    };
+    document.addEventListener('pointerup', endPinchPointer);
+    document.addEventListener('pointercancel', endPinchPointer);
 
     function computeSeatPositions(canvasW, canvasH, el, side, count) {
       const cxPx = (el.x / 100) * canvasW;
