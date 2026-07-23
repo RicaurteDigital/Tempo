@@ -2237,8 +2237,8 @@ const WorkTracker = (() => {
     let redoStack = [];
 
     w.innerHTML = `
-      <div style="position:fixed;inset:0;background:#141416;z-index:1">
-        <div id="wt-fp-canvas" style="position:absolute;inset:0"></div>
+      <div style="position:fixed;inset:0;background:#141416;z-index:1;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">
+        <div id="wt-fp-canvas" style="position:absolute;inset:0;touch-action:none"></div>
 
         <button class="wt-back" id="wt-back" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:14px;width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">‹</button>
 
@@ -5021,6 +5021,7 @@ const WorkTracker = (() => {
                   value="${ccTotal||''}" placeholder="0.00"
                   style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
                   onclick="this.select()" onfocus="this.select()">
+                <button id="wt-tp-cc-plus" type="button" style="background:none;border:none;border-left:1px solid #38383A;color:#5E5CE6;font-size:18px;font-weight:700;padding:0 14px;align-self:stretch;cursor:pointer">+</button>
               </div>
               <button id="wt-tp-reverse-cc" type="button" style="background:none;border:none;color:#5E5CE6;font-size:11px;padding:4px 0 0;cursor:pointer;text-align:left">I know my amount instead</button>
               <button id="wt-tp-split" type="button" style="background:none;border:none;color:#FF9F0A;font-size:11px;padding:2px 0 0;cursor:pointer;text-align:left">${saved.ccBreakdown && saved.ccBreakdown.length > 1 ? `✓ Split (${saved.ccBreakdown.length} amounts)` : '+ Split into multiple amounts'}</button>
@@ -5033,6 +5034,7 @@ const WorkTracker = (() => {
                   value="${cashTotal||''}" placeholder="0.00"
                   style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
                   onclick="this.select()" onfocus="this.select()">
+                <button id="wt-tp-cash-plus" type="button" style="background:none;border:none;border-left:1px solid #38383A;color:#5E5CE6;font-size:18px;font-weight:700;padding:0 14px;align-self:stretch;cursor:pointer">+</button>
               </div>
               <button id="wt-tp-reverse-cash" type="button" style="background:none;border:none;color:#5E5CE6;font-size:11px;padding:4px 0 0;cursor:pointer;text-align:left">I know my amount instead</button>
             </div>
@@ -5264,6 +5266,18 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-cash').addEventListener('blur', doRecalc);
       ov.querySelector('#wt-tp-cc').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
       ov.querySelector('#wt-tp-cash').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
+      ov.querySelector('#wt-tp-cc-plus').addEventListener('click', () => {
+        const input = ov.querySelector('#wt-tp-cc');
+        const trimmed = input.value.trim();
+        if (trimmed && !/[-+*/]$/.test(trimmed)) input.value = trimmed + '+';
+        input.focus();
+      });
+      ov.querySelector('#wt-tp-cash-plus').addEventListener('click', () => {
+        const input = ov.querySelector('#wt-tp-cash');
+        const trimmed = input.value.trim();
+        if (trimmed && !/[-+*/]$/.test(trimmed)) input.value = trimmed + '+';
+        input.focus();
+      });
 
       const __splitBtn = ov.querySelector('#wt-tp-split');
       if (__splitBtn) __splitBtn.onclick = () => _showSplitAmounts(saved, feePercent, () => { render(); });
