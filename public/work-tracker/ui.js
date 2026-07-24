@@ -2567,7 +2567,7 @@ const WorkTracker = (() => {
       const input = document.createElement('input');
       input.type = 'text';
       input.value = el.label;
-      input.style.cssText = 'width:90%;background:#000;border:1px solid #5E5CE6;border-radius:4px;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:1px;outline:none';
+      input.style.cssText = `width:90%;background:#000;border:1px solid #5E5CE6;border-radius:4px;color:#fff;font-size:11px;font-weight:700;text-align:center;padding:1px;outline:none;transform:rotate(${-(el.rotation||0)}deg)`;
       input.onclick = (e) => e.stopPropagation();
       box.replaceChild(input, span);
       input.focus();
