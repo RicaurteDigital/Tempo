@@ -2589,13 +2589,20 @@ const WorkTracker = (() => {
       const canvasRect = canvas.getBoundingClientRect();
       const attached = plan.elements.filter(e => e.parentId === barEl.id);
       const sides = [...new Set(attached.map(e => e.seatSide))];
+      const wPx = (barEl.w / 100) * canvasRect.width;
+      const hPx = wPx * (barEl.h / barEl.w);
+      const defaultSeatPx = (5.5 / 100) * canvasRect.width;
       sides.forEach(side => {
         const seatsOnSide = attached.filter(e => e.seatSide === side);
         if (!seatsOnSide.length) return;
         const count = seatsOnSide[0].seatCount;
+        const availablePx = (side === 'top' || side === 'bottom') ? wPx : hPx;
+        const maxFitPx = (availablePx / count) * 0.85;
+        const seatPx = Math.min(defaultSeatPx, maxFitPx);
+        const seatSize = Math.max(2, (seatPx / canvasRect.width) * 100);
         const positions = computeSeatPositions(canvasRect.width, canvasRect.height, barEl, side, count);
         seatsOnSide.forEach(seat => {
-          if (positions[seat.seatIndex]) { seat.x = positions[seat.seatIndex].x; seat.y = positions[seat.seatIndex].y; }
+          if (positions[seat.seatIndex]) { seat.x = positions[seat.seatIndex].x; seat.y = positions[seat.seatIndex].y; seat.w = seatSize; seat.h = seatSize; }
         });
       });
     }
