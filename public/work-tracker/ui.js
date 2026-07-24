@@ -2587,7 +2587,7 @@ const WorkTracker = (() => {
     // resizing the bar carries its seats along instead of leaving them stranded.
     function repositionAttachedSeats(barEl) {
       const canvasRect = canvas.getBoundingClientRect();
-      const attached = plan.elements.filter(e => e.parentId === barEl.id);
+      const attached = plan.elements.filter(e => e.parentId === barEl.id && !e.manuallyAdjusted);
       const sides = [...new Set(attached.map(e => e.seatSide))];
       const wPx = (barEl.w / 100) * canvasRect.width;
       const hPx = wPx * (barEl.h / barEl.w);
@@ -2671,10 +2671,13 @@ const WorkTracker = (() => {
           if (newMapBtn) newMapBtn.classList.add('wt-glow');
         }
         snapshotBefore();
-        if (el.type === 'silla' && el.parentId) delete el.parentId;
+        if (el.type === 'silla' && el.parentId) el.manuallyAdjusted = true;
         const canvasRect = canvas.getBoundingClientRect();
         const startX = e.clientX, startY = e.clientY;
         const startElX = el.x, startElY = el.y;
+        const manualSeatStarts = el.type === 'barra'
+          ? new Map(plan.elements.filter(e => e.parentId === el.id && e.manuallyAdjusted).map(e => [e.id, { x: e.x, y: e.y }]))
+          : null;
         let moved = false;
         const guideV = document.createElement('div');
         guideV.style.cssText = 'position:absolute;top:0;bottom:0;width:1px;background:#FF9F0A;display:none;pointer-events:none;z-index:5';
@@ -2694,6 +2697,13 @@ const WorkTracker = (() => {
           if (snapY !== null) { el.y = snapY; guideH.style.top = snapY + '%'; guideH.style.display = 'block'; }
           else { guideH.style.display = 'none'; }
           if (el.type === 'barra') {
+            const actualDx = el.x - startElX, actualDy = el.y - startElY;
+            if (manualSeatStarts) {
+              manualSeatStarts.forEach((start, seatId) => {
+                const seat = plan.elements.find(e => e.id === seatId);
+                if (seat) { seat.x = Math.max(0, Math.min(100, start.x + actualDx)); seat.y = Math.max(0, Math.min(100, start.y + actualDy)); }
+              });
+            }
             repositionAttachedSeats(el);
             renderCanvas();
             canvas.appendChild(guideV);
@@ -2722,7 +2732,7 @@ const WorkTracker = (() => {
         e.preventDefault();
         e.stopPropagation();
         snapshotBefore();
-        if (el.type === 'silla' && el.parentId) delete el.parentId;
+        if (el.type === 'silla' && el.parentId) el.manuallyAdjusted = true;
         const canvasRect = canvas.getBoundingClientRect();
         const startX = e.clientX, startY = e.clientY;
         const startW = el.w, startH = el.h;
@@ -2857,7 +2867,7 @@ const WorkTracker = (() => {
       `;
       toolbar.querySelector('#wt-fp-rotate').onclick = () => {
         snapshotBefore();
-        if (el.type === 'silla' && el.parentId) delete el.parentId;
+        if (el.type === 'silla' && el.parentId) el.manuallyAdjusted = true;
         el.rotation = ((el.rotation || 0) + 45) % 360;
         persist();
         renderCanvas();
