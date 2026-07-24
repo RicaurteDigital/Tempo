@@ -2715,6 +2715,7 @@ const WorkTracker = (() => {
         e.preventDefault();
         e.stopPropagation();
         snapshotBefore();
+        if (el.type === 'silla' && el.parentId) delete el.parentId;
         const canvasRect = canvas.getBoundingClientRect();
         const startX = e.clientX, startY = e.clientY;
         const startW = el.w, startH = el.h;
@@ -2849,6 +2850,7 @@ const WorkTracker = (() => {
       `;
       toolbar.querySelector('#wt-fp-rotate').onclick = () => {
         snapshotBefore();
+        if (el.type === 'silla' && el.parentId) delete el.parentId;
         el.rotation = ((el.rotation || 0) + 45) % 360;
         persist();
         renderCanvas();
