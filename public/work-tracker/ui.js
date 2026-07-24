@@ -2200,8 +2200,11 @@ const WorkTracker = (() => {
     { type: 'espacio', shape: 'rect', label: 'Empty space', numbered: false, w: 14, h: 10 },
     { type: 'escaleras', shape: 'rect', label: 'Stairs', numbered: false, w: 10, h: 14 },
     { type: 'puerta', shape: 'rect', label: 'Door', numbered: false, w: 8, h: 8 },
+    { type: 'marco_cuadrado', shape: 'square', label: 'Square outline', numbered: false, w: 12, h: 12 },
+    { type: 'marco_circulo', shape: 'circle', label: 'Circle outline', numbered: false, w: 12, h: 12 },
+    { type: 'texto', shape: 'rect', label: 'Text', numbered: false, w: 14, h: 5 },
   ];
-  const FLOORPLAN_STRUCTURE_TYPES = ['columna', 'pared', 'espacio', 'escaleras'];
+  const FLOORPLAN_STRUCTURE_TYPES = ['columna', 'pared', 'espacio', 'escaleras', 'marco_cuadrado', 'marco_circulo'];
 
   const FLOORPLAN_SAMPLE = [
     { id: 'ex_wall_top', type: 'pared', shape: 'rect', label: 'Wall', x: 50, y: 6, w: 88, h: 2, rotation: 0 },
@@ -2242,10 +2245,11 @@ const WorkTracker = (() => {
     // ready to shift color once service state is wired up. Doors render custom SVG elsewhere
     // and never reach this function.
     let bg = 'rgba(255,255,255,0.07)';
-    if (el.type === 'espacio') bg = 'repeating-linear-gradient(45deg, #48484A 0px, #48484A 1.5px, transparent 1.5px, transparent 9px)';
+    let border = isStructure ? '1px solid #48484A' : '1.5px solid rgba(255,255,255,0.18)';
+    if (el.type === 'texto') { bg = 'none'; border = 'none'; }
+    else if (el.type === 'espacio') bg = 'repeating-linear-gradient(45deg, #48484A 0px, #48484A 1.5px, transparent 1.5px, transparent 9px)';
     else if (el.type === 'escaleras') bg = 'repeating-linear-gradient(0deg, #48484A 0px, #48484A 1.5px, transparent 1.5px, transparent 8px)';
     else if (isStructure) bg = '#3A3A3C';
-    const border = isStructure ? '1px solid #48484A' : '1.5px solid rgba(255,255,255,0.18)';
     const radius = el.shape === 'circle' ? '50%' : (el.shape === 'square' || el.shape === 'rect') ? '6px' : '2px';
     return `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;aspect-ratio:${el.w}/${el.h};transform:translate(-50%,-50%) rotate(${el.rotation||0}deg);background:${bg};border:${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none`;
   }
