@@ -14,6 +14,15 @@ const WorkTracker = (() => {
   let _settingsOpenSection = 'profile';
   let _breakStart = localStorage.getItem('wt_break_start') || null;
 
+  // Public-facing builds only offer the Restaurant profile — the other profiles (office,
+  // freelance, construction, custom) stay fully intact in code and data, just hidden from the
+  // picker, so the product stays focused without losing anything. Add ?allprofiles=1 to the URL
+  // (localhost or the live site) to see and pick all of them again, e.g. for testing.
+  function _visibleWorkProfiles() {
+    const devMode = new URLSearchParams(window.location.search).get('allprofiles') === '1';
+    return devMode ? WORK_PROFILES : { restaurant: WORK_PROFILES.restaurant };
+  }
+
   function mount(el) {
     _root = el;
     _date = _today();
@@ -3405,7 +3414,7 @@ const WorkTracker = (() => {
           <label>Work Profile</label>
           <select class="wt-select-sm ${!settings.workProfile ? 'wt-glow' : ''}" id="wt-work-profile-top">
             <option value="" ${!settings.workProfile ? 'selected' : ''}>Not set</option>
-            ${Object.entries(WORK_PROFILES).map(([key, p]) =>
+            ${Object.entries(_visibleWorkProfiles()).map(([key, p]) =>
               `<option value="${key}" ${settings.workProfile===key?'selected':''}>${p.label}</option>`
             ).join('')}
           </select>
@@ -6498,7 +6507,7 @@ const WorkTracker = (() => {
         <div class="wt-modal-title">Edit Location</div>
         <label class="wt-modal-label">Work Profile</label>
         <select class="wt-input" id="wt-el-profile">
-          ${Object.entries(WORK_PROFILES).map(([k,v]) =>
+          ${Object.entries(_visibleWorkProfiles()).map(([k,v]) =>
             `<option value="${k}" ${(loc.workProfile||'restaurant')===k?'selected':''}>${v.label}</option>`
           ).join('')}
         </select>
