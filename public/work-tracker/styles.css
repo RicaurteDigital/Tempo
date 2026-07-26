@@ -17,6 +17,26 @@
   --wt-pill-green-text: #30D158;
   --wt-stat-card-bg: rgba(94,92,230,.12);
   --wt-stat-card-border: 1px solid rgba(94,92,230,.35);
+  --wt-icon-btn-bg: rgba(255,255,255,0.08);
+  --wt-icon-btn-bg-active: rgba(255,255,255,0.15);
+  --wt-icon-btn-border: rgba(255,255,255,0.1);
+  --wt-hdr-btn-bg: #1C1C1E;
+  --wt-hdr-btn-text: #98989D;
+  --wt-surface-secondary: #2C2C2E;
+  --wt-surface-secondary-active: #38383A;
+  --wt-surface-secondary-border: #3A3A3C;
+  --wt-text-on-secondary: #fff;
+  --wt-text-on-secondary-muted: #98989D;
+  --wt-empty-bg: #1C1C1E;
+  --wt-empty-text: #636366;
+  --wt-empty-strong-text: #98989D;
+  --wt-hero-bg: linear-gradient(160deg, rgba(26,26,46,0.85) 0%, rgba(13,13,26,0.9) 100%);
+  --wt-hero-break-bg: linear-gradient(160deg, #2a1500 0%, #1a0d00 100%);
+  --wt-hero-timer-color: #64D2FF;
+  --wt-pastweek-bg: rgba(100,210,255,.12);
+  --wt-pastweek-border: rgba(100,210,255,.35);
+  --wt-pastweek-text: #64D2FF;
+  --wt-chip-bg: rgba(28,28,30,0.8);
 }
 body.wt-light {
   --wt-bg-page: #F5F5F7;
@@ -35,6 +55,26 @@ body.wt-light {
   --wt-pill-green-text: #1D8348;
   --wt-stat-card-bg: #fff;
   --wt-stat-card-border: none;
+  --wt-icon-btn-bg: rgba(0,0,0,0.05);
+  --wt-icon-btn-bg-active: rgba(0,0,0,0.09);
+  --wt-icon-btn-border: rgba(0,0,0,0.08);
+  --wt-hdr-btn-bg: #EBEBED;
+  --wt-hdr-btn-text: #6C6C70;
+  --wt-surface-secondary: #fff;
+  --wt-surface-secondary-active: #F0F0F2;
+  --wt-surface-secondary-border: #E5E5EA;
+  --wt-text-on-secondary: #3A3A3C;
+  --wt-text-on-secondary-muted: #6C6C70;
+  --wt-empty-bg: #fff;
+  --wt-empty-text: #8A8A8E;
+  --wt-empty-strong-text: #3A3A3C;
+  --wt-hero-bg: linear-gradient(160deg, #F3F2FE 0%, #EBE9FC 100%);
+  --wt-hero-break-bg: linear-gradient(160deg, #FFF4E5 0%, #FFECD1 100%);
+  --wt-hero-timer-color: #0A79B8;
+  --wt-pastweek-bg: #fff;
+  --wt-pastweek-border: #B8DFF5;
+  --wt-pastweek-text: #0A79B8;
+  --wt-chip-bg: #F0F0F2;
 }
 
 .wt-screen {
@@ -61,14 +101,14 @@ body.wt-light {
 }
 .wt-hdr-left p {
   font-size: 13px;
-  color: #636366;
+  color: var(--wt-text-tertiary);
   margin-top: 4px;
   font-weight: 500;
 }
 .wt-hdr-btn {
-  background: #1C1C1E;
+  background: var(--wt-hdr-btn-bg);
   border: none;
-  color: #98989D;
+  color: var(--wt-hdr-btn-text);
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -94,7 +134,7 @@ body.wt-light {
 
 /* ── ACTIVE SESSION HERO ─────────────────────────────── */
 .wt-hero {
-  background: linear-gradient(160deg, rgba(26,26,46,0.85) 0%, rgba(13,13,26,0.9) 100%);
+  background: var(--wt-hero-bg);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   border: 1px solid rgba(94,92,230,0.25);
@@ -119,7 +159,7 @@ body.wt-light {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
-  color: #636366;
+  color: var(--wt-text-tertiary);
   text-transform: uppercase;
   margin-bottom: 6px;
 }
@@ -131,7 +171,7 @@ body.wt-light {
 }
 .wt-hero-shift {
   font-size: 13px;
-  color: #98989D;
+  color: var(--wt-text-secondary);
   font-weight: 500;
   margin-bottom: 18px;
 }
@@ -141,12 +181,12 @@ body.wt-light {
   font-variant-numeric: tabular-nums;
   letter-spacing: -2px;
   line-height: 1;
-  color: #64D2FF;
+  color: var(--wt-hero-timer-color);
   margin-bottom: 6px;
 }
 .wt-hero-since {
   font-size: 12px;
-  color: #636366;
+  color: var(--wt-text-tertiary);
   margin-bottom: 18px;
 }
 .wt-hero-actions {
@@ -407,13 +447,14 @@ body.wt-light {
 .wt-empty {
   text-align: center;
   padding: 40px 20px;
-  color: #636366;
+  color: var(--wt-empty-text);
   font-size: 14px;
   line-height: 1.6;
-  background: #1C1C1E;
+  background: var(--wt-empty-bg);
+  box-shadow: var(--wt-shadow-card);
   border-radius: 20px;
 }
-.wt-empty strong { display: block; font-size: 17px; font-weight: 700; color: #98989D; margin-bottom: 6px; }
+.wt-empty strong { display: block; font-size: 17px; font-weight: 700; color: var(--wt-empty-strong-text); margin-bottom: 6px; }
 
 /* ── BOTTOM ACTIONS ──────────────────────────────────── */
 .wt-actions {
@@ -433,8 +474,8 @@ body.wt-light {
 }
 .wt-btn:active { transform: scale(.97); }
 .wt-btn-primary { background: #5E5CE6; color: #fff; }
-.wt-btn-secondary { background: #2C2C2E; color: #fff; border: 1px solid #3A3A3C; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
-.wt-btn-secondary:active { background: #38383A; }
+.wt-btn-secondary { background: var(--wt-surface-secondary); color: var(--wt-text-on-secondary); border: 1px solid var(--wt-surface-secondary-border); box-shadow: var(--wt-shadow-card); }
+.wt-btn-secondary:active { background: var(--wt-surface-secondary-active); }
 
 /* ── TAP FEEDBACK (reusable) ─────────────────────────────
    Two shared press states for one-off tappable elements that don't warrant their own
@@ -731,12 +772,12 @@ body.wt-light {
 .wt-sum-row strong { font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .wt-hero-break {
-  background: linear-gradient(160deg, #2a1500 0%, #1a0d00 100%);
+  background: var(--wt-hero-break-bg);
   border-color: #FF9500;
 }
 .wt-timer-break { color: #FF9500; }
 .wt-breakstart-btn {
-  background: #2C2C2E; border: none; color: #fff;
+  background: var(--wt-surface-secondary); border: none; color: var(--wt-text-on-secondary);
   font-size: 14px; font-weight: 700; border-radius: 16px;
   padding: 15px 18px; cursor: pointer;
 }
@@ -749,7 +790,7 @@ body.wt-light {
 .wt-hero-accumulated {
   font-size: 13px;
   font-weight: 700;
-  color: #64D2FF;
+  color: var(--wt-hero-timer-color);
   margin-bottom: 4px;
   font-variant-numeric: tabular-nums;
 }
