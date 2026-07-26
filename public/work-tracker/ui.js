@@ -4820,9 +4820,70 @@ const WorkTracker = (() => {
     const shift = WTDb.getShifts().find(s => s.id === shiftId);
     if (!shift) return;
     if (shift.entries.some(e => !e.clockOut)) { alert('Clock out the current period first.'); return; }
-    shift.entries.push({ id: generateId(), clockIn: new Date().toISOString(), clockOut: null, breakMinutes: 0 });
-    WTDb.saveShift(shift);
-    _go('home');
+
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    document.body.appendChild(ov);
+    let mode = 'times';
+
+    function defaultDateTimeLocal(hourOffset) {
+      const d = new Date(shift.date + 'T00:00:00');
+      d.setHours(hourOffset, 0, 0, 0);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function paint() {
+      ov.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title">Add Missing Period</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button id="wt-ap-mode-times" style="flex:1;background:${mode==='times'?'rgba(94,92,230,.15)':'#1C1C1E'};border:1px solid ${mode==='times'?'#5E5CE6':'#38383A'};border-radius:10px;color:${mode==='times'?'#5E5CE6':'#98989D'};font-size:13px;font-weight:700;padding:10px;cursor:pointer">I know the times</button>
+            <button id="wt-ap-mode-hours" style="flex:1;background:${mode==='hours'?'rgba(94,92,230,.15)':'#1C1C1E'};border:1px solid ${mode==='hours'?'#5E5CE6':'#38383A'};border-radius:10px;color:${mode==='hours'?'#5E5CE6':'#98989D'};font-size:13px;font-weight:700;padding:10px;cursor:pointer">Just total hours</button>
+          </div>
+          ${mode === 'times' ? `
+            <label class="wt-modal-label">Clock in</label>
+            <input id="wt-ap-in" class="wt-input" type="datetime-local" value="${defaultDateTimeLocal(9)}">
+            <label class="wt-modal-label" style="margin-top:10px">Clock out</label>
+            <input id="wt-ap-out" class="wt-input" type="datetime-local" value="${defaultDateTimeLocal(17)}">
+            <div style="font-size:12px;color:#636366;margin-top:10px;line-height:1.5">Once saved, you'll see "📷 In proof" and "📷 Out proof" buttons on this period to attach the photos you already took.</div>
+          ` : `
+            <label class="wt-modal-label">Hours worked</label>
+            <input id="wt-ap-hours" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 7.5">
+          `}
+          <div class="wt-modal-actions">
+            <button class="wt-btn wt-btn-secondary" id="wt-ap-cancel">Cancel</button>
+            <button class="wt-btn wt-btn-primary" id="wt-ap-save">Save</button>
+          </div>
+        </div>`;
+      ov.querySelector('#wt-ap-mode-times').onclick = () => { mode = 'times'; paint(); };
+      ov.querySelector('#wt-ap-mode-hours').onclick = () => { mode = 'hours'; paint(); };
+      ov.querySelector('#wt-ap-cancel').onclick = () => ov.remove();
+      ov.querySelector('#wt-ap-save').onclick = () => {
+        if (mode === 'hours') {
+          const hoursVal = ov.querySelector('#wt-ap-hours').value.trim();
+          const hours = parseFloat(hoursVal.replace(',', '.'));
+          if (!hoursVal || isNaN(hours) || hours <= 0) { alert('Enter a valid number of hours.'); return; }
+          const clockIn = new Date(shift.date + 'T12:00:00');
+          const clockOut = new Date(clockIn.getTime() + hours * 3600000);
+          shift.entries.push({ id: generateId(), clockIn: clockIn.toISOString(), clockOut: clockOut.toISOString(), breakMinutes: 0 });
+        } else {
+          const inVal = ov.querySelector('#wt-ap-in').value;
+          const outVal = ov.querySelector('#wt-ap-out').value;
+          if (!inVal || !outVal) { alert('Enter both clock in and clock out times.'); return; }
+          const clockIn = new Date(inVal);
+          const clockOut = new Date(outVal);
+          if (clockOut <= clockIn) { alert('Clock out must be after clock in.'); return; }
+          shift.entries.push({ id: generateId(), clockIn: clockIn.toISOString(), clockOut: clockOut.toISOString(), breakMinutes: 0 });
+        }
+        WTDb.saveShift(shift);
+        ov.remove();
+        _go('home');
+      };
+    }
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    paint();
   }
 
   function _delEntry(shiftId, entryId) {
