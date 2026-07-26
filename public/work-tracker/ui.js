@@ -1847,9 +1847,9 @@ const WorkTracker = (() => {
   }
 
   function _Stats() {
-    const openCardIds = new Set(); // which cards are expanded — survives pill changes (loadRange),
-                                    // resets fresh only when _Stats() itself re-runs (leaving and
-                                    // coming back), matching "collapse on page change, not on filter change"
+    const closedCardIds = new Set(); // which cards the user has explicitly collapsed — everything
+                                      // defaults open; survives pill changes (loadRange), resets
+                                      // fresh only when _Stats() itself re-runs (leaving and coming back)
     const w = document.createElement('div');
     w.className = 'wt-screen';
     const years = StatsRules.activeYears();
@@ -1941,7 +1941,7 @@ const WorkTracker = (() => {
       rangeLabelEl.textContent = `${label} · ${fmtStatDate(start)} → ${fmtStatDate(end)}`;
       const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
       const stats = StatsRules.computeAllStats(start, end, currentProfile, selectedLocationId || null);
-      resultsEl.innerHTML = _renderStatsResults(stats, openCardIds, selectedLocationId || null);
+      resultsEl.innerHTML = _renderStatsResults(stats, closedCardIds, selectedLocationId || null);
       resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
         el.onclick = () => _go('day', { date: el.dataset.chartDate });
       });
@@ -1974,7 +1974,7 @@ const WorkTracker = (() => {
         const open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
         chev.textContent = open ? '▼' : '▲';
-        if (open) openCardIds.delete(id); else openCardIds.add(id);
+        if (open) closedCardIds.add(id); else closedCardIds.delete(id);
       };
     }
 
@@ -2051,7 +2051,7 @@ const WorkTracker = (() => {
     </svg>`;
   }
 
-  function _renderStatsResults(stats, openCardIds, locationId) {
+  function _renderStatsResults(stats, closedCardIds, locationId) {
     if (!stats.perLocation.length) {
       return '<div class="wt-empty"><strong>No data</strong>No shifts or payments in this period.</div>';
     }
@@ -2060,7 +2060,7 @@ const WorkTracker = (() => {
     const statsProfile = WTDb.getSettings().workProfile || 'restaurant';
 
     const ts = StatsRules.timeSeries(stats.startDate, stats.endDate, statsProfile, locationId);
-    const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points), openCardIds.has('chart'));
+    const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points), !closedCardIds.has('chart'));
 
     const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile, locationId)
       .sort((a, b) => b.avg - a.avg);
@@ -2072,7 +2072,7 @@ const WorkTracker = (() => {
             dataAttrs: { 'bar-target': 'dow', 'bar-label': d.day, 'bar-wage': d.avgWage.toFixed(2), 'bar-cc': d.avgCC.toFixed(2), 'bar-cash': d.avgCash.toFixed(2) }
           })), v => WTRules.fmtMoney(v))}
           <div data-bar-msg="dow"></div>
-        `, openCardIds.has('dow'))
+        `, !closedCardIds.has('dow'))
       : '';
 
     const monthData = StatsRules.monthPattern(stats.startDate, stats.endDate, statsProfile, locationId)
@@ -2086,7 +2086,7 @@ const WorkTracker = (() => {
             dataAttrs: { 'bar-target': 'month', 'bar-label': m.month, 'bar-wage': m.avgWage.toFixed(2), 'bar-cc': m.avgCC.toFixed(2), 'bar-cash': m.avgCash.toFixed(2) }
           })), v => WTRules.fmtMoney(v))}
           <div data-bar-msg="month"></div>
-        `, openCardIds.has('month'))
+        `, !closedCardIds.has('month'))
       : '';
 
     const daysOff = StatsRules.daysOffInRange(stats.startDate, stats.endDate, statsProfile);
@@ -2094,7 +2094,7 @@ const WorkTracker = (() => {
     const daysOffCard = daysOff.total > 0 ? _collapsibleCard('daysoff', 'Days off', `
       ${_statRow('Total', String(daysOff.total))}
       ${Object.entries(daysOff.byType).map(([type, count]) => _statRow(dayOffLabels[type] || type, String(count))).join('')}
-    `, openCardIds.has('daysoff')) : '';
+    `, !closedCardIds.has('daysoff')) : '';
 
     const contextResult = StatsRules.computeShiftContext(stats.startDate, stats.endDate, statsProfile, locationId);
     const contextInsights = contextResult.insights;
@@ -2133,7 +2133,7 @@ const WorkTracker = (() => {
         ${p.weekendCount ? _statRow(`Weekend (${p.weekendCount} shift${p.weekendCount !== 1 ? 's' : ''})`, WTRules.fmtHours(p.weekendAvg)) : ''}
       `).join('')}
     ` : '';
-    const contextCard = _collapsibleCard('context', 'What affects your earnings', contextBody, openCardIds.has('context'));
+    const contextCard = _collapsibleCard('context', 'What affects your earnings', contextBody, !closedCardIds.has('context'));
 
     const summaryCard = _collapsibleCard('summary', 'Summary', `
       ${_statRow('Hours worked', WTRules.fmtHours(t.hours))}
@@ -2143,24 +2143,24 @@ const WorkTracker = (() => {
       ${_statRow('Expected total (gross)', WTRules.fmtMoney(t.expectedGross), '#fff')}
       ${t.receivedGross !== null ? _statRow('Received (gross)', WTRules.fmtMoney(t.receivedGross), '#64D2FF') : ''}
       ${t.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(t.receivedNet), '#64D2FF') : ''}
-    `, openCardIds.has('summary'));
+    `, !closedCardIds.has('summary'));
 
     const activityCard = _collapsibleCard('activity', 'Activity', `
       ${_statRow('Days worked', `${t.daysWorked} of ${t.totalDaysInRange}`)}
       ${_statRow('Avg hours per worked day', WTRules.fmtHours(t.avgHoursPerWorkedDay))}
       ${_statRow('Shifts tracked', String(t.shiftsCount))}
-    `, openCardIds.has('activity'));
+    `, !closedCardIds.has('activity'));
 
     const positionsCard = stats.positionBreakdown.length > 0
-      ? _collapsibleCard('positions', 'Positions worked', stats.positionBreakdown.map(p => _statRow(p.position, `${p.days} day${p.days !== 1 ? 's' : ''}`)).join(''), openCardIds.has('positions'))
+      ? _collapsibleCard('positions', 'Positions worked', stats.positionBreakdown.map(p => _statRow(p.position, `${p.days} day${p.days !== 1 ? 's' : ''}`)).join(''), !closedCardIds.has('positions'))
       : '';
 
     const hoursChart = stats.perLocation.length > 1
-      ? _collapsibleCard('hourschart', 'Hours by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v)), openCardIds.has('hourschart'))
+      ? _collapsibleCard('hourschart', 'Hours by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v)), !closedCardIds.has('hourschart'))
       : '';
 
     const incomeChart = stats.perLocation.length > 1
-      ? _collapsibleCard('incomechart', 'Expected income by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)), openCardIds.has('incomechart'))
+      ? _collapsibleCard('incomechart', 'Expected income by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)), !closedCardIds.has('incomechart'))
       : '';
 
     const locCards = stats.perLocation.map((l, i) => _collapsibleCard(`loc-${i}`, `
@@ -2176,7 +2176,7 @@ const WorkTracker = (() => {
         ${l.receivedNet !== null ? _statRow('Received (net)', WTRules.fmtMoney(l.receivedNet), '#64D2FF') : ''}
         ${l.realTaxRate !== null ? _statRow('Avg. real tax rate', l.realTaxRate.toFixed(1) + '%', '#FF9F0A') : ''}
         ${_statRow('Shifts tracked', String(l.shiftsCount))}
-      `, openCardIds.has(`loc-${i}`))).join('');
+      `, !closedCardIds.has(`loc-${i}`))).join('');
 
     // Always the fixed 90-day lookback, independent of whichever pill is selected above —
     // sustainability is about your current real pace, not the specific range you're browsing.
@@ -2184,7 +2184,7 @@ const WorkTracker = (() => {
     const sustainCard = sustainResult.hasData ? _collapsibleCard('sustain', 'Sustainability', `
       ${_sustainabilityResultsHtml(sustainResult)}
       <div id="wt-stats-sustain-link" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">Edit expenses in Settings →</div>
-    `, openCardIds.has('sustain')) : '';
+    `, !closedCardIds.has('sustain')) : '';
 
     return headlineCard + lineChartCard + dowCard + monthCard + daysOffCard + contextCard + summaryCard + activityCard + positionsCard + hoursChart + incomeChart + locCards + sustainCard;
   }
