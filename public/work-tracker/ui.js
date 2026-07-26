@@ -140,6 +140,9 @@ const WorkTracker = (() => {
     const selectedDate = new Date(today + 'T12:00:00');
     const ws = getWeekStart(selectedDate);
     const settings = WTDb.getSettings();
+    const _greetHour = new Date().getHours();
+    const _greetTime = _greetHour < 12 ? 'Good morning' : _greetHour < 18 ? 'Good afternoon' : 'Good evening';
+    const greeting = settings.userName ? `${_greetTime}, ${settings.userName}` : _greetTime;
     const currentProfile = settings.workProfile || 'restaurant';
     const weekShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === currentProfile);
     const todayShifts = WTDb.getShiftsForDate(today).filter(s => (s.workProfile || 'restaurant') === currentProfile);
@@ -168,7 +171,8 @@ const WorkTracker = (() => {
     w.innerHTML = `
       <div class="wt-hdr">
         <div class="wt-hdr-left">
-          <h2>Work Tracker</h2>
+          <div style="font-size:11px;color:#8E8E93;font-weight:700;letter-spacing:.5px;margin-bottom:2px">TEMPO</div>
+          <h2>${greeting}</h2>
           <p>${formatWeekLabel(ws)}</p>
         </div>
         <button class="wt-hdr-btn" id="wt-settings-btn">⚙</button>
@@ -179,6 +183,7 @@ const WorkTracker = (() => {
         <div style="flex:1;text-align:center">
           <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1">${dayLabel}</div>
           <div style="font-size:13px;color:#98989D;margin-top:2px">${dateLabel}${isToday ? ' · Today' : ''}</div>
+          ${!isToday ? '<button id="wt-jump-today" style="background:rgba(94,92,230,.15);border:none;border-radius:12px;color:#5E5CE6;font-size:12px;font-weight:700;padding:6px 14px;margin-top:8px;cursor:pointer">↩ Back to Today</button>' : ''}
         </div>
         <button id="wt-nav-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${isToday ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${isToday ? 'opacity:0.3;pointer-events:none' : ''}"
           onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">›</button>
@@ -317,19 +322,25 @@ const WorkTracker = (() => {
     // amounts on top (none of these are net; fees/splits are handled in the tip pool itself).
     const weekCCCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
     const weekCashCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cash, 0);
-    const grossParts = [`H ${WTRules.fmtMoney(pay.total)}`];
-    if (weekCCCut > 0) grossParts.push(`<span style="color:#FF9F0A">CC ${WTRules.fmtMoney(weekCCCut)}</span>`);
-    if (weekCashCut > 0) grossParts.push(`<span style="color:#30D158">Cash ${WTRules.fmtMoney(weekCashCut)}</span>`);
-    const grossLine = grossParts.join(' <span style="color:#3a3a3c">|</span> ');
+    const weekTotal = pay.total + weekCCCut + weekCashCut;
     stats.innerHTML = `
       <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box;${weekCardStyle}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
-            <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
-            <div class="wt-stat-value">${WTRules.fmtHours(pay.totalHours)}</div>
-            <div style="font-size:11px;color:#636366;text-transform:uppercase;letter-spacing:.4px;margin-top:6px">Gross</div>
-            <div style="font-size:13px;font-weight:700;color:#fff;margin-top:2px">${grossLine}</div>
-            ${pay.isOvertime ? `<div class="wt-ot-tag">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
+        <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
+        <div style="font-size:26px;font-weight:800;color:#fff;margin-top:2px">${WTRules.fmtMoney(weekTotal)}</div>
+        <div style="font-size:12px;color:#98989D;margin-top:3px;margin-bottom:12px">${WTRules.fmtHours(pay.totalHours)} <span style="color:#636366">· Gross</span></div>
+        ${pay.isOvertime ? `<div class="wt-ot-tag" style="margin-bottom:10px">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
+        <div style="display:flex;gap:8px">
+          <div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
+            <div style="font-size:14px;font-weight:800;color:#fff">${WTRules.fmtMoney(pay.total)}</div>
+            <div style="font-size:10px;color:#98989D;margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Hourly</div>
+          </div>
+          <div style="flex:1;background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.25);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
+            <div style="font-size:14px;font-weight:800;color:#FF9F0A">${WTRules.fmtMoney(weekCCCut)}</div>
+            <div style="font-size:10px;color:#98989D;margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Card tips</div>
+          </div>
+          <div style="flex:1;background:rgba(48,209,88,.1);border:1px solid rgba(48,209,88,.25);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
+            <div style="font-size:14px;font-weight:800;color:#30D158">${WTRules.fmtMoney(weekCashCut)}</div>
+            <div style="font-size:10px;color:#98989D;margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Cash tips</div>
           </div>
         </div>
       </div>
@@ -540,7 +551,9 @@ const WorkTracker = (() => {
     w.querySelector('#wt-nav-prev').onclick = () => _navDay(-1);
     const nextBtn = w.querySelector('#wt-nav-next');
     if (nextBtn && !isToday) nextBtn.onclick = () => _navDay(1);
-    w.querySelector('#wt-pay-card').onclick = () => _go('week');
+    const jumpTodayBtn = w.querySelector('#wt-jump-today');
+    if (jumpTodayBtn) jumpTodayBtn.onclick = () => { _date = realToday; _go('home'); };
+    w.querySelector('#wt-pay-card').onclick = () => { _weekFocusDate = today; _go('week'); };
     w.querySelectorAll('[data-loc-payday]').forEach(el => {
       el.onclick = e => {
         e.stopPropagation();
@@ -3404,6 +3417,12 @@ const WorkTracker = (() => {
         <div style="font-size:18px;font-weight:800">Settings</div>
         <div style="width:36px"></div>
       </div>
+      <div class="wt-settings-block">
+        <div class="wt-setting-row">
+          <label>Your name <span style="font-size:11px;color:#636366;font-weight:400">(optional, for your greeting)</span></label>
+          <input type="text" class="wt-input" id="wt-user-name" style="max-width:150px" placeholder="e.g. Fernando" value="${settings.userName || ''}" onclick="this.select()" onfocus="this.select()">
+        </div>
+      </div>
       <div class="wt-settings-block" id="wt-profile-block">
         <div class="wt-settings-header" data-accordion-header="profile">
           <div class="wt-settings-title" style="margin-bottom:0">Work Profile & Pay Rules</div>
@@ -4040,6 +4059,11 @@ const WorkTracker = (() => {
 
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
+    w.querySelector('#wt-user-name').addEventListener('blur', function() {
+      const s = WTDb.getSettings();
+      s.userName = this.value.trim();
+      WTDb.saveSettings(s);
+    });
     const saveProfileTop = w.querySelector('#wt-save-profile-top');
     if (saveProfileTop) {
       saveProfileTop.onclick = () => {
