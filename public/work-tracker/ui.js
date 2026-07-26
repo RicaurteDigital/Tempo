@@ -183,7 +183,7 @@ const WorkTracker = (() => {
         <div style="flex:1;text-align:center">
           <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1">${dayLabel}</div>
           <div style="font-size:13px;color:#98989D;margin-top:2px">${dateLabel}${isToday ? ' · Today' : ''}</div>
-          ${!isToday ? '<button id="wt-jump-today" style="background:rgba(94,92,230,.15);border:none;border-radius:12px;color:#5E5CE6;font-size:12px;font-weight:700;padding:6px 14px;margin-top:8px;cursor:pointer">↩ Back to Today</button>' : ''}
+          ${!isToday ? '<button id="wt-jump-today" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;margin:8px auto 0;cursor:pointer">⌂</button>' : ''}
         </div>
         <button id="wt-nav-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${isToday ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${isToday ? 'opacity:0.3;pointer-events:none' : ''}"
           onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">›</button>
@@ -1063,7 +1063,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Pay History</div>
-        <div style="width:36px"></div>
+        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>`;
 
     // Payments Due — a collapsible, actionable digest of any (location, week) whose payday
@@ -1464,6 +1464,7 @@ const WorkTracker = (() => {
 
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
+    w.querySelector('#wt-home-icon').onclick = () => { _date = _today(); _go('home'); };
   }
 
   function _Day() {
@@ -1595,7 +1596,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Preview & Export</div>
-        <div style="width:36px"></div>
+        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>
       <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:8px">
         ${['Week','Month','Quarter','6M','Year','All Time'].map(p =>
@@ -1684,6 +1685,7 @@ const WorkTracker = (() => {
     navEl.style.display = 'flex';
     refresh();
     w.querySelector('#wt-back').onclick = () => _go('home');
+    w.querySelector('#wt-home-icon').onclick = () => { _date = _today(); _go('home'); };
     w.querySelector('#wt-backup').onclick = async () => {
       const b = new Blob([WTDb.exportData()], { type: 'application/json' });
       const result = await _saveOrShareBlob(b, `Tempo_WorkBackup_${_today()}.json`);
@@ -1880,7 +1882,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Stats</div>
-        <div style="width:36px"></div>
+        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>
       <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;margin-bottom:0;position:sticky;top:0;z-index:10;background:#000">
         ${['7D','30D','3M','6M','1Y','By Year','Custom'].map(p =>
@@ -1912,6 +1914,7 @@ const WorkTracker = (() => {
       <div id="wt-stats-results"></div>`;
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
+    w.querySelector('#wt-home-icon').onclick = () => { _date = _today(); _go('home'); };
 
     const pillsEl = w.querySelector('#wt-stats-pills');
     const yearPicker = w.querySelector('#wt-stats-year-picker');
@@ -3415,7 +3418,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Settings</div>
-        <div style="width:36px"></div>
+        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>
       <div class="wt-settings-block">
         <div class="wt-setting-row">
@@ -4059,6 +4062,7 @@ const WorkTracker = (() => {
 
     _root.appendChild(w);
     w.querySelector('#wt-back').onclick = () => _go('home');
+    w.querySelector('#wt-home-icon').onclick = () => { _date = _today(); _go('home'); };
     w.querySelector('#wt-user-name').addEventListener('blur', function() {
       const s = WTDb.getSettings();
       s.userName = this.value.trim();
