@@ -750,6 +750,8 @@ _applyMode();
 const _topDevMode = new URLSearchParams(window.location.search).get('allprofiles') === '1';
 if (!_topDevMode) {
   $('mainTabBar').style.display = 'none';
+  const _oldHeader = document.querySelector('header');
+  if (_oldHeader) _oldHeader.style.display = 'none';
 }
 // Deferred to the window 'load' event — work-tracker/ui.js (which defines WorkTracker) loads
 // via a later <script> tag, so calling switchTab('work') immediately here would run before

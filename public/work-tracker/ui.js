@@ -1063,7 +1063,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Pay History</div>
-        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
+        <button id="wt-home-icon" style="width:40px;height:40px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px">⌂</button>
       </div>`;
 
     // Payments Due — a collapsible, actionable digest of any (location, week) whose payday
@@ -1596,7 +1596,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Preview & Export</div>
-        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
+        <button id="wt-home-icon" style="width:40px;height:40px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px">⌂</button>
       </div>
       <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:8px">
         ${['Week','Month','Quarter','6M','Year','All Time'].map(p =>
@@ -1882,7 +1882,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Stats</div>
-        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
+        <button id="wt-home-icon" style="width:40px;height:40px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px">⌂</button>
       </div>
       <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;margin-bottom:0;position:sticky;top:0;z-index:10;background:#000">
         ${['7D','30D','3M','6M','1Y','By Year','Custom'].map(p =>
@@ -3418,7 +3418,7 @@ const WorkTracker = (() => {
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Settings</div>
-        <button id="wt-home-icon" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
+        <button id="wt-home-icon" style="width:40px;height:40px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-right:4px">⌂</button>
       </div>
       <div class="wt-settings-block">
         <div class="wt-setting-row">
