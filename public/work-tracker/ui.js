@@ -27,6 +27,7 @@ const WorkTracker = (() => {
     _root = el;
     _date = _today();
     _view = 'home';
+    if (WTDb.getSettings().lightMode) document.body.classList.add('wt-light');
     _go('home');
   }
 
@@ -326,25 +327,25 @@ const WorkTracker = (() => {
     stats.innerHTML = `
       <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box;${weekCardStyle}">
         <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
-        <div style="font-size:26px;font-weight:800;color:#fff;margin-top:2px">${WTRules.fmtMoney(weekTotal)}</div>
-        <div style="font-size:12px;color:#98989D;margin-top:3px;margin-bottom:12px">${WTRules.fmtHours(pay.totalHours)} <span style="color:#636366">· Gross</span></div>
+        <div style="font-size:26px;font-weight:800;color:var(--wt-text-primary);margin-top:2px">${WTRules.fmtMoney(weekTotal)}</div>
+        <div style="font-size:12px;color:var(--wt-text-secondary);margin-top:3px;margin-bottom:12px">${WTRules.fmtHours(pay.totalHours)} <span style="color:var(--wt-text-tertiary)">· Gross</span></div>
         ${pay.isOvertime ? `<div class="wt-ot-tag" style="margin-bottom:10px">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
         <div style="display:flex;gap:8px">
-          <div style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
-            <div style="font-size:14px;font-weight:800;color:#fff">${WTRules.fmtMoney(pay.total)}</div>
-            <div style="font-size:10px;color:#98989D;margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Hourly</div>
+          <div style="flex:1;background:var(--wt-pill-neutral-bg);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
+            <div style="font-size:14px;font-weight:800;color:var(--wt-pill-neutral-text)">${WTRules.fmtMoney(pay.total)}</div>
+            <div style="font-size:10px;color:var(--wt-text-secondary);margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Hourly</div>
           </div>
-          <div style="flex:1;background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.25);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
-            <div style="font-size:14px;font-weight:800;color:#FF9F0A">${WTRules.fmtMoney(weekCCCut)}</div>
-            <div style="font-size:10px;color:#98989D;margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Card tips</div>
+          <div style="flex:1;background:var(--wt-pill-orange-bg);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
+            <div style="font-size:14px;font-weight:800;color:var(--wt-pill-orange-text)">${WTRules.fmtMoney(weekCCCut)}</div>
+            <div style="font-size:10px;color:var(--wt-text-secondary);margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Card tips</div>
           </div>
-          <div style="flex:1;background:rgba(48,209,88,.1);border:1px solid rgba(48,209,88,.25);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
-            <div style="font-size:14px;font-weight:800;color:#30D158">${WTRules.fmtMoney(weekCashCut)}</div>
-            <div style="font-size:10px;color:#98989D;margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Cash tips</div>
+          <div style="flex:1;background:var(--wt-pill-green-bg);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
+            <div style="font-size:14px;font-weight:800;color:var(--wt-pill-green-text)">${WTRules.fmtMoney(weekCashCut)}</div>
+            <div style="font-size:10px;color:var(--wt-text-secondary);margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Cash tips</div>
           </div>
         </div>
       </div>
-      <div style="background:rgba(28,28,30,0.5);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:14px 16px;margin-top:10px;width:100%;box-sizing:border-box">
+      <div style="background:var(--wt-bg-card);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--wt-border);box-shadow:var(--wt-shadow-card);border-radius:18px;padding:14px 16px;margin-top:10px;width:100%;box-sizing:border-box">
         ${weekLocs.length > 0 ? `
         <div style="display:flex;flex-direction:column;gap:8px">
           ${weekLocs.map(l => `
@@ -3425,6 +3426,13 @@ const WorkTracker = (() => {
           <label>Your name <span style="font-size:11px;color:#636366;font-weight:400">(optional, for your greeting)</span></label>
           <input type="text" class="wt-input" id="wt-user-name" style="max-width:150px" placeholder="e.g. Fernando" value="${settings.userName || ''}" onclick="this.select()" onfocus="this.select()">
         </div>
+        <div class="wt-setting-row">
+          <label>Appearance</label>
+          <div style="display:flex;gap:6px">
+            <button id="wt-theme-dark" style="background:${!settings.lightMode ? 'rgba(94,92,230,.15)' : '#1C1C1E'};border:1px solid ${!settings.lightMode ? '#5E5CE6' : '#38383A'};border-radius:10px;color:${!settings.lightMode ? '#5E5CE6' : '#98989D'};font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">Dark</button>
+            <button id="wt-theme-light" style="background:${settings.lightMode ? 'rgba(94,92,230,.15)' : '#1C1C1E'};border:1px solid ${settings.lightMode ? '#5E5CE6' : '#38383A'};border-radius:10px;color:${settings.lightMode ? '#5E5CE6' : '#98989D'};font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">Light</button>
+          </div>
+        </div>
       </div>
       <div class="wt-settings-block" id="wt-profile-block">
         <div class="wt-settings-header" data-accordion-header="profile">
@@ -4068,6 +4076,20 @@ const WorkTracker = (() => {
       s.userName = this.value.trim();
       WTDb.saveSettings(s);
     });
+    w.querySelector('#wt-theme-dark').onclick = () => {
+      const s = WTDb.getSettings();
+      s.lightMode = false;
+      WTDb.saveSettings(s);
+      document.body.classList.remove('wt-light');
+      _go('settings');
+    };
+    w.querySelector('#wt-theme-light').onclick = () => {
+      const s = WTDb.getSettings();
+      s.lightMode = true;
+      WTDb.saveSettings(s);
+      document.body.classList.add('wt-light');
+      _go('settings');
+    };
     const saveProfileTop = w.querySelector('#wt-save-profile-top');
     if (saveProfileTop) {
       saveProfileTop.onclick = () => {

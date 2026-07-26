@@ -1,8 +1,45 @@
 /* work-tracker/styles.css — Premium Apple aesthetic 2026 */
 
+:root {
+  --wt-bg-page: #000;
+  --wt-bg-card: rgba(255,255,255,0.07);
+  --wt-bg-card-solid: #1C1C1E;
+  --wt-text-primary: #fff;
+  --wt-text-secondary: #98989D;
+  --wt-text-tertiary: #636366;
+  --wt-border: rgba(255,255,255,0.1);
+  --wt-shadow-card: none;
+  --wt-pill-neutral-bg: rgba(255,255,255,.06);
+  --wt-pill-neutral-text: #fff;
+  --wt-pill-orange-bg: rgba(255,159,10,.1);
+  --wt-pill-orange-text: #FF9F0A;
+  --wt-pill-green-bg: rgba(48,209,88,.1);
+  --wt-pill-green-text: #30D158;
+  --wt-stat-card-bg: rgba(94,92,230,.12);
+  --wt-stat-card-border: 1px solid rgba(94,92,230,.35);
+}
+body.wt-light {
+  --wt-bg-page: #F5F5F7;
+  --wt-bg-card: #fff;
+  --wt-bg-card-solid: #fff;
+  --wt-text-primary: #3A3A3C;
+  --wt-text-secondary: #8A8A8E;
+  --wt-text-tertiary: #8A8A8E;
+  --wt-border: #E5E5EA;
+  --wt-shadow-card: 0 1px 2px rgba(0,0,0,.05), 0 2px 10px rgba(0,0,0,.04);
+  --wt-pill-neutral-bg: #F2F2F5;
+  --wt-pill-neutral-text: #3A3A3C;
+  --wt-pill-orange-bg: #FDECD8;
+  --wt-pill-orange-text: #B8600A;
+  --wt-pill-green-bg: #E1F3E5;
+  --wt-pill-green-text: #1D8348;
+  --wt-stat-card-bg: #fff;
+  --wt-stat-card-border: none;
+}
+
 .wt-screen {
-  background: #000;
-  color: #fff;
+  background: var(--wt-bg-page);
+  color: var(--wt-text-primary);
   min-height: 100vh;
   padding-bottom: 40px;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
@@ -176,10 +213,11 @@
   margin-bottom: 14px;
 }
 .wt-stat-card {
-  background: rgba(94,92,230,.12);
+  background: var(--wt-stat-card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(94,92,230,.35);
+  border: var(--wt-stat-card-border);
+  box-shadow: var(--wt-shadow-card);
   border-radius: 18px;
   padding: 14px 16px;
 }
