@@ -743,6 +743,15 @@ document.getElementById('toggleModeBtn').onclick = () => {
 
 render();
 _applyMode();
+
+// Public-facing builds focus entirely on Work (restaurants) — Tempo and Study stay fully
+// intact in code, just hidden from the top tab bar. Add ?allprofiles=1 to the URL (same flag
+// used in ui.js) to bring them back for testing, on localhost or the live site.
+const _topDevMode = new URLSearchParams(window.location.search).get('allprofiles') === '1';
+if (!_topDevMode) {
+  $('mainTabBar').style.display = 'none';
+}
+switchTab('work');
 </script>
 
 <link rel="stylesheet" href="work-tracker/styles.css">
