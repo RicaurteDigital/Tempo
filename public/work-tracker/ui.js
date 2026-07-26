@@ -344,7 +344,7 @@ const WorkTracker = (() => {
           <div style="font-size:13px;color:#FF9F0A;font-weight:700">${WTRules.getPayDate(ws, settings)}</div>
         </div>`}
       </div>`;
-    w.appendChild(stats);
+    w.insertBefore(stats, w.children[1]);
 
     // ── DAILY TIP BLOCK ──────────────────────────────────
     const tipBlock = document.createElement('div');
