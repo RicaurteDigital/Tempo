@@ -1494,15 +1494,15 @@ const WorkTracker = (() => {
     w.innerHTML = `
       <div class="wt-hdr">
         <button class="wt-back" id="wt-back">‹ Back</button>
-        <div style="font-size:13px;color:#98989D">${weekLabel}</div>
+        <div style="font-size:13px;color:var(--wt-text-secondary)">${weekLabel}</div>
         <button class="wt-sec-action" id="wt-add-shift-day">+ Shift</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;gap:12px">
-        <button id="wt-day-prev" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${!prevDate ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!prevDate ? 'opacity:0.3;pointer-events:none' : ''}"
-          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">‹</button>
+        <button id="wt-day-prev" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:${!prevDate ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!prevDate ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='var(--wt-icon-btn-bg-active)'" onpointerup="this.style.background='var(--wt-icon-btn-bg)'" onpointerleave="this.style.background='var(--wt-icon-btn-bg)'">‹</button>
         <div style="flex:1;text-align:center;font-size:18px;font-weight:800">${_fmtDate(dateStr)}</div>
-        <button id="wt-day-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${!nextDate ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!nextDate ? 'opacity:0.3;pointer-events:none' : ''}"
-          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">›</button>
+        <button id="wt-day-next" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:${!nextDate ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!nextDate ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='var(--wt-icon-btn-bg-active)'" onpointerup="this.style.background='var(--wt-icon-btn-bg)'" onpointerleave="this.style.background='var(--wt-icon-btn-bg)'">›</button>
       </div>`;
     if (shifts.length > 0) {
       const sumCard = document.createElement('div');
@@ -1511,9 +1511,9 @@ const WorkTracker = (() => {
         <div class="wt-sum-row"><span>Total hours</span><strong>${WTRules.fmtHours(summary.totalHrs)}</strong></div>
         <div class="wt-sum-row" id="wt-earnings-row" style="cursor:pointer">
           <span>Est. earnings</span>
-          <strong style="color:#30D158">${WTRules.fmtMoney(summary.totalEarnings)} <span id="wt-earn-chevron" style="font-size:11px;color:#636366">▼</span></strong>
+          <strong style="color:#30D158">${WTRules.fmtMoney(summary.totalEarnings)} <span id="wt-earn-chevron" style="font-size:11px;color:var(--wt-text-tertiary)">▼</span></strong>
         </div>
-        <div id="wt-earn-breakdown" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--wt-border);font-size:13px;color:#98989D;line-height:1.8">
+        <div id="wt-earn-breakdown" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--wt-border);font-size:13px;color:var(--wt-text-secondary);line-height:1.8">
           ${(() => {
             const lines = [];
             shifts.forEach(s => {
@@ -1522,7 +1522,7 @@ const WorkTracker = (() => {
               const locSettings = ((WTDb.getSettings().locationSettings||{})[s.locationId]||{});
               const paidBreaks = locSettings.paidBreaks || false;
               const shiftPay = WTRules.weeklyPay([s]);
-              lines.push(`<div style="display:flex;justify-content:space-between"><span>${s.locationName||'Shift'} · ${WTRules.fmtHours(shiftPay.totalHours)}</span><span style="color:#fff">${WTRules.fmtMoney(shiftPay.total)}</span></div>`);
+              lines.push(`<div style="display:flex;justify-content:space-between"><span>${s.locationName||'Shift'} · ${WTRules.fmtHours(shiftPay.totalHours)}</span><span style="color:var(--wt-text-primary)">${WTRules.fmtMoney(shiftPay.total)}</span></div>`);
               if (shiftPay.regularHours > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span>Regular ${WTRules.fmtHours(shiftPay.regularHours)} × $${rate}/hr</span><span>${WTRules.fmtMoney(shiftPay.regularPay)}</span></div>`);
               if (shiftPay.overtimePay > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF9F0A">Overtime ${WTRules.fmtHours(shiftPay.overtimeHours)} × ${shiftPay.otMultiplier}×</span><span style="color:#FF9F0A">${WTRules.fmtMoney(shiftPay.overtimePay)}</span></div>`);
               const paidBreakMins = (s.entries||[]).reduce((a,e) => {
@@ -1538,14 +1538,14 @@ const WorkTracker = (() => {
             const taxSettings = WTDb.getTaxSettings();
             const netData = WTRules.estimateNet(summary.totalEarnings, taxSettings);
             if (netData) {
-              lines.push(`<div style="margin-top:12px;padding-top:10px;border-top:1px solid #38383A;font-size:11px;font-weight:700;color:#636366;text-transform:uppercase;letter-spacing:.5px">Est. Net Pay</div>`);
+              lines.push(`<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--wt-border);font-size:11px;font-weight:700;color:var(--wt-text-tertiary);text-transform:uppercase;letter-spacing:.5px">Est. Net Pay</div>`);
               netData.lines.forEach(l => {
-                lines.push(`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:#98989D">${l.label}</span><span style="color:#FF453A">−${WTRules.fmtMoney(l.amount)}</span></div>`);
+                lines.push(`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--wt-text-secondary)">${l.label}</span><span style="color:#FF453A">−${WTRules.fmtMoney(l.amount)}</span></div>`);
               });
-              lines.push(`<div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid #2C2C2E;margin-top:6px"><span style="color:#fff;font-weight:700">Est. Net</span><span style="color:#64D2FF;font-weight:800">${WTRules.fmtMoney(netData.net)}</span></div>`);
-              lines.push(`<div style="font-size:11px;color:#636366;margin-top:6px;line-height:1.5">Estimate only. Configure rates in Settings → Tax Estimate. Does not account for filing status, dependents, or multi-state situations.</div>`);
+              lines.push(`<div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--wt-border);margin-top:6px"><span style="color:var(--wt-text-primary);font-weight:700">Est. Net</span><span style="color:var(--wt-hero-timer-color);font-weight:800">${WTRules.fmtMoney(netData.net)}</span></div>`);
+              lines.push(`<div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:6px;line-height:1.5">Estimate only. Configure rates in Settings → Tax Estimate. Does not account for filing status, dependents, or multi-state situations.</div>`);
             }
-            return lines.join('') || '<div style="color:#636366;font-size:13px">No breakdown available</div>';
+            return lines.join('') || '<div style="color:var(--wt-text-tertiary);font-size:13px">No breakdown available</div>';
           })()}
         </div>`;
       sumCard.querySelector('#wt-earnings-row').onclick = () => {
@@ -1569,7 +1569,7 @@ const WorkTracker = (() => {
           <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
             <button id="wt-log-past" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
               onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Log past data</button>
-            <button id="wt-dayoff-add" style="background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+            <button id="wt-dayoff-add" style="background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:10px;color:var(--wt-text-secondary);font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
               onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>
           </div>`;
       }
