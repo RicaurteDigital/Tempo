@@ -1334,7 +1334,7 @@ const WorkTracker = (() => {
             breakdownEl.remove(); breakdownEl = null; return;
           }
           breakdownEl = document.createElement('div');
-          breakdownEl.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid #2C2C2E;font-size:13px';
+          breakdownEl.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid var(--wt-border);font-size:13px';
           const days = [0,1,2,3,4,5,6].map(i => {
             const d = new Date(ws); d.setDate(d.getDate() + i);
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1384,7 +1384,7 @@ const WorkTracker = (() => {
                   if (myPayout) totalMyCCCut += myCC;
                   totalMyCash += myCash;
                   return `
-                    <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #2C2C2E">
+                    <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--wt-border)">
                       <div style="font-size:12px;font-weight:700;color:var(--wt-text-primary);margin-bottom:4px">${s.locationName||'Shift'} · <span style="color:var(--wt-text-secondary);font-weight:500">${s.shiftType||''}</span></div>
                       <div style="display:flex;justify-content:space-between;color:var(--wt-text-secondary);font-size:12px;margin-bottom:2px">
                         <span>CC ${WTRules.fmtMoney(t.creditCardTotal)} − fee ${WTRules.fmtMoney(tipResult.creditCard.fee)}</span>
@@ -1401,7 +1401,7 @@ const WorkTracker = (() => {
                 }).join('');
 
                 tipHtml = `
-                  <div style="border-top:1px solid #2C2C2E;margin-top:8px;padding-top:8px">
+                  <div style="border-top:1px solid var(--wt-border);margin-top:8px;padding-top:8px">
                     <div style="color:#FF9F0A;font-weight:700;margin-bottom:8px">💰 Tips (${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''})</div>
                     ${shiftRows}
                     <div style="display:flex;justify-content:space-between;font-weight:700;padding-top:6px;margin-top:4px">
@@ -1513,7 +1513,7 @@ const WorkTracker = (() => {
           <span>Est. earnings</span>
           <strong style="color:#30D158">${WTRules.fmtMoney(summary.totalEarnings)} <span id="wt-earn-chevron" style="font-size:11px;color:#636366">▼</span></strong>
         </div>
-        <div id="wt-earn-breakdown" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #2C2C2E;font-size:13px;color:#98989D;line-height:1.8">
+        <div id="wt-earn-breakdown" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--wt-border);font-size:13px;color:#98989D;line-height:1.8">
           ${(() => {
             const lines = [];
             shifts.forEach(s => {
@@ -2140,7 +2140,7 @@ const WorkTracker = (() => {
       const unitLabel = i.unit === 'perHour' ? '/hr' : i.unit === 'perShift' ? '/shift' : '/wk';
       const better = i.deltaPercent >= 0;
       return `
-        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #2C2C2E">
+        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--wt-border)">
           <div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:2px">${i.label} <span style="color:#636366;font-weight:400">(${i.groupCount} shift${i.groupCount !== 1 ? 's' : ''})</span></div>
           <div style="font-size:12px;color:#98989D">${WTRules.fmtMoney(i.groupAvg)}${unitLabel} vs. your usual ${WTRules.fmtMoney(i.baselineAvg)}${unitLabel} — <span style="color:${better ? '#30D158' : '#FF453A'};font-weight:700">${Math.abs(i.deltaPercent).toFixed(0)}% ${better ? 'more' : 'less'}</span></div>
         </div>`;
@@ -3621,7 +3621,7 @@ const WorkTracker = (() => {
       <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">Positions & Points</div>
       <div id="wt-tip-positions-list">
         ${tipPositions.map((p, i) => `
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #2C2C2E">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--wt-border)">
             <input type="text" value="${p.label}" data-pos-label="${i}" class="wt-input" style="flex:1;padding:8px 10px"
               onclick="this.select()" onfocus="this.select()">
             <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:10px;overflow:hidden;border:1px solid #38383A">
