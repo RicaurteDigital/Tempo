@@ -134,8 +134,7 @@ const WorkTracker = (() => {
     return { cc, cash: typeof mp.cashAmount === 'number' ? mp.cashAmount : (mp.amount - cc) };
   }
 
-  function _Home() {
-    const realToday = _today();
+  function _Home() {    const realToday = _today();
     const today = _date || realToday;
     const isToday = today === realToday;
     const selectedDate = new Date(today + 'T12:00:00');
@@ -172,22 +171,22 @@ const WorkTracker = (() => {
     w.innerHTML = `
       <div class="wt-hdr">
         <div class="wt-hdr-left">
-          <div style="font-size:11px;color:#8E8E93;font-weight:700;letter-spacing:.5px;margin-bottom:2px">TEMPO</div>
+          <div style="font-size:11px;color:var(--wt-text-secondary);font-weight:700;letter-spacing:.5px;margin-bottom:2px">TEMPO</div>
           <h2>${greeting}</h2>
           <p>${formatWeekLabel(ws)}</p>
         </div>
         <button class="wt-hdr-btn" id="wt-settings-btn">⚙</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;gap:12px">
-        <button id="wt-nav-prev" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">‹</button>
+        <button id="wt-nav-prev" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:var(--wt-text-primary);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+          onpointerdown="this.style.background='var(--wt-icon-btn-bg-active)'" onpointerup="this.style.background='var(--wt-icon-btn-bg)'" onpointerleave="this.style.background='var(--wt-icon-btn-bg)'">‹</button>
         <div style="flex:1;text-align:center">
-          <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1">${dayLabel}</div>
-          <div style="font-size:13px;color:#98989D;margin-top:2px">${dateLabel}${isToday ? ' · Today' : ''}</div>
+          <div style="font-size:26px;font-weight:800;color:var(--wt-text-primary);letter-spacing:-.5px;line-height:1">${dayLabel}</div>
+          <div style="font-size:13px;color:var(--wt-text-secondary);margin-top:2px">${dateLabel}${isToday ? ' · Today' : ''}</div>
           ${!isToday ? '<button id="wt-jump-today" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(94,92,230,.15);border:1px solid rgba(94,92,230,.3);color:#5E5CE6;font-size:15px;display:flex;align-items:center;justify-content:center;margin:8px auto 0;cursor:pointer">⌂</button>' : ''}
         </div>
-        <button id="wt-nav-next" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:${isToday ? '#3a3a3c' : '#fff'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${isToday ? 'opacity:0.3;pointer-events:none' : ''}"
-          onpointerdown="this.style.background='rgba(255,255,255,0.15)'" onpointerup="this.style.background='rgba(255,255,255,0.08)'" onpointerleave="this.style.background='rgba(255,255,255,0.08)'">›</button>
+        <button id="wt-nav-next" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:${isToday ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${isToday ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='var(--wt-icon-btn-bg-active)'" onpointerup="this.style.background='var(--wt-icon-btn-bg)'" onpointerleave="this.style.background='var(--wt-icon-btn-bg)'">›</button>
       </div>`;
 
     if (run) {
@@ -269,11 +268,11 @@ const WorkTracker = (() => {
           row.appendChild(cta);
           const dayOffBtn = document.createElement('button');
           dayOffBtn.id = 'wt-dayoff-today';
-          dayOffBtn.style.cssText = 'flex:1;background:#2C2C2E;border:none;border-radius:20px;color:#98989D;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s,background .1s';
+          dayOffBtn.style.cssText = 'flex:1;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:20px;color:var(--wt-text-on-secondary-muted);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s,background .1s';
           dayOffBtn.textContent = 'Day off?';
-          dayOffBtn.addEventListener('pointerdown', () => { dayOffBtn.style.transform = 'scale(.97)'; dayOffBtn.style.background = '#3A3A3C'; });
-          dayOffBtn.addEventListener('pointerup', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
-          dayOffBtn.addEventListener('pointerleave', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = '#2C2C2E'; });
+          dayOffBtn.addEventListener('pointerdown', () => { dayOffBtn.style.transform = 'scale(.97)'; dayOffBtn.style.background = 'var(--wt-surface-secondary-active)'; });
+          dayOffBtn.addEventListener('pointerup', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = 'var(--wt-surface-secondary)'; });
+          dayOffBtn.addEventListener('pointerleave', () => { dayOffBtn.style.transform = 'scale(1)'; dayOffBtn.style.background = 'var(--wt-surface-secondary)'; });
           row.appendChild(dayOffBtn);
           w.appendChild(row);
           requestAnimationFrame(() => {
@@ -300,7 +299,7 @@ const WorkTracker = (() => {
           <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
             <button id="wt-log-past-nav" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
               onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Log past data</button>
-            <button id="wt-dayoff-add-nav" style="background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+            <button id="wt-dayoff-add-nav" style="background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:10px;color:var(--wt-text-secondary);font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
               onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>
           </div>`;
       }
@@ -315,8 +314,8 @@ const WorkTracker = (() => {
     // Whether the day being viewed (which may differ from today via the ‹ › arrows) falls in
     // the real current calendar week — determines the card's label and accent color below.
     const isCurrentCalendarWeek = ws.getTime() === getWeekStart(new Date(realToday + 'T12:00:00')).getTime();
-    const weekCardStyle = isCurrentCalendarWeek ? '' : 'background:rgba(100,210,255,.12);border-color:rgba(100,210,255,.35);';
-    const weekLabelStyle = isCurrentCalendarWeek ? '' : 'color:#64D2FF;';
+    const weekCardStyle = isCurrentCalendarWeek ? '' : 'background:var(--wt-pastweek-bg);border:1px solid var(--wt-pastweek-border);';
+    const weekLabelStyle = isCurrentCalendarWeek ? '' : 'color:var(--wt-pastweek-text);';
     const weekCardTitle = isCurrentCalendarWeek ? 'This Week' : formatWeekLabel(ws);
     // Gross components shown separately — the hourly figure alone was easy to mistake for a
     // total, when it's actually just the wage portion, with CC and cash tips as separate gross
@@ -351,17 +350,17 @@ const WorkTracker = (() => {
           ${weekLocs.map(l => `
             <div data-loc-payday="${l.id}" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:4px 0">
               <div>
-                <div style="font-size:11px;color:#636366;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
-                <div style="font-size:13px;color:#fff;font-weight:700;margin-top:1px">${l.name}</div>
+                <div style="font-size:11px;color:var(--wt-text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
+                <div style="font-size:13px;color:var(--wt-text-primary);font-weight:700;margin-top:1px">${l.name}</div>
               </div>
               <div style="text-align:right">
                 <div style="font-size:13px;color:#FF9F0A;font-weight:700">${WTRules.getPayDate(ws, settings, l)}</div>
-                <div style="font-size:11px;color:#636366;margin-top:1px">Tap to change ›</div>
+                <div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:1px">Tap to change ›</div>
               </div>
             </div>`).join('')}
         </div>` : `
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:11px;color:#636366;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
+          <div style="font-size:11px;color:var(--wt-text-tertiary);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Pay Day</div>
           <div style="font-size:13px;color:#FF9F0A;font-weight:700">${WTRules.getPayDate(ws, settings)}</div>
         </div>`}
       </div>`;
@@ -395,13 +394,13 @@ const WorkTracker = (() => {
           <div style="border-top:1px solid rgba(255,149,0,.15);margin-top:8px;padding-top:8px">
             <div style="display:flex;justify-content:space-between;align-items:center">
               <div>
-                <div style="font-size:13px;font-weight:700;color:#fff">${s.locationName||'Shift'} · <span style="color:#98989D;font-size:12px;font-weight:500">${s.shiftType||''}</span></div>
-                <div style="font-size:11px;color:#636366">CC ${TipRules.fmtMoney(result.creditCard.gross)} − fee ${TipRules.fmtMoney(result.creditCard.fee)}</div>
+                <div style="font-size:13px;font-weight:700;color:var(--wt-text-primary)">${s.locationName||'Shift'} · <span style="color:var(--wt-text-secondary);font-size:12px;font-weight:500">${s.shiftType||''}</span></div>
+                <div style="font-size:11px;color:var(--wt-text-tertiary)">CC ${TipRules.fmtMoney(result.creditCard.gross)} − fee ${TipRules.fmtMoney(result.creditCard.fee)}</div>
               </div>
               ${myPayout ? `<div style="text-align:right">
                 <div style="font-size:15px;font-weight:800;color:#30D158">$${myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount}</div>
-                ${myCash > 0 ? `<div style="font-size:11px;color:#636366">+$${myCash} cash</div>` : ''}
-              </div>` : `<div style="font-size:12px;color:#636366">no cut set</div>`}
+                ${myCash > 0 ? `<div style="font-size:11px;color:var(--wt-text-tertiary)">+$${myCash} cash</div>` : ''}
+              </div>` : `<div style="font-size:12px;color:var(--wt-text-tertiary)">no cut set</div>`}
             </div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
               ${(() => {
@@ -449,10 +448,10 @@ const WorkTracker = (() => {
                   ? `data-warn-shift="${s.id}" data-warn-name="${p.name}" data-warn-cc="${isCCWarn}" data-warn-cc-exact="${p.ccExact}" data-warn-cc-amount="${p.ccAmount}" data-warn-cash="${isCashWarn}" data-warn-cash-exact="${p.cashExact}" data-warn-cash-amount="${p.cashAmount}"`
                   : '';
                 return `
-                <div ${isClickable ? `${isOver ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" data-goto-type="${gotoType}"` : warnAttrs} style="cursor:pointer;background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:rgba(28,28,30,0.8);border-radius:8px;padding:4px 8px;font-size:11px"`}>
-                  <span style="color:${tintColor || (p.isMe?'#30D158':'#98989D')};font-weight:700">${p.name}</span>
-                  <span style="color:#636366"> · </span>
-                  <span style="color:${tintColor || '#fff'};font-weight:800${isOver ? ';font-size:12px' : ''}">$${p.amount}</span>
+                <div ${isClickable ? `${isOver ? `data-goto-shift="${s.id}" data-goto-worker="${p.name}" data-goto-type="${gotoType}"` : warnAttrs} style="cursor:pointer;background:var(--wt-chip-bg);border-radius:8px;padding:4px 8px;font-size:11px${isOver ? ';border:1px solid rgba(255,69,58,.4)' : ''}"` : `style="background:var(--wt-chip-bg);border-radius:8px;padding:4px 8px;font-size:11px"`}>
+                  <span style="color:${tintColor || (p.isMe?'#30D158':'var(--wt-text-secondary)')};font-weight:700">${p.name}</span>
+                  <span style="color:var(--wt-text-tertiary)"> · </span>
+                  <span style="color:${tintColor || 'var(--wt-text-primary)'};font-weight:800${isOver ? ';font-size:12px' : ''}">$${p.amount}</span>
                 </div>`;
                 }).join('');
               })()}
@@ -467,12 +466,12 @@ const WorkTracker = (() => {
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
             <div>
               <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px">${isToday ? "Today's Tips" : dayLabel + "'s Tips"}</div>
-              <div style="font-size:11px;color:#636366;margin-top:2px">${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''} with tips</div>
+              <div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:2px">${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''} with tips</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:11px;color:#636366">Your CC cut</div>
+              <div style="font-size:11px;color:var(--wt-text-tertiary)">Your CC cut</div>
               <div style="font-size:24px;font-weight:800;color:#30D158">$${totalMyCCCut}</div>
-              ${totalMyCash > 0 ? `<div style="font-size:11px;color:#636366">+$${totalMyCash} cash</div>` : ''}
+              ${totalMyCash > 0 ? `<div style="font-size:11px;color:var(--wt-text-tertiary)">+$${totalMyCash} cash</div>` : ''}
             </div>
           </div>
           ${shiftTipRows}
@@ -543,7 +542,7 @@ const WorkTracker = (() => {
 
     const fpRow = document.createElement('div');
     fpRow.style.cssText = 'margin-top:10px';
-    fpRow.innerHTML = `<button id="wt-floorplan-btn" style="width:100%;background:rgba(28,28,30,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:14px;color:#98989D;font-size:14px;font-weight:700;padding:12px;cursor:pointer">🪑 Floor Plan</button>`;
+    fpRow.innerHTML = `<button id="wt-floorplan-btn" style="width:100%;background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:14px;color:var(--wt-text-secondary);font-size:14px;font-weight:700;padding:12px;cursor:pointer">🪑 Floor Plan</button>`;
     w.appendChild(fpRow);
 
     _root.appendChild(w);
@@ -618,7 +617,7 @@ const WorkTracker = (() => {
           <div class="wt-modal">
             <div class="wt-modal-handle"></div>
             <div class="wt-modal-title">📷 Starting break</div>
-            <p style="color:#98989D;font-size:14px;margin-bottom:18px">
+            <p style="color:var(--wt-text-secondary);font-size:14px;margin-bottom:18px">
               Take a photo as proof you clocked out at ${_fmtTime(breakStartTime)}.
             </p>
             <div style="display:flex;gap:10px">
@@ -724,12 +723,12 @@ const WorkTracker = (() => {
           <div class="wt-modal">
             <div class="wt-modal-handle"></div>
             <div class="wt-modal-title">📷 Back from break</div>
-            <p style="color:#98989D;font-size:14px;margin-bottom:14px">
+            <p style="color:var(--wt-text-secondary);font-size:14px;margin-bottom:14px">
               ${breakMins}m break ended at ${_fmtTime(breakEnd)}. Take a photo as proof you're back on the clock.
             </p>
             <div style="display:flex;gap:8px;margin-bottom:16px">
-              <button class="wt-btn" id="wt-break-paid" style="flex:1;border:1px solid ${paidBreak?'#30D158':'#38383A'};background:${paidBreak?'rgba(48,209,88,.15)':'none'};color:${paidBreak?'#30D158':'#98989D'}">Paid</button>
-              <button class="wt-btn" id="wt-break-unpaid" style="flex:1;border:1px solid ${!paidBreak?'#FF453A':'#38383A'};background:${!paidBreak?'rgba(255,69,58,.15)':'none'};color:${!paidBreak?'#FF453A':'#98989D'}">Unpaid</button>
+              <button class="wt-btn" id="wt-break-paid" style="flex:1;border:1px solid ${paidBreak?'#30D158':'var(--wt-surface-secondary-border)'};background:${paidBreak?'rgba(48,209,88,.15)':'none'};color:${paidBreak?'#30D158':'var(--wt-text-secondary)'}">Paid</button>
+              <button class="wt-btn" id="wt-break-unpaid" style="flex:1;border:1px solid ${!paidBreak?'#FF453A':'var(--wt-surface-secondary-border)'};background:${!paidBreak?'rgba(255,69,58,.15)':'none'};color:${!paidBreak?'#FF453A':'var(--wt-text-secondary)'}">Unpaid</button>
             </div>
             <div style="display:flex;gap:10px">
               <button class="wt-btn wt-btn-primary" id="wt-take-photo-break" style="flex:2">📷 Take Photo</button>
@@ -741,12 +740,12 @@ const WorkTracker = (() => {
         const paidBtn = photoOv.querySelector('#wt-break-paid');
         const unpaidBtn = photoOv.querySelector('#wt-break-unpaid');
         function refreshBreakToggle() {
-          paidBtn.style.borderColor = paidBreak ? '#30D158' : '#38383A';
+          paidBtn.style.borderColor = paidBreak ? '#30D158' : 'var(--wt-surface-secondary-border)';
           paidBtn.style.background = paidBreak ? 'rgba(48,209,88,.15)' : 'none';
-          paidBtn.style.color = paidBreak ? '#30D158' : '#98989D';
-          unpaidBtn.style.borderColor = !paidBreak ? '#FF453A' : '#38383A';
+          paidBtn.style.color = paidBreak ? '#30D158' : 'var(--wt-text-secondary)';
+          unpaidBtn.style.borderColor = !paidBreak ? '#FF453A' : 'var(--wt-surface-secondary-border)';
           unpaidBtn.style.background = !paidBreak ? 'rgba(255,69,58,.15)' : 'none';
-          unpaidBtn.style.color = !paidBreak ? '#FF453A' : '#98989D';
+          unpaidBtn.style.color = !paidBreak ? '#FF453A' : 'var(--wt-text-secondary)';
         }
         paidBtn.onclick = () => { paidBreak = true; saveBreakEntry(true); refreshBreakToggle(); };
         unpaidBtn.onclick = () => { paidBreak = false; saveBreakEntry(false); refreshBreakToggle(); };
@@ -772,7 +771,6 @@ const WorkTracker = (() => {
         };
       }
     };
-  }
 
   function _ShiftCard(shift, forceExpanded) {
     const locs = WTDb.getLocations();
