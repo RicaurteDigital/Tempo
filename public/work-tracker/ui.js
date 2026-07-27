@@ -1885,9 +1885,9 @@ const WorkTracker = (() => {
         <div style="font-size:18px;font-weight:800">Stats</div>
         <button id="wt-home-icon" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.4);color:#30D158;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>
-      <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;margin-bottom:0;position:sticky;top:0;z-index:10;background:#000">
+      <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;margin-bottom:0;position:sticky;top:0;z-index:10;background:var(--wt-bg-page)">
         ${['7D','30D','3M','6M','1Y','By Year','Custom'].map(p =>
-          `<button class="wt-stats-pill" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+          `<button class="wt-stats-pill" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--wt-surface-secondary-border);background:none;color:var(--wt-text-secondary);font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
       <div style="margin-bottom:12px"></div>
@@ -1956,9 +1956,9 @@ const WorkTracker = (() => {
     function setActivePill(name) {
       pillsEl.querySelectorAll('.wt-stats-pill').forEach(btn => {
         const active = btn.dataset.pill === name;
-        btn.style.borderColor = active ? '#5E5CE6' : '#38383A';
+        btn.style.borderColor = active ? '#5E5CE6' : 'var(--wt-surface-secondary-border)';
         btn.style.background = active ? 'rgba(94,92,230,.15)' : 'none';
-        btn.style.color = active ? '#5E5CE6' : '#98989D';
+        btn.style.color = active ? '#5E5CE6' : 'var(--wt-text-secondary)';
       });
     }
 
