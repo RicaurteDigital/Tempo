@@ -38,6 +38,10 @@
   --wt-pastweek-text: #64D2FF;
   --wt-chip-bg: rgba(28,28,30,0.8);
   --wt-settings-block-bg: rgba(28,28,30,0.55);
+  --wt-input-bg: #2C2C2E;
+  --wt-input-border: #38383A;
+  --wt-input-text: #fff;
+  --wt-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2398989D' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 body.wt-light {
   --wt-bg-page: #F5F5F7;
@@ -77,6 +81,10 @@ body.wt-light {
   --wt-pastweek-text: #0A79B8;
   --wt-chip-bg: #F0F0F2;
   --wt-settings-block-bg: #fff;
+  --wt-input-bg: #fff;
+  --wt-input-border: #D1D1D6;
+  --wt-input-text: #3A3A3C;
+  --wt-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236C6C70' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .wt-screen {
@@ -533,17 +541,18 @@ body.wt-light {
 
 /* ── WEEK ROWS ───────────────────────────────────────── */
 .wt-week {
-  background: rgba(28,28,30,0.55);
+  background: var(--wt-settings-block-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid var(--wt-border);
+  box-shadow: var(--wt-shadow-card);
   border-radius: 18px;
   padding: 14px 16px;
   margin-bottom: 10px;
   cursor: pointer;
   transition: background .15s;
 }
-.wt-week:active { background: #2C2C2E; }
+.wt-week:active { background: var(--wt-surface-secondary-active); }
 .wt-week-cur { border: 1.5px solid #5E5CE6; }
 .wt-week-badge {
   display: inline-block;
@@ -579,14 +588,14 @@ body.wt-light {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #2C2C2E;
+  background: var(--wt-surface-secondary);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: 700;
-  color: #636366;
+  color: var(--wt-text-tertiary);
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
@@ -594,7 +603,7 @@ body.wt-light {
 .wt-dot-on { background: rgba(94,92,230,.2); color: #5E5CE6; }
 .wt-dot-today { border: 1.5px solid #5E5CE6; }
 .wt-dot-pip { width: 4px; height: 4px; background: #5E5CE6; border-radius: 50%; position: absolute; bottom: 5px; }
-.wt-week-paydate { font-size: 12px; color: #636366; }
+.wt-week-paydate { font-size: 12px; color: var(--wt-text-tertiary); }
 
 /* ── EXCEL TABLE ─────────────────────────────────────── */
 .wt-table-wrap {
@@ -682,10 +691,10 @@ body.wt-light {
 .wt-loc-del { background: none; border: none; color: #636366; font-size: 14px; cursor: pointer; padding: 2px 6px; border-radius: 8px; transition: transform .18s ease; }
 .wt-add-form { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .wt-input {
-  background: #2C2C2E;
-  border: 1px solid #38383A;
+  background: var(--wt-input-bg);
+  border: 1px solid var(--wt-input-border);
   border-radius: 12px;
-  color: #fff;
+  color: var(--wt-input-text);
   font-size: 15px;
   padding: 11px 14px;
   outline: none;
@@ -696,14 +705,14 @@ body.wt-light {
 .wt-input:focus { border-color: #5E5CE6; }
 .wt-input-sm { flex: 0 0 84px; }
 .wt-color-input { width: 44px; height: 44px; border-radius: 12px; border: none; cursor: pointer; padding: 2px; background: none; flex-shrink: 0; }
-.wt-setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #2C2C2E; }
+.wt-setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--wt-border); }
 .wt-setting-row:last-child { border-bottom: none; }
 .wt-setting-row label { font-size: 15px; font-weight: 600; }
 .wt-select-sm {
-  background: #2C2C2E url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2398989D' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
-  border: 1px solid #38383A;
+  background: var(--wt-input-bg) var(--wt-select-arrow) no-repeat right 12px center;
+  border: 1px solid var(--wt-input-border);
   border-radius: 10px;
-  color: #fff;
+  color: var(--wt-input-text);
   font-size: 14px;
   font-weight: 600;
   padding: 8px 28px 8px 12px;
@@ -711,7 +720,7 @@ body.wt-light {
   -webkit-appearance: none;
   appearance: none;
 }
-.wt-note { font-size: 12px; color: #636366; line-height: 1.5; margin-top: 10px; }
+.wt-note { font-size: 12px; color: var(--wt-text-tertiary); line-height: 1.5; margin-top: 10px; }
 
 /* ── MODAL ───────────────────────────────────────────── */
 .wt-overlay {
