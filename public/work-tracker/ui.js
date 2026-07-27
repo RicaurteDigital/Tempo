@@ -771,6 +771,7 @@ const WorkTracker = (() => {
         };
       }
     };
+  }
 
   function _ShiftCard(shift, forceExpanded) {
     const locs = WTDb.getLocations();
