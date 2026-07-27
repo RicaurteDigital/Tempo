@@ -840,7 +840,7 @@ const WorkTracker = (() => {
       entriesDiv.appendChild(built.reportRow);
     } else {
       const noHours = document.createElement('div');
-      noHours.style.cssText = 'color:var(--wt-text-tertiary);font-size:13px;padding:4px 0 8px';
+      noHours.style.cssText = 'color:#636366;font-size:13px;padding:4px 0 8px';
       noHours.textContent = 'No hours logged — tips only. Tap "+ Add period" below if you remember the times.';
       entriesDiv.appendChild(noHours);
     }
@@ -874,6 +874,776 @@ const WorkTracker = (() => {
     }
 
     body.appendChild(entriesDiv);
+
+    const footer = document.createElement('div');
+    footer.className = 'wt-shift-footer';
+    const tipsData = WTDb.getTipsForShift(shift.id);
+    const hasTips = tipsData && (tipsData.creditCardTotal > 0 || tipsData.cashTotal > 0);
+    const cardProfile = WORK_PROFILES[WTDb.getSettings().workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
+    footer.innerHTML = `
+      <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
+      <button class="wt-tag-btn wt-tap-scale" data-sid="${shift.id}" style="background:none;border:none;color:${(shift.weatherTag||shift.paceTag||shift.contextNote)?'#5E5CE6':'#636366'};cursor:pointer;padding:0;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5H6.5L12.5 7.5L7.5 12.5L1.5 6.5V1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="4" r="1" fill="currentColor"/></svg></button>
+      ${cardProfile.hasTips ? `<button class="wt-tips-btn ${(!isRunning && !hasTips) ? 'wt-glow' : ''}" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'rgba(28,28,30,0.8)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'#98989D'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">` : ''}
+        💰 ${hasTips ? TipRules.fmtMoney(tipsData.myPayout||0) + ' tips' : 'Tips'}
+      ${cardProfile.hasTips ? `</button>` : ''}
+      <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
+    footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
+    footer.querySelector('.wt-tag-btn').onclick = () => _showShiftContext(shift);
+    if (cardProfile.hasTips) {
+      const tipsBtn = footer.querySelector('.wt-tips-btn');
+      if (tipsBtn) tipsBtn.onclick = () => _showTipPool(shift.id);
+    }
+    footer.querySelector('.wt-del-shift').onclick = () => {
+      if (!confirm('Delete this shift and ALL its proof photos? This cannot be undone.')) return;
+      if (!confirm('Are you sure? This is permanent.')) return;
+      if (WTDb.deleteShift(shift.id)) _go('home');
+    };
+    body.appendChild(footer);
+    card.appendChild(body);
+
+    // ── TAP TO EXPAND (only non-running shifts) ──
+    if (!isRunning) {
+      top.style.cursor = 'pointer';
+      top.onclick = () => {
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+        const chev = top.querySelector('.wt-shift-chevron');
+        if (chev) chev.textContent = open ? '▼' : '▲';
+        card.classList.toggle('wt-shift-expanded', !open);
+        card.classList.toggle('wt-shift-collapsed', open);
+        if (shift.needsReview) {
+          shift.needsReview = false;
+          WTDb.saveShift(shift);
+          card.classList.remove('wt-glow');
+        }
+      };
+    }
+
+    return card;
+  }
+
+  function _buildEntryRow(shift, e) {
+    const row = document.createElement('div');
+    row.className = 'wt-entry' + (!e.clockOut ? ' wt-entry-live' : '');
+    const eHrs = WTRules.entryHours(e);
+    row.innerHTML = `
+      <div class="wt-time-group">
+        <div class="wt-time-pill">
+          <span class="wt-time-lbl">IN</span>
+          <button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockIn">${_fmtTime(e.clockIn)}</button>
+        </div>
+        <span class="wt-time-sep">→</span>
+        <div class="wt-time-pill">
+          <span class="wt-time-lbl">OUT</span>
+          ${e.clockOut
+            ? `<button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockOut">${_fmtTime(e.clockOut)}</button>`
+            : `<span class="wt-time-running">Running</span>`}
+        </div>
+        <span class="wt-entry-dur">${eHrs > 0 ? WTRules.fmtHours(eHrs) : '—'}</span>
+      </div>
+      <button class="wt-entry-del" data-sid="${shift.id}" data-eid="${e.id}" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>`;
+
+    if (e.note) {
+      const isBreakEntry = typeof e.breakDurationMinutes === 'number';
+      if (isBreakEntry) {
+        const breakToggle = document.createElement('button');
+        breakToggle.style.cssText = 'display:block;width:100%;text-align:left;background:none;border:none;padding:2px 0 6px;cursor:pointer;font-size:11px;color:' + (e.breakPaid ? '#30D158' : '#636366');
+        breakToggle.textContent = e.note + '  ✎ tap to change';
+        breakToggle.onclick = () => {
+          e.breakPaid = !e.breakPaid;
+          const mins = e.breakDurationMinutes;
+          const rate = shift.hourlyRate || NYC_MIN_WAGE;
+          e.note = e.breakPaid
+            ? `Break · ${mins}m · +$${((mins/60)*rate).toFixed(2)} paid`
+            : `Break · ${mins}m unpaid · missed $${((mins/60)*rate).toFixed(2)}`;
+          WTDb.saveShift(shift);
+          _go(_view);
+        };
+        row.appendChild(breakToggle);
+      } else {
+        const noteEl = document.createElement('div');
+        noteEl.style.cssText = 'font-size:11px;color:#636366;padding:2px 0 6px;';
+        noteEl.textContent = e.note;
+        row.appendChild(noteEl);
+      }
+    }
+
+    row.querySelectorAll('.wt-time-val').forEach(b => {
+      b.onclick = () => _showEditTime(b.dataset.sid, b.dataset.eid, b.dataset.f);
+    });
+    row.querySelector('.wt-entry-del').onclick = () => _delEntry(shift.id, e.id);
+
+    const photoRow = document.createElement('div');
+    photoRow.className = 'wt-photo-row';
+    photoRow.innerHTML = `
+      <button class="wt-photo-btn" data-pid="${shift.id}_in_${e.id}">📷 In proof</button>
+      ${e.clockOut ? `<button class="wt-photo-btn" data-pid="${shift.id}_out_${e.id}">📷 Out proof</button>` : ''}`;
+    photoRow.querySelectorAll('.wt-photo-btn').forEach(b => {
+      b.onclick = () => _doPhoto(shift.id, b.dataset.pid);
+      WTDb.getPhoto(shift.id, b.dataset.pid).then(base64 => {
+        if (base64) {
+          b.textContent = '✓ View proof';
+          b.classList.add('has-photo');
+          b.onclick = () => _viewOrReplacePhoto(shift.id, b.dataset.pid, base64);
+        }
+      });
+    });
+
+    // Report photos — multiple allowed, same pattern as proofs
+    const reportRow = document.createElement('div');
+    reportRow.className = 'wt-photo-row';
+    reportRow.dataset.shiftId = shift.id;
+    reportRow.dataset.entryId = e.id;
+
+    const _refreshReportRow = async () => {
+      reportRow.innerHTML = '';
+      // Find all existing report photos for this entry
+      let n = 1;
+      const existingBtns = [];
+      while (true) {
+        const key = `${shift.id}_report_${n}_${e.id}`;
+        const base64 = await WTDb.getPhoto(shift.id, key);
+        if (!base64 && n > 1) break;
+        if (base64) {
+          const b = document.createElement('button');
+          b.className = 'wt-photo-btn has-photo';
+          b.dataset.pid = key;
+          b.textContent = `✓ Report ${n}`;
+          b.onclick = () => _viewOrReplacePhoto(shift.id, key, base64);
+          reportRow.appendChild(b);
+          existingBtns.push(b);
+          n++;
+        } else break;
+      }
+      // Always show "+ Add report" button
+      const addBtn = document.createElement('button');
+      addBtn.className = 'wt-photo-btn';
+      addBtn.textContent = '📋 Add report';
+      addBtn.onclick = () => {
+        const newKey = `${shift.id}_report_${n}_${e.id}`;
+        _doPhotoThenRefresh(shift.id, newKey, _refreshReportRow);
+      };
+      reportRow.appendChild(addBtn);
+    };
+
+    _refreshReportRow();
+
+    return { row, photoRow, reportRow };
+  }
+
+  function _Week() {
+    const w = document.createElement('div');
+    w.className = 'wt-screen';
+    const settings = WTDb.getSettings();
+    const curMs = getWeekStart(new Date()).getTime();
+    // Which card gets the highlighted border — normally the same as curMs, but if we just
+    // came back from Day view, it follows whatever week that date falls in instead, so the
+    // highlight tracks where you actually were, not always "this calendar week."
+    let highlightMs = curMs;
+    if (_weekFocusDate) {
+      highlightMs = getWeekStart(new Date(_weekFocusDate + 'T12:00:00')).getTime();
+      _weekFocusDate = null;
+    }
+    const weeks = WTRules.getRecentWeeks(_weekHistoryCount);
+
+    // Earliest active week per location — explicit startDate wins if set, else earliest tracked shift.
+    // Used so "no shifts this week" doesn't retroactively show a location before it existed.
+    const _allLocsForStart = WTDb.getLocations();
+    const _allShiftsForStart = WTDb.getShifts();
+    const locStartMs = {};
+    _allLocsForStart.forEach(l => {
+      const candidates = [];
+      if (l.startDate) candidates.push(new Date(l.startDate+'T12:00:00').getTime());
+      const shiftDates = _allShiftsForStart.filter(s => s.locationId === l.id).map(s => s.date);
+      if (shiftDates.length) candidates.push(new Date(shiftDates.sort()[0]+'T12:00:00').getTime());
+      locStartMs[l.id] = candidates.length ? getWeekStart(new Date(Math.min(...candidates))).getTime() : null;
+    });
+
+    w.innerHTML = `
+      <div class="wt-hdr">
+        <button class="wt-back" id="wt-back">‹ Back</button>
+        <div style="font-size:18px;font-weight:800">Pay History</div>
+        <button id="wt-home-icon" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.4);color:#30D158;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
+      </div>`;
+
+    // Payments Due — a collapsible, actionable digest of any (location, week) whose payday
+    // has arrived but hasn't been confirmed yet. Computed fresh every render, so it clears
+    // itself the moment a payment gets recorded — no separate flag to manage or forget to
+    // clear. Bounded to a 3-week window: an unregistered payment older than that quietly
+    // stops being flagged instead of piling up into noise (same principle as the Day Off
+    // nudge). Each row jumps straight into the existing Record Payment flow for that week.
+    const activeProf0 = settings.workProfile || 'restaurant';
+    const dueLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === activeProf0);
+    const todayEndMs = new Date(_today() + 'T23:59:59').getTime();
+    const dueWindowMs = 21 * 86400000;
+    const due = [];
+    let nextPayday = null;
+    weeks.forEach(ws => {
+      const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
+      const wShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === activeProf0);
+      const wLocIds = [...new Set(wShifts.map(s => s.locationId).filter(Boolean))];
+      dueLocs.filter(l => wLocIds.includes(l.id)).forEach(l => {
+        if (WTDb.getPayment(l.id, wsStr)) return;
+        const rawDate = WTRules.getPayDateRaw(ws, settings, l);
+        if (!rawDate) return;
+        const payMs = rawDate.getTime();
+        if (payMs > todayEndMs) {
+          if (!nextPayday || rawDate < nextPayday) nextPayday = rawDate;
+          return;
+        }
+        if (payMs < todayEndMs - dueWindowMs) return;
+        due.push({ locId: l.id, locName: l.name, ws: wsStr, weekLabel: formatWeekLabel(ws), payDate: rawDate });
+      });
+    });
+    due.sort((a, b) => b.payDate - a.payDate); // most recent first — the one you'd actually check today
+
+    if (due.length) {
+      const dueCard = document.createElement('div');
+      dueCard.style.cssText = 'border:1px solid rgba(255,159,10,.3);border-radius:16px;margin:0 16px 14px;overflow:hidden';
+      dueCard.innerHTML = `
+        <div class="wt-glow" id="wt-due-header" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;background:rgba(255,149,0,.12);border-radius:16px">
+          <span style="font-size:13px;font-weight:800;color:#FF9F0A">💰 Payment${due.length > 1 ? 's' : ''} Due (${due.length})</span>
+          <span id="wt-due-chevron" style="color:#FF9F0A;font-size:12px;transition:transform .15s">▼</span>
+        </div>
+        <div id="wt-due-body" style="display:none;padding:10px 12px 12px;background:rgba(255,149,0,.05)">
+          ${due.map(d => `
+            <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;cursor:pointer;background:var(--wt-chip-bg);border-radius:12px">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:var(--wt-text-primary)">${d.locName}</div>
+                <div style="font-size:11px;color:var(--wt-text-secondary)">${d.weekLabel}</div>
+              </div>
+              <div class="wt-glow" style="font-size:11px;color:#FF9F0A;font-weight:700;border-radius:8px;padding:3px 8px">Expected ${d.payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ›</div>
+            </div>
+          `).join('')}
+          ${_weekHistoryCount < 52 ? `<div id="wt-view-full-year" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;padding:8px;cursor:pointer">View Full Year →</div>` : ''}
+        </div>`;
+      w.appendChild(dueCard);
+      const headerEl = dueCard.querySelector('#wt-due-header');
+      const bodyEl = dueCard.querySelector('#wt-due-body');
+      const chevEl = dueCard.querySelector('#wt-due-chevron');
+      headerEl.onclick = () => {
+        const open = bodyEl.style.display !== 'none';
+        bodyEl.style.display = open ? 'none' : 'block';
+        chevEl.textContent = open ? '▼' : '▲';
+      };
+      dueCard.querySelectorAll('.wt-due-row').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          _showPayDayOptions(el.dataset.locId, el.dataset.locName, el.dataset.ws, settings);
+        };
+      });
+      const viewFullYearBtn = dueCard.querySelector('#wt-view-full-year');
+      if (viewFullYearBtn) viewFullYearBtn.onclick = (e) => {
+        e.stopPropagation();
+        _weekHistoryCount = 52;
+        _go('week');
+      };
+    } else if (nextPayday) {
+      const okCard = document.createElement('div');
+      okCard.style.cssText = 'background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:16px;padding:14px 16px;margin:0 16px 14px';
+      okCard.innerHTML = `<span style="font-size:13px;color:#30D158">✓ All caught up · Next payment expected <strong>${nextPayday.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</strong></span>`;
+      w.appendChild(okCard);
+    }
+
+    weeks.forEach(ws => {
+      const activeProf = (WTDb.getSettings().workProfile || 'restaurant');
+      const shifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === activeProf);
+      const pay = WTRules.weeklyPay(shifts);
+      const weekTipCut = shifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
+      const isCur = ws.getTime() === curMs;
+      const isHighlighted = ws.getTime() === highlightMs;
+      const row = document.createElement('div');
+      row.className = 'wt-week' + (isHighlighted ? ' wt-week-cur' : '');
+      const dots = [0,1,2,3,4,5,6].map(i => {
+        const d = new Date(ws); d.setDate(d.getDate() + i);
+        const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const has = shifts.some(s => s.date === ds);
+        const isT = ds === _today();
+        const isPast = ds < _today();
+        const dotHtml = `<div class="wt-dot ${has?'wt-dot-on':''} ${isT?'wt-dot-today':''}" data-date="${ds}">${['M','T','W','T','F','S','S'][i]}${has?'<span class="wt-dot-pip"></span>':''}</div>`;
+        let offHtml = '';
+        if (isPast && !has) {
+          const reason = WTDb.getDayOffReason(ds, activeProf);
+          if (reason) {
+            offHtml = `<div data-dayoff-nav="${ds}" class="wt-tap-fade" style="font-size:10px;color:var(--wt-text-tertiary);text-align:center;margin-top:3px;cursor:pointer">Off</div>`;
+          } else if (isCur) {
+            // Only nudge within the current, still-in-progress week — once a week ends,
+            // stop asking about days you likely won't remember; still fully clickable though.
+            offHtml = `<div data-dayoff-nav="${ds}" class="wt-glow wt-tap-fade" style="font-size:10px;color:#FF9F0A;text-align:center;margin-top:3px;cursor:pointer;border-radius:6px">Off?</div>`;
+          }
+        }
+        return `<div style="display:flex;flex-direction:column;align-items:center">${dotHtml}${offHtml}</div>`;
+      }).join('');
+      row.innerHTML = `
+        ${isCur ? '<div class="wt-week-badge">Current Week</div>' : ''}
+        <div class="wt-week-range">${formatWeekLabel(ws)}</div>
+        <div class="wt-week-nums">
+          <span>${WTRules.fmtHours(pay.totalHours)}</span>
+          <span class="wt-week-pay">${WTRules.fmtMoney(pay.total)}</span>
+          ${weekTipCut > 0 ? `<span style="color:#FF9F0A;font-weight:700">+${WTRules.fmtMoney(weekTipCut)}</span>` : ''}
+          ${pay.isOvertime ? '<span class="wt-ot-pill">Overtime</span>' : ''}
+        </div>
+        <div class="wt-week-dots">${dots}</div>
+        ${(() => {
+          const wsStr = `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
+          const weekLocIds = [...new Set(shifts.map(s => s.locationId).filter(Boolean))];
+          const allLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === activeProf);
+          let weekLocs = allLocs.filter(l => weekLocIds.includes(l.id));
+          // No tracked shifts this week — still let the user log a past check manually for any known location
+          if (weekLocs.length === 0) weekLocs = allLocs.filter(l => locStartMs[l.id] !== null && locStartMs[l.id] <= ws.getTime());
+          if (weekLocs.length === 0) return `<div class="wt-week-paydate">Pay: ${WTRules.getPayDate(ws, settings)}</div>`;
+          return weekLocs.map(l => {
+            const payment = WTDb.getPayment(l.id, wsStr);
+            const locPay = pay.byLocation[l.name];
+            // Calculate my CC and cash tips for this week for this location
+            const locShifts = shifts.filter(s => s.locationId === l.id);
+            let myWeekCCTips = 0, myWeekCashTips = 0;
+            locShifts.forEach(s => {
+              const t = WTDb.getTipsForShift(s.id);
+              if (!t) return;
+              const tWorkers = t.workers || [];
+              const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(l.id), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
+              const meIdx = (result.payouts || []).findIndex(p => p.isMe);
+              if (meIdx >= 0) {
+                const mp = result.payouts[meIdx];
+                myWeekCCTips += mp.ccAmount || 0;
+                myWeekCashTips += typeof mp.cashAmount === 'number' ? mp.cashAmount : (mp.amount - (mp.ccAmount || 0));
+              }
+            });
+            const cashInCheck = payment && payment.cashInCheck;
+            const expectedGross = locPay
+              ? locPay.total + myWeekCCTips + (cashInCheck ? myWeekCashTips : 0)
+              : null;
+            const netData = expectedGross !== null ? WTRules.estimateNet(expectedGross, WTDb.getTaxSettings()) : null;
+            const expectedNet = netData ? netData.net : null;
+            const pAmounts = WTRules.paymentAmounts(payment);
+            let status, comparison = '';
+            if (payment) {
+              const displayParts = [];
+              if (pAmounts.gross !== null) displayParts.push('$'+pAmounts.gross.toFixed(2)+' gross');
+              if (pAmounts.net !== null) displayParts.push('$'+pAmounts.net.toFixed(2)+' net');
+              status = `<span style="color:#30D158;font-weight:700">✅ ${displayParts.length ? displayParts.join(' · ') : 'Amount not set'}</span>`;
+              const grossDiff = (expectedGross !== null && pAmounts.gross !== null) ? pAmounts.gross - expectedGross : null;
+              const netDiff = (expectedNet !== null && pAmounts.net !== null) ? pAmounts.net - expectedNet : null;
+              if (grossDiff !== null || netDiff !== null) {
+                comparison = `
+                  <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--wt-border);display:flex;flex-direction:column;gap:3px">
+                    ${locPay ? `<div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:var(--wt-text-tertiary)">Hours (gross)</span>
+                      <span style="color:var(--wt-text-secondary)">$${locPay.total.toFixed(2)}</span>
+                    </div>` : ''}
+                    ${myWeekCCTips > 0 ? `<div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:var(--wt-text-tertiary)">CC tips</span>
+                      <span style="color:var(--wt-text-secondary)">+$${myWeekCCTips.toFixed(2)}</span>
+                    </div>` : ''}
+                    ${myWeekCashTips > 0 ? `<div data-cash-lock="${l.id}" data-cash-ws="${wsStr}" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;cursor:pointer">
+                      <span style="color:var(--wt-text-tertiary)">${cashInCheck ? '🔒' : '🔓'} Cash tips${cashInCheck ? ' (in check)' : ''}</span>
+                      <span style="color:var(--wt-text-tertiary)">+$${myWeekCashTips.toFixed(2)}</span>
+                    </div>` : ''}
+                    ${grossDiff !== null ? `<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid var(--wt-border);padding-top:3px;margin-top:2px">
+                      <span style="color:var(--wt-text-tertiary)">Expected (gross)</span>
+                      <span style="color:var(--wt-text-primary);font-weight:700">$${expectedGross.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
+                      <span style="color:var(--wt-text-tertiary)">Diff (gross)</span>
+                      <span style="color:${grossDiff>=0?'#30D158':'#FF453A'};font-weight:700">${grossDiff>=0?'+':''}$${Math.abs(grossDiff).toFixed(2)}</span>
+                    </div>` : ''}
+                    ${netDiff !== null ? `<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid var(--wt-border);padding-top:3px;margin-top:2px">
+                      <span style="color:var(--wt-text-tertiary)">Expected (net)</span>
+                      <span style="color:var(--wt-text-primary);font-weight:700">$${expectedNet.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
+                      <span style="color:var(--wt-text-tertiary)">Diff (net)</span>
+                      <span style="color:${netDiff>=0?'#30D158':'#FF453A'};font-weight:700">${netDiff>=0?'+':''}$${Math.abs(netDiff).toFixed(2)}</span>
+                    </div>` : ''}
+                    ${netData && netDiff === null ? `<div data-net-toggle="${l.id}_${wsStr}" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:4px;cursor:pointer;color:#5E5CE6">
+                      <span>Est. Net (after taxes)</span>
+                      <span data-net-chevron="${l.id}_${wsStr}">▼</span>
+                    </div>
+                    <div data-net-body="${l.id}_${wsStr}" style="display:none;margin-top:4px;padding-top:4px;border-top:1px solid var(--wt-border)">
+                      ${netData.lines.map(ln => `<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0"><span style="color:var(--wt-text-tertiary)">${ln.label}</span><span style="color:#FF453A">−$${ln.amount.toFixed(2)}</span></div>`).join('')}
+                      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding-top:3px;margin-top:2px;border-top:1px solid var(--wt-border)">
+                        <span style="color:var(--wt-text-primary)">Net expected</span><span style="color:var(--wt-hero-timer-color)">$${netData.net.toFixed(2)}</span>
+                      </div>
+                    </div>` : ''}
+                    ${payment.receivedDate ? `<div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:2px">Received: ${payment.receivedDate}</div>` : ''}
+                  </div>`;
+              }
+            } else {
+              status = `<span style="color:#FF9F0A">⏳ ${WTRules.getPayDate(ws, settings, l)}</span>`;
+            }
+            return `<div class="wt-week-paydate wt-pd-row" data-loc-id="${l.id}" data-loc-name="${l.name}" data-ws="${wsStr}" style="cursor:pointer">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="color:var(--wt-text-tertiary)">${l.name}</span>
+                ${status}
+              </div>
+              ${comparison}
+            </div>`;
+          }).join('');
+        })()}`;
+      row.querySelectorAll('.wt-dot').forEach(dot => {
+        dot.onclick = (e) => {
+          e.stopPropagation();
+          _go('day', { date: dot.dataset.date });
+        };
+      });
+      row.querySelectorAll('[data-dayoff-nav]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          _go('day', { date: el.dataset.dayoffNav });
+        };
+      });
+      row.querySelectorAll('.wt-pd-row').forEach(el => {
+        el.onclick = e => {
+          e.stopPropagation();
+          _showPayDayOptions(el.dataset.locId, el.dataset.locName, el.dataset.ws, settings);
+        };
+      });
+      row.querySelectorAll('[data-cash-lock]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          const lId = el.dataset.cashLock;
+          const wsKey = el.dataset.cashWs;
+          const existingP = WTDb.getPayment(lId, wsKey);
+          if (!existingP) return;
+          WTDb.savePayment(lId, wsKey, { ...existingP, cashInCheck: !existingP.cashInCheck });
+          _go('week');
+        };
+      });
+      row.querySelectorAll('[data-net-toggle]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          const key = el.dataset.netToggle;
+          const body = row.querySelector(`[data-net-body="${key}"]`);
+          const chev = row.querySelector(`[data-net-chevron="${key}"]`);
+          if (!body) return;
+          const open = body.style.display !== 'none';
+          body.style.display = open ? 'none' : 'block';
+          if (chev) chev.textContent = open ? '▼' : '▲';
+        };
+      });
+
+      // Click on week totals row → show daily accordion
+      const numsRow = row.querySelector('.wt-week-nums');
+      if (numsRow) {
+        numsRow.style.cursor = 'pointer';
+        let breakdownEl = null;
+        numsRow.onclick = () => {
+          if (breakdownEl && breakdownEl.parentNode) {
+            breakdownEl.remove(); breakdownEl = null; return;
+          }
+          breakdownEl = document.createElement('div');
+          breakdownEl.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid var(--wt-border);font-size:13px';
+          const days = [0,1,2,3,4,5,6].map(i => {
+            const d = new Date(ws); d.setDate(d.getDate() + i);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          });
+          const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+          days.forEach((ds, i) => {
+            const dayShifts = shifts.filter(s => s.date === ds);
+            const dayPay = WTRules.weeklyPay(dayShifts);
+            const hasWork = dayShifts.length > 0;
+            const dayTipCut = dayShifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
+            const div = document.createElement('div');
+            div.style.cssText = 'border-bottom:1px solid var(--wt-border)';
+            const dayRow = document.createElement('div');
+            dayRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;cursor:' + (hasWork ? 'pointer' : 'default');
+            dayRow.innerHTML = `
+              <span style="color:${hasWork?'var(--wt-text-primary)':'var(--wt-text-tertiary)'}">${dayNames[i]} ${new Date(ds+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                ${hasWork ? `<span style="font-size:12px;color:var(--wt-text-tertiary)">${WTRules.fmtHours(dayPay.totalHours)}</span>` : ''}
+                <span style="color:${hasWork?'#30D158':'var(--wt-text-tertiary)'};font-weight:700">${hasWork ? WTRules.fmtMoney(dayPay.total) : '$0.00'}</span>
+                ${hasWork && dayTipCut > 0 ? `<span style="font-size:12px;color:#FF9F0A;font-weight:700">+${WTRules.fmtMoney(dayTipCut)}</span>` : ''}
+                ${hasWork ? '<span style="font-size:10px;color:var(--wt-text-tertiary)">▼</span>' : ''}
+              </div>`;
+            div.appendChild(dayRow);
+
+            if (hasWork) {
+              const detailEl = document.createElement('div');
+              detailEl.style.cssText = 'display:none;background:var(--wt-chip-bg);border-radius:12px;padding:10px 12px;margin-bottom:6px;font-size:13px';
+              
+              // Tips data for this day — aggregate all shifts
+              const dayShiftsAll = WTDb.getShiftsForDate(ds).filter(s => (s.workProfile || 'restaurant') === activeProf);
+              const shiftsWithTips = dayShiftsAll.filter(s => {
+                const t = WTDb.getTipsForShift(s.id);
+                return t && (t.creditCardTotal > 0 || t.cashTotal > 0);
+              });
+              let tipHtml = '';
+              if (shiftsWithTips.length > 0) {
+                let totalMyCCCut = 0;
+                let totalMyCash = 0;
+                const shiftRows = shiftsWithTips.map(s => {
+                  const t = WTDb.getTipsForShift(s.id);
+                  const tWorkers = t.workers || [];
+                  const tipResult = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(s.locationId), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
+                  const meIdx = tWorkers.findIndex(w => w.isMe);
+                  const myPayout = meIdx >= 0 ? tipResult.payouts[meIdx] : null;
+                  const myCash = myPayout ? (typeof myPayout.cashAmount === 'number' ? myPayout.cashAmount : (myPayout.amount - (myPayout.ccAmount || 0))) : 0;
+                  const myCC = myPayout ? (myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount) : 0;
+                  if (myPayout) totalMyCCCut += myCC;
+                  totalMyCash += myCash;
+                  return `
+                    <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--wt-border)">
+                      <div style="font-size:12px;font-weight:700;color:var(--wt-text-primary);margin-bottom:4px">${s.locationName||'Shift'} · <span style="color:var(--wt-text-secondary);font-weight:500">${s.shiftType||''}</span></div>
+                      <div style="display:flex;justify-content:space-between;color:var(--wt-text-secondary);font-size:12px;margin-bottom:2px">
+                        <span>CC ${WTRules.fmtMoney(t.creditCardTotal)} − fee ${WTRules.fmtMoney(tipResult.creditCard.fee)}</span>
+                        <span style="color:var(--wt-text-primary)">${WTRules.fmtMoney(tipResult.creditCard.net)}</span>
+                      </div>
+                      ${t.cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;color:var(--wt-text-secondary);font-size:12px;margin-bottom:2px">
+                        <span>Cash (separate)</span><span style="color:#30D158">${WTRules.fmtMoney(t.cashTotal)}</span>
+                      </div>` : ''}
+                      ${myPayout ? `<div style="display:flex;justify-content:space-between;margin-top:4px">
+                        <span style="font-size:12px;color:var(--wt-hero-timer-color)">⭐ Your cut</span>
+                        <span style="color:var(--wt-hero-timer-color);font-weight:700">$${myCC}${myCash>0?' + $'+myCash+' cash':''}</span>
+                      </div>` : ''}
+                    </div>`;
+                }).join('');
+
+                tipHtml = `
+                  <div style="border-top:1px solid var(--wt-border);margin-top:8px;padding-top:8px">
+                    <div style="color:#FF9F0A;font-weight:700;margin-bottom:8px">💰 Tips (${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''})</div>
+                    ${shiftRows}
+                    <div style="display:flex;justify-content:space-between;font-weight:700;padding-top:6px;margin-top:4px">
+                      <span style="color:var(--wt-text-primary)">Hours + CC tips</span>
+                      <span style="color:#30D158;font-size:15px;font-weight:800">${WTRules.fmtMoney(dayPay.total + totalMyCCCut)}</span>
+                    </div>
+                    ${totalMyCash > 0 ? `<div style="display:flex;justify-content:space-between;margin-top:4px">
+                      <span style="font-size:12px;color:var(--wt-text-tertiary)">+ Cash tips</span>
+                      <span style="font-size:13px;color:var(--wt-text-tertiary);font-weight:600">${WTRules.fmtMoney(dayPay.total + totalMyCCCut + totalMyCash)}</span>
+                    </div>` : ''}
+                    <div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:2px">Cash not included in Hours + CC total</div>
+                  </div>`;
+              }
+
+
+
+              detailEl.innerHTML = `
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                  <span style="color:var(--wt-text-tertiary)">Hours</span>
+                  <span style="color:var(--wt-text-primary);font-weight:700">${WTRules.fmtHours(dayPay.totalHours)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                  <span style="color:var(--wt-text-tertiary)">Gross pay</span>
+                  <span style="color:#30D158;font-weight:700">${WTRules.fmtMoney(dayPay.total)}</span>
+                </div>
+
+                ${tipHtml}
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button data-go-day="${ds}" style="flex:1;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px;cursor:pointer">
+                    View full day →
+                  </button>
+                </div>`;
+
+              div.appendChild(detailEl);
+
+              let open = false;
+              dayRow.onclick = (e) => {
+                e.stopPropagation();
+                open = !open;
+                detailEl.style.display = open ? 'block' : 'none';
+                const chev = dayRow.querySelector('span:last-child');
+                if (chev) chev.textContent = open ? '▲' : '▼';
+              };
+
+              detailEl.querySelector('[data-go-day]').onclick = (e) => {
+                e.stopPropagation();
+                _go('day', { date: ds });
+              };
+            }
+            breakdownEl.appendChild(div);
+          });
+          numsRow.after(breakdownEl);
+        };
+      }
+      row.onclick = () => {
+        w.querySelectorAll('.wt-week').forEach(r => r.classList.remove('wt-week-cur'));
+        row.classList.add('wt-week-cur');
+      };
+      w.appendChild(row);
+    });
+
+    _root.appendChild(w);
+    w.querySelector('#wt-back').onclick = () => _go('home');
+    w.querySelector('#wt-home-icon').onclick = () => { _date = _today(); _go('home'); };
+  }
+
+  function _Day() {
+    const dateStr = _date || _today();
+    const activeProf2 = (WTDb.getSettings().workProfile || 'restaurant');
+    const shifts = WTDb.getShiftsForDate(dateStr).filter(s => (s.workProfile || 'restaurant') === activeProf2);
+    const summary = WTRules.dailySummary(shifts);
+
+    // Simple sequential day-by-day navigation — every calendar day is reachable, not just
+    // ones with a shift or day-off already recorded. The old version jumped straight to the
+    // next date that happened to have data, silently skipping empty days in between (e.g.
+    // landing on today from the 12th, skipping the 13th entirely) — confusing since the
+    // arrows look like a plain day browser. "Next" stops at today since future days have
+    // nothing to show yet; "prev" has no lower bound.
+    const weekStart = getWeekStart(new Date(dateStr + 'T12:00:00'));
+    const weekLabel = formatWeekLabel(weekStart);
+    const _fmtDs = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const prevDateObj = new Date(dateStr + 'T12:00:00'); prevDateObj.setDate(prevDateObj.getDate() - 1);
+    const prevDate = _fmtDs(prevDateObj);
+    const nextDateObj = new Date(dateStr + 'T12:00:00'); nextDateObj.setDate(nextDateObj.getDate() + 1);
+    const nextDateCandidate = _fmtDs(nextDateObj);
+    const nextDate = nextDateCandidate <= _today() ? nextDateCandidate : null;
+
+    const w = document.createElement('div');
+    w.className = 'wt-screen';
+    w.innerHTML = `
+      <div class="wt-hdr">
+        <button class="wt-back" id="wt-back">‹ Back</button>
+        <div style="font-size:13px;color:var(--wt-text-secondary)">${weekLabel}</div>
+        <button class="wt-sec-action" id="wt-add-shift-day">+ Shift</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;gap:12px">
+        <button id="wt-day-prev" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:${!prevDate ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!prevDate ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='var(--wt-icon-btn-bg-active)'" onpointerup="this.style.background='var(--wt-icon-btn-bg)'" onpointerleave="this.style.background='var(--wt-icon-btn-bg)'">‹</button>
+        <div style="flex:1;text-align:center;font-size:18px;font-weight:800">${_fmtDate(dateStr)}</div>
+        <button id="wt-day-next" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:${!nextDate ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!nextDate ? 'opacity:0.3;pointer-events:none' : ''}"
+          onpointerdown="this.style.background='var(--wt-icon-btn-bg-active)'" onpointerup="this.style.background='var(--wt-icon-btn-bg)'" onpointerleave="this.style.background='var(--wt-icon-btn-bg)'">›</button>
+      </div>`;
+    if (shifts.length > 0) {
+      const sumCard = document.createElement('div');
+      sumCard.className = 'wt-summary';
+      sumCard.innerHTML = `
+        <div class="wt-sum-row"><span>Total hours</span><strong>${WTRules.fmtHours(summary.totalHrs)}</strong></div>
+        <div class="wt-sum-row" id="wt-earnings-row" style="cursor:pointer">
+          <span>Est. earnings</span>
+          <strong style="color:#30D158">${WTRules.fmtMoney(summary.totalEarnings)} <span id="wt-earn-chevron" style="font-size:11px;color:var(--wt-text-tertiary)">▼</span></strong>
+        </div>
+        <div id="wt-earn-breakdown" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--wt-border);font-size:13px;color:var(--wt-text-secondary);line-height:1.8">
+          ${(() => {
+            const lines = [];
+            shifts.forEach(s => {
+              const loc = WTDb.getLocations().find(l => l.id === s.locationId);
+              const rate = loc ? loc.hourlyRate : 0;
+              const locSettings = ((WTDb.getSettings().locationSettings||{})[s.locationId]||{});
+              const paidBreaks = locSettings.paidBreaks || false;
+              const shiftPay = WTRules.weeklyPay([s]);
+              lines.push(`<div style="display:flex;justify-content:space-between"><span>${s.locationName||'Shift'} · ${WTRules.fmtHours(shiftPay.totalHours)}</span><span style="color:var(--wt-text-primary)">${WTRules.fmtMoney(shiftPay.total)}</span></div>`);
+              if (shiftPay.regularHours > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span>Regular ${WTRules.fmtHours(shiftPay.regularHours)} × $${rate}/hr</span><span>${WTRules.fmtMoney(shiftPay.regularPay)}</span></div>`);
+              if (shiftPay.overtimePay > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF9F0A">Overtime ${WTRules.fmtHours(shiftPay.overtimeHours)} × ${shiftPay.otMultiplier}×</span><span style="color:#FF9F0A">${WTRules.fmtMoney(shiftPay.overtimePay)}</span></div>`);
+              const paidBreakMins = (s.entries||[]).reduce((a,e) => {
+                if (typeof e.breakDurationMinutes === 'number') return a + (e.breakPaid ? e.breakDurationMinutes : 0);
+                return a + (e.paidBreakMinutes||0);
+              }, 0);
+              if (paidBreakMins > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#30D158">Paid break ${WTRules.fmtHours(paidBreakMins/60)}</span><span style="color:#30D158">+${WTRules.fmtMoney((paidBreakMins/60)*rate)}</span></div>`);
+              if (!paidBreaks) {
+                const breakMins = (s.entries||[]).reduce((a,e) => a + (e.breakMinutes||0), 0);
+                if (breakMins > 0) lines.push(`<div style="display:flex;justify-content:space-between;padding-left:12px"><span style="color:#FF453A">Breaks deducted ${WTRules.fmtHours(breakMins/60)}</span><span style="color:#FF453A">−${WTRules.fmtMoney((breakMins/60)*rate)}</span></div>`);
+              }
+            });
+            const taxSettings = WTDb.getTaxSettings();
+            const netData = WTRules.estimateNet(summary.totalEarnings, taxSettings);
+            if (netData) {
+              lines.push(`<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--wt-border);font-size:11px;font-weight:700;color:var(--wt-text-tertiary);text-transform:uppercase;letter-spacing:.5px">Est. Net Pay</div>`);
+              netData.lines.forEach(l => {
+                lines.push(`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--wt-text-secondary)">${l.label}</span><span style="color:#FF453A">−${WTRules.fmtMoney(l.amount)}</span></div>`);
+              });
+              lines.push(`<div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--wt-border);margin-top:6px"><span style="color:var(--wt-text-primary);font-weight:700">Est. Net</span><span style="color:var(--wt-hero-timer-color);font-weight:800">${WTRules.fmtMoney(netData.net)}</span></div>`);
+              lines.push(`<div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:6px;line-height:1.5">Estimate only. Configure rates in Settings → Tax Estimate. Does not account for filing status, dependents, or multi-state situations.</div>`);
+            }
+            return lines.join('') || '<div style="color:var(--wt-text-tertiary);font-size:13px">No breakdown available</div>';
+          })()}
+        </div>`;
+      sumCard.querySelector('#wt-earnings-row').onclick = () => {
+        const bd = sumCard.querySelector('#wt-earn-breakdown');
+        const ch = sumCard.querySelector('#wt-earn-chevron');
+        const open = bd.style.display !== 'none';
+        bd.style.display = open ? 'none' : 'block';
+        ch.textContent = open ? '▼' : '▲';
+      };
+      w.appendChild(sumCard);
+      shifts.forEach(s => w.appendChild(_ShiftCard(s)));
+    } else {
+      const emp = document.createElement('div');
+      emp.className = 'wt-empty';
+      const dayOffReason = WTDb.getDayOffReason(dateStr, activeProf2);
+      if (dayOffReason) {
+        emp.innerHTML = `<strong>Day off</strong>${_dayOffLabel(dayOffReason)}<button id="wt-dayoff-edit" style="display:block;margin:10px auto 0;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+          onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Edit</button>`;
+      } else {
+        emp.innerHTML = `<strong>No shifts</strong>Nothing recorded for this day.
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
+            <button id="wt-log-past" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+              onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Log past data</button>
+            <button id="wt-dayoff-add" style="background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:10px;color:var(--wt-text-secondary);font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;transition:transform .1s"
+              onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">Mark day off</button>
+          </div>`;
+      }
+      w.appendChild(emp);
+    }
+    _root.appendChild(w);
+    w.querySelector('#wt-back').onclick = () => { _weekFocusDate = dateStr; _go('week'); };
+    w.querySelector('#wt-add-shift-day').onclick = () => _showAddShift(dateStr);
+    if (prevDate) w.querySelector('#wt-day-prev').onclick = () => _go('day', { date: prevDate });
+    if (nextDate) w.querySelector('#wt-day-next').onclick = () => _go('day', { date: nextDate });
+    const dayOffAddBtn = w.querySelector('#wt-dayoff-add');
+    if (dayOffAddBtn) dayOffAddBtn.onclick = () => _showDayOffPicker(dateStr, activeProf2, () => _go('day', { date: dateStr }));
+    const dayOffEditBtn = w.querySelector('#wt-dayoff-edit');
+    if (dayOffEditBtn) dayOffEditBtn.onclick = () => _showDayOffPicker(dateStr, activeProf2, () => _go('day', { date: dateStr }));
+    const logPastBtn = w.querySelector('#wt-log-past');
+    if (logPastBtn) logPastBtn.onclick = () => _showLogPastData(dateStr);
+  }
+
+  function _Preview() {
+    const w = document.createElement('div');
+    w.className = 'wt-screen';
+    const previewProfile = WTDb.getSettings().workProfile || 'restaurant';
+    const previewLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === previewProfile);
+    w.innerHTML = `
+      <div class="wt-hdr">
+        <button class="wt-back" id="wt-back">‹ Back</button>
+        <div style="font-size:18px;font-weight:800">Preview & Export</div>
+        <button id="wt-home-icon" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.4);color:#30D158;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
+      </div>
+      <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:8px">
+        ${['Week','Month','Quarter','6M','Year','All Time'].map(p =>
+          `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '').replace('6m','sixmonths')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+        ).join('')}
+      </div>
+      <button id="wt-pv-custom-btn" class="wt-tap-scale" style="display:block;width:calc(100% - 32px);margin:0 16px 10px;background:rgba(28,28,30,0.8);border:1px solid #38383A;border-radius:12px;color:#98989D;font-size:13px;font-weight:700;padding:11px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:5px"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5H12.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 1.3V3.3M10 1.3V3.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Pick a custom date range</button>
+      <div id="wt-pv-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:10px">
+        <button id="wt-pv-prev" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+        <span id="wt-pv-label" style="font-size:14px;font-weight:700;color:#fff;min-width:170px;text-align:center"></span>
+        <button id="wt-pv-next" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
+      </div>
+      <div id="wt-custom-wrap" style="display:none;gap:8px;margin:0 16px 10px">
+        <input type="date" class="wt-input" id="wt-custom-start" style="flex:1">
+        <input type="date" class="wt-input" id="wt-custom-end" style="flex:1">
+      </div>
+      ${previewLocs.length > 1 ? `
+      <select class="wt-range-sel" id="wt-loc-filter">
+        <option value="">All Locations</option>
+        ${previewLocs.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+      </select>` : ''}
+      <div class="wt-table-wrap" id="wt-tbl"></div>
+      <div class="wt-actions">
+        <button class="wt-btn wt-btn-secondary" id="wt-backup">💾 Backup</button>
+        <button class="wt-btn wt-btn-cyan" id="wt-pdf">📄 PDF</button>
+      </div>`;
+    _root.appendChild(w);
+    const tbl = w.querySelector('#wt-tbl');
+    const locFilterEl = w.querySelector('#wt-loc-filter');
+    const pillsEl = w.querySelector('#wt-pv-pills');
+    const customBtn = w.querySelector('#wt-pv-custom-btn');
+    const navEl = w.querySelector('#wt-pv-nav');
+    const labelEl = w.querySelector('#wt-pv-label');
+    const nextBtn = w.querySelector('#wt-pv-next');
+    let granularity = 'month', offset = 0, curRange = null;
+
+    function setActivePill() {
+      pillsEl.querySelectorAll('.wt-pv-pill').forEach(btn => {
+        const active = btn.dataset.gran === granularity;
+        btn.style.borderColor = active ? '#5E5CE6' : '#38383A';
+        btn.style.background = active ? 'rgba(94,92,230,.15)' : 'none';
+        btn.style.color = active ? '#5E5CE6' : '#98989D';
+      });
+      const customActive = granularity === 'custom';
+      customBtn.style.borderColor = customActive ? '#5E5CE6' : '#38383A';
+      customBtn.style.background = customActive ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.8)';
+      customBtn.style.color = customActive ? '#5E5CE6' : '#98989D';
     }
 
     function refresh() {
@@ -887,7 +1657,7 @@ const WorkTracker = (() => {
       } else {
         curRange = _periodRange(granularity, offset);
         labelEl.textContent = curRange.label;
-        nextBtn.style.color = offset >= 0 ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)';
+        nextBtn.style.color = offset >= 0 ? '#3a3a3c' : '#fff';
         nextBtn.style.opacity = offset >= 0 ? '0.3' : '1';
         nextBtn.style.pointerEvents = offset >= 0 ? 'none' : 'auto';
       }
