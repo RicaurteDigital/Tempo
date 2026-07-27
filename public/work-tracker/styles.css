@@ -37,6 +37,7 @@
   --wt-pastweek-border: rgba(100,210,255,.35);
   --wt-pastweek-text: #64D2FF;
   --wt-chip-bg: rgba(28,28,30,0.8);
+  --wt-settings-block-bg: rgba(28,28,30,0.55);
 }
 body.wt-light {
   --wt-bg-page: #F5F5F7;
@@ -75,6 +76,7 @@ body.wt-light {
   --wt-pastweek-border: #B8DFF5;
   --wt-pastweek-text: #0A79B8;
   --wt-chip-bg: #F0F0F2;
+  --wt-settings-block-bg: #fff;
 }
 
 .wt-screen {
@@ -650,10 +652,11 @@ body.wt-light {
 
 /* ── SETTINGS ────────────────────────────────────────── */
 .wt-settings-block {
-  background: rgba(28,28,30,0.55);
+  background: var(--wt-settings-block-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid var(--wt-border);
+  box-shadow: var(--wt-shadow-card);
   border-radius: 20px;
   padding: 16px;
   margin-bottom: 12px;
@@ -661,7 +664,7 @@ body.wt-light {
 .wt-settings-title {
   font-size: 13px;
   font-weight: 700;
-  color: #636366;
+  color: var(--wt-text-tertiary);
   text-transform: uppercase;
   letter-spacing: .5px;
   margin-bottom: 12px;
