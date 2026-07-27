@@ -840,7 +840,7 @@ const WorkTracker = (() => {
       entriesDiv.appendChild(built.reportRow);
     } else {
       const noHours = document.createElement('div');
-      noHours.style.cssText = 'color:#636366;font-size:13px;padding:4px 0 8px';
+      noHours.style.cssText = 'color:var(--wt-text-tertiary);font-size:13px;padding:4px 0 8px';
       noHours.textContent = 'No hours logged — tips only. Tap "+ Add period" below if you remember the times.';
       entriesDiv.appendChild(noHours);
     }
@@ -882,8 +882,8 @@ const WorkTracker = (() => {
     const cardProfile = WORK_PROFILES[WTDb.getSettings().workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
     footer.innerHTML = `
       <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
-      <button class="wt-tag-btn wt-tap-scale" data-sid="${shift.id}" style="background:none;border:none;color:${(shift.weatherTag||shift.paceTag||shift.contextNote)?'#5E5CE6':'#636366'};cursor:pointer;padding:0;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5H6.5L12.5 7.5L7.5 12.5L1.5 6.5V1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="4" r="1" fill="currentColor"/></svg></button>
-      ${cardProfile.hasTips ? `<button class="wt-tips-btn ${(!isRunning && !hasTips) ? 'wt-glow' : ''}" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'rgba(28,28,30,0.8)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'#98989D'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">` : ''}
+      <button class="wt-tag-btn wt-tap-scale" data-sid="${shift.id}" style="background:none;border:none;color:${(shift.weatherTag||shift.paceTag||shift.contextNote)?'#5E5CE6':'var(--wt-text-tertiary)'};cursor:pointer;padding:0;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5H6.5L12.5 7.5L7.5 12.5L1.5 6.5V1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="4" r="1" fill="currentColor"/></svg></button>
+      ${cardProfile.hasTips ? `<button class="wt-tips-btn ${(!isRunning && !hasTips) ? 'wt-glow' : ''}" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'var(--wt-chip-bg)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'var(--wt-text-secondary)'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">` : ''}
         💰 ${hasTips ? TipRules.fmtMoney(tipsData.myPayout||0) + ' tips' : 'Tips'}
       ${cardProfile.hasTips ? `</button>` : ''}
       <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
@@ -947,7 +947,7 @@ const WorkTracker = (() => {
       const isBreakEntry = typeof e.breakDurationMinutes === 'number';
       if (isBreakEntry) {
         const breakToggle = document.createElement('button');
-        breakToggle.style.cssText = 'display:block;width:100%;text-align:left;background:none;border:none;padding:2px 0 6px;cursor:pointer;font-size:11px;color:' + (e.breakPaid ? '#30D158' : '#636366');
+        breakToggle.style.cssText = 'display:block;width:100%;text-align:left;background:none;border:none;padding:2px 0 6px;cursor:pointer;font-size:11px;color:' + (e.breakPaid ? '#30D158' : 'var(--wt-text-tertiary)');
         breakToggle.textContent = e.note + '  ✎ tap to change';
         breakToggle.onclick = () => {
           e.breakPaid = !e.breakPaid;
@@ -962,7 +962,7 @@ const WorkTracker = (() => {
         row.appendChild(breakToggle);
       } else {
         const noteEl = document.createElement('div');
-        noteEl.style.cssText = 'font-size:11px;color:#636366;padding:2px 0 6px;';
+        noteEl.style.cssText = 'font-size:11px;color:var(--wt-text-tertiary);padding:2px 0 6px;';
         noteEl.textContent = e.note;
         row.appendChild(noteEl);
       }
@@ -1600,14 +1600,14 @@ const WorkTracker = (() => {
       </div>
       <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:8px">
         ${['Week','Month','Quarter','6M','Year','All Time'].map(p =>
-          `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '').replace('6m','sixmonths')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid #38383A;background:none;color:#98989D;font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+          `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '').replace('6m','sixmonths')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--wt-input-border);background:none;color:var(--wt-text-secondary);font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
-      <button id="wt-pv-custom-btn" class="wt-tap-scale" style="display:block;width:calc(100% - 32px);margin:0 16px 10px;background:rgba(28,28,30,0.8);border:1px solid #38383A;border-radius:12px;color:#98989D;font-size:13px;font-weight:700;padding:11px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:5px"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5H12.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 1.3V3.3M10 1.3V3.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Pick a custom date range</button>
+      <button id="wt-pv-custom-btn" class="wt-tap-scale" style="display:block;width:calc(100% - 32px);margin:0 16px 10px;background:var(--wt-chip-bg);border:1px solid var(--wt-input-border);border-radius:12px;color:var(--wt-text-secondary);font-size:13px;font-weight:700;padding:11px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:5px"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5H12.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 1.3V3.3M10 1.3V3.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Pick a custom date range</button>
       <div id="wt-pv-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:10px">
-        <button id="wt-pv-prev" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
-        <span id="wt-pv-label" style="font-size:14px;font-weight:700;color:#fff;min-width:170px;text-align:center"></span>
-        <button id="wt-pv-next" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
+        <button id="wt-pv-prev" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:var(--wt-text-primary);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+        <span id="wt-pv-label" style="font-size:14px;font-weight:700;color:var(--wt-text-primary);min-width:170px;text-align:center"></span>
+        <button id="wt-pv-next" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:var(--wt-text-primary);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">›</button>
       </div>
       <div id="wt-custom-wrap" style="display:none;gap:8px;margin:0 16px 10px">
         <input type="date" class="wt-input" id="wt-custom-start" style="flex:1">
@@ -1636,14 +1636,14 @@ const WorkTracker = (() => {
     function setActivePill() {
       pillsEl.querySelectorAll('.wt-pv-pill').forEach(btn => {
         const active = btn.dataset.gran === granularity;
-        btn.style.borderColor = active ? '#5E5CE6' : '#38383A';
+        btn.style.borderColor = active ? '#5E5CE6' : 'var(--wt-input-border)';
         btn.style.background = active ? 'rgba(94,92,230,.15)' : 'none';
-        btn.style.color = active ? '#5E5CE6' : '#98989D';
+        btn.style.color = active ? '#5E5CE6' : 'var(--wt-text-secondary)';
       });
       const customActive = granularity === 'custom';
-      customBtn.style.borderColor = customActive ? '#5E5CE6' : '#38383A';
-      customBtn.style.background = customActive ? 'rgba(94,92,230,.15)' : 'rgba(28,28,30,0.8)';
-      customBtn.style.color = customActive ? '#5E5CE6' : '#98989D';
+      customBtn.style.borderColor = customActive ? '#5E5CE6' : 'var(--wt-input-border)';
+      customBtn.style.background = customActive ? 'rgba(94,92,230,.15)' : 'var(--wt-chip-bg)';
+      customBtn.style.color = customActive ? '#5E5CE6' : 'var(--wt-text-secondary)';
     }
 
     function refresh() {
@@ -1657,7 +1657,7 @@ const WorkTracker = (() => {
       } else {
         curRange = _periodRange(granularity, offset);
         labelEl.textContent = curRange.label;
-        nextBtn.style.color = offset >= 0 ? '#3a3a3c' : '#fff';
+        nextBtn.style.color = offset >= 0 ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)';
         nextBtn.style.opacity = offset >= 0 ? '0.3' : '1';
         nextBtn.style.pointerEvents = offset >= 0 ? 'none' : 'auto';
       }
