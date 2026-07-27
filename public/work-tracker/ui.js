@@ -1108,10 +1108,10 @@ const WorkTracker = (() => {
         </div>
         <div id="wt-due-body" style="display:none;padding:10px 12px 12px;background:rgba(255,149,0,.05)">
           ${due.map(d => `
-            <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;cursor:pointer;background:rgba(28,28,30,0.7);border-radius:12px">
+            <div class="wt-due-row" data-loc-id="${d.locId}" data-loc-name="${d.locName}" data-ws="${d.ws}" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;cursor:pointer;background:var(--wt-chip-bg);border-radius:12px">
               <div>
-                <div style="font-size:13px;font-weight:700;color:#fff">${d.locName}</div>
-                <div style="font-size:11px;color:#98989D">${d.weekLabel}</div>
+                <div style="font-size:13px;font-weight:700;color:var(--wt-text-primary)">${d.locName}</div>
+                <div style="font-size:11px;color:var(--wt-text-secondary)">${d.weekLabel}</div>
               </div>
               <div class="wt-glow" style="font-size:11px;color:#FF9F0A;font-weight:700;border-radius:8px;padding:3px 8px">Expected ${d.payDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ›</div>
             </div>
@@ -1166,7 +1166,7 @@ const WorkTracker = (() => {
         if (isPast && !has) {
           const reason = WTDb.getDayOffReason(ds, activeProf);
           if (reason) {
-            offHtml = `<div data-dayoff-nav="${ds}" class="wt-tap-fade" style="font-size:10px;color:#636366;text-align:center;margin-top:3px;cursor:pointer">Off</div>`;
+            offHtml = `<div data-dayoff-nav="${ds}" class="wt-tap-fade" style="font-size:10px;color:var(--wt-text-tertiary);text-align:center;margin-top:3px;cursor:pointer">Off</div>`;
           } else if (isCur) {
             // Only nudge within the current, still-in-progress week — once a week ends,
             // stop asking about days you likely won't remember; still fully clickable though.
@@ -1228,46 +1228,46 @@ const WorkTracker = (() => {
               const netDiff = (expectedNet !== null && pAmounts.net !== null) ? pAmounts.net - expectedNet : null;
               if (grossDiff !== null || netDiff !== null) {
                 comparison = `
-                  <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px">
+                  <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--wt-border);display:flex;flex-direction:column;gap:3px">
                     ${locPay ? `<div style="display:flex;justify-content:space-between;font-size:11px">
-                      <span style="color:#636366">Hours (gross)</span>
-                      <span style="color:#98989D">$${locPay.total.toFixed(2)}</span>
+                      <span style="color:var(--wt-text-tertiary)">Hours (gross)</span>
+                      <span style="color:var(--wt-text-secondary)">$${locPay.total.toFixed(2)}</span>
                     </div>` : ''}
                     ${myWeekCCTips > 0 ? `<div style="display:flex;justify-content:space-between;font-size:11px">
-                      <span style="color:#636366">CC tips</span>
-                      <span style="color:#98989D">+$${myWeekCCTips.toFixed(2)}</span>
+                      <span style="color:var(--wt-text-tertiary)">CC tips</span>
+                      <span style="color:var(--wt-text-secondary)">+$${myWeekCCTips.toFixed(2)}</span>
                     </div>` : ''}
                     ${myWeekCashTips > 0 ? `<div data-cash-lock="${l.id}" data-cash-ws="${wsStr}" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;cursor:pointer">
-                      <span style="color:#636366">${cashInCheck ? '🔒' : '🔓'} Cash tips${cashInCheck ? ' (in check)' : ''}</span>
-                      <span style="color:#636366">+$${myWeekCashTips.toFixed(2)}</span>
+                      <span style="color:var(--wt-text-tertiary)">${cashInCheck ? '🔒' : '🔓'} Cash tips${cashInCheck ? ' (in check)' : ''}</span>
+                      <span style="color:var(--wt-text-tertiary)">+$${myWeekCashTips.toFixed(2)}</span>
                     </div>` : ''}
-                    ${grossDiff !== null ? `<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);padding-top:3px;margin-top:2px">
-                      <span style="color:#636366">Expected (gross)</span>
-                      <span style="color:#fff;font-weight:700">$${expectedGross.toFixed(2)}</span>
+                    ${grossDiff !== null ? `<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid var(--wt-border);padding-top:3px;margin-top:2px">
+                      <span style="color:var(--wt-text-tertiary)">Expected (gross)</span>
+                      <span style="color:var(--wt-text-primary);font-weight:700">$${expectedGross.toFixed(2)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
-                      <span style="color:#636366">Diff (gross)</span>
+                      <span style="color:var(--wt-text-tertiary)">Diff (gross)</span>
                       <span style="color:${grossDiff>=0?'#30D158':'#FF453A'};font-weight:700">${grossDiff>=0?'+':''}$${Math.abs(grossDiff).toFixed(2)}</span>
                     </div>` : ''}
-                    ${netDiff !== null ? `<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);padding-top:3px;margin-top:2px">
-                      <span style="color:#636366">Expected (net)</span>
-                      <span style="color:#fff;font-weight:700">$${expectedNet.toFixed(2)}</span>
+                    ${netDiff !== null ? `<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid var(--wt-border);padding-top:3px;margin-top:2px">
+                      <span style="color:var(--wt-text-tertiary)">Expected (net)</span>
+                      <span style="color:var(--wt-text-primary);font-weight:700">$${expectedNet.toFixed(2)}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px">
-                      <span style="color:#636366">Diff (net)</span>
+                      <span style="color:var(--wt-text-tertiary)">Diff (net)</span>
                       <span style="color:${netDiff>=0?'#30D158':'#FF453A'};font-weight:700">${netDiff>=0?'+':''}$${Math.abs(netDiff).toFixed(2)}</span>
                     </div>` : ''}
                     ${netData && netDiff === null ? `<div data-net-toggle="${l.id}_${wsStr}" style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-top:4px;cursor:pointer;color:#5E5CE6">
                       <span>Est. Net (after taxes)</span>
                       <span data-net-chevron="${l.id}_${wsStr}">▼</span>
                     </div>
-                    <div data-net-body="${l.id}_${wsStr}" style="display:none;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
-                      ${netData.lines.map(ln => `<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0"><span style="color:#636366">${ln.label}</span><span style="color:#FF453A">−$${ln.amount.toFixed(2)}</span></div>`).join('')}
-                      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding-top:3px;margin-top:2px;border-top:1px solid rgba(255,255,255,0.06)">
-                        <span style="color:#fff">Net expected</span><span style="color:#64D2FF">$${netData.net.toFixed(2)}</span>
+                    <div data-net-body="${l.id}_${wsStr}" style="display:none;margin-top:4px;padding-top:4px;border-top:1px solid var(--wt-border)">
+                      ${netData.lines.map(ln => `<div style="display:flex;justify-content:space-between;font-size:10px;padding:1px 0"><span style="color:var(--wt-text-tertiary)">${ln.label}</span><span style="color:#FF453A">−$${ln.amount.toFixed(2)}</span></div>`).join('')}
+                      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding-top:3px;margin-top:2px;border-top:1px solid var(--wt-border)">
+                        <span style="color:var(--wt-text-primary)">Net expected</span><span style="color:var(--wt-hero-timer-color)">$${netData.net.toFixed(2)}</span>
                       </div>
                     </div>` : ''}
-                    ${payment.receivedDate ? `<div style="font-size:11px;color:#636366;margin-top:2px">Received: ${payment.receivedDate}</div>` : ''}
+                    ${payment.receivedDate ? `<div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:2px">Received: ${payment.receivedDate}</div>` : ''}
                   </div>`;
               }
             } else {
@@ -1275,7 +1275,7 @@ const WorkTracker = (() => {
             }
             return `<div class="wt-week-paydate wt-pd-row" data-loc-id="${l.id}" data-loc-name="${l.name}" data-ws="${wsStr}" style="cursor:pointer">
               <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="color:#636366">${l.name}</span>
+                <span style="color:var(--wt-text-tertiary)">${l.name}</span>
                 ${status}
               </div>
               ${comparison}
@@ -1346,22 +1346,22 @@ const WorkTracker = (() => {
             const hasWork = dayShifts.length > 0;
             const dayTipCut = dayShifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
             const div = document.createElement('div');
-            div.style.cssText = 'border-bottom:1px solid #1C1C1E';
+            div.style.cssText = 'border-bottom:1px solid var(--wt-border)';
             const dayRow = document.createElement('div');
             dayRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;cursor:' + (hasWork ? 'pointer' : 'default');
             dayRow.innerHTML = `
-              <span style="color:${hasWork?'#fff':'#636366'}">${dayNames[i]} ${new Date(ds+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+              <span style="color:${hasWork?'var(--wt-text-primary)':'var(--wt-text-tertiary)'}">${dayNames[i]} ${new Date(ds+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
               <div style="display:flex;align-items:center;gap:8px">
-                ${hasWork ? `<span style="font-size:12px;color:#636366">${WTRules.fmtHours(dayPay.totalHours)}</span>` : ''}
-                <span style="color:${hasWork?'#30D158':'#636366'};font-weight:700">${hasWork ? WTRules.fmtMoney(dayPay.total) : '$0.00'}</span>
+                ${hasWork ? `<span style="font-size:12px;color:var(--wt-text-tertiary)">${WTRules.fmtHours(dayPay.totalHours)}</span>` : ''}
+                <span style="color:${hasWork?'#30D158':'var(--wt-text-tertiary)'};font-weight:700">${hasWork ? WTRules.fmtMoney(dayPay.total) : '$0.00'}</span>
                 ${hasWork && dayTipCut > 0 ? `<span style="font-size:12px;color:#FF9F0A;font-weight:700">+${WTRules.fmtMoney(dayTipCut)}</span>` : ''}
-                ${hasWork ? '<span style="font-size:10px;color:#636366">▼</span>' : ''}
+                ${hasWork ? '<span style="font-size:10px;color:var(--wt-text-tertiary)">▼</span>' : ''}
               </div>`;
             div.appendChild(dayRow);
 
             if (hasWork) {
               const detailEl = document.createElement('div');
-              detailEl.style.cssText = 'display:none;background:rgba(28,28,30,0.6);border-radius:12px;padding:10px 12px;margin-bottom:6px;font-size:13px';
+              detailEl.style.cssText = 'display:none;background:var(--wt-chip-bg);border-radius:12px;padding:10px 12px;margin-bottom:6px;font-size:13px';
               
               // Tips data for this day — aggregate all shifts
               const dayShiftsAll = WTDb.getShiftsForDate(ds).filter(s => (s.workProfile || 'restaurant') === activeProf);
@@ -1385,17 +1385,17 @@ const WorkTracker = (() => {
                   totalMyCash += myCash;
                   return `
                     <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #2C2C2E">
-                      <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:4px">${s.locationName||'Shift'} · <span style="color:#98989D;font-weight:500">${s.shiftType||''}</span></div>
-                      <div style="display:flex;justify-content:space-between;color:#98989D;font-size:12px;margin-bottom:2px">
+                      <div style="font-size:12px;font-weight:700;color:var(--wt-text-primary);margin-bottom:4px">${s.locationName||'Shift'} · <span style="color:var(--wt-text-secondary);font-weight:500">${s.shiftType||''}</span></div>
+                      <div style="display:flex;justify-content:space-between;color:var(--wt-text-secondary);font-size:12px;margin-bottom:2px">
                         <span>CC ${WTRules.fmtMoney(t.creditCardTotal)} − fee ${WTRules.fmtMoney(tipResult.creditCard.fee)}</span>
-                        <span style="color:#fff">${WTRules.fmtMoney(tipResult.creditCard.net)}</span>
+                        <span style="color:var(--wt-text-primary)">${WTRules.fmtMoney(tipResult.creditCard.net)}</span>
                       </div>
-                      ${t.cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;color:#98989D;font-size:12px;margin-bottom:2px">
+                      ${t.cashTotal > 0 ? `<div style="display:flex;justify-content:space-between;color:var(--wt-text-secondary);font-size:12px;margin-bottom:2px">
                         <span>Cash (separate)</span><span style="color:#30D158">${WTRules.fmtMoney(t.cashTotal)}</span>
                       </div>` : ''}
                       ${myPayout ? `<div style="display:flex;justify-content:space-between;margin-top:4px">
-                        <span style="font-size:12px;color:#64D2FF">⭐ Your cut</span>
-                        <span style="color:#64D2FF;font-weight:700">$${myCC}${myCash>0?' + $'+myCash+' cash':''}</span>
+                        <span style="font-size:12px;color:var(--wt-hero-timer-color)">⭐ Your cut</span>
+                        <span style="color:var(--wt-hero-timer-color);font-weight:700">$${myCC}${myCash>0?' + $'+myCash+' cash':''}</span>
                       </div>` : ''}
                     </div>`;
                 }).join('');
@@ -1405,14 +1405,14 @@ const WorkTracker = (() => {
                     <div style="color:#FF9F0A;font-weight:700;margin-bottom:8px">💰 Tips (${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''})</div>
                     ${shiftRows}
                     <div style="display:flex;justify-content:space-between;font-weight:700;padding-top:6px;margin-top:4px">
-                      <span style="color:#fff">Hours + CC tips</span>
+                      <span style="color:var(--wt-text-primary)">Hours + CC tips</span>
                       <span style="color:#30D158;font-size:15px;font-weight:800">${WTRules.fmtMoney(dayPay.total + totalMyCCCut)}</span>
                     </div>
                     ${totalMyCash > 0 ? `<div style="display:flex;justify-content:space-between;margin-top:4px">
-                      <span style="font-size:12px;color:#636366">+ Cash tips</span>
-                      <span style="font-size:13px;color:#636366;font-weight:600">${WTRules.fmtMoney(dayPay.total + totalMyCCCut + totalMyCash)}</span>
+                      <span style="font-size:12px;color:var(--wt-text-tertiary)">+ Cash tips</span>
+                      <span style="font-size:13px;color:var(--wt-text-tertiary);font-weight:600">${WTRules.fmtMoney(dayPay.total + totalMyCCCut + totalMyCash)}</span>
                     </div>` : ''}
-                    <div style="font-size:11px;color:#636366;margin-top:2px">Cash not included in Hours + CC total</div>
+                    <div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:2px">Cash not included in Hours + CC total</div>
                   </div>`;
               }
 
@@ -1420,11 +1420,11 @@ const WorkTracker = (() => {
 
               detailEl.innerHTML = `
                 <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                  <span style="color:#636366">Hours</span>
-                  <span style="color:#fff;font-weight:700">${WTRules.fmtHours(dayPay.totalHours)}</span>
+                  <span style="color:var(--wt-text-tertiary)">Hours</span>
+                  <span style="color:var(--wt-text-primary);font-weight:700">${WTRules.fmtHours(dayPay.totalHours)}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                  <span style="color:#636366">Gross pay</span>
+                  <span style="color:var(--wt-text-tertiary)">Gross pay</span>
                   <span style="color:#30D158;font-weight:700">${WTRules.fmtMoney(dayPay.total)}</span>
                 </div>
 
@@ -1817,7 +1817,7 @@ const WorkTracker = (() => {
       <div class="wt-settings-block" style="margin-bottom:16px;padding:0;overflow:hidden">
         <div class="wt-collapse-header" data-collapse-toggle="${id}" style="display:flex;justify-content:space-between;align-items:center;padding:16px;cursor:pointer">
           <div class="wt-settings-title" style="margin:0">${title}</div>
-          <span class="wt-collapse-chevron" data-collapse-chevron="${id}" style="color:#98989D;font-size:12px">${isOpen ? '▲' : '▼'}</span>
+          <span class="wt-collapse-chevron" data-collapse-chevron="${id}" style="color:var(--wt-text-secondary);font-size:12px">${isOpen ? '▲' : '▼'}</span>
         </div>
         <div class="wt-collapse-body" data-collapse-body="${id}" style="display:${isOpen ? 'block' : 'none'};padding:0 16px 16px">
           ${bodyHtml}
@@ -1910,7 +1910,7 @@ const WorkTracker = (() => {
       <div id="wt-stats-week-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:12px">
         <button id="wt-stats-week-prev" style="background:none;border:none;color:#5E5CE6;font-size:20px;cursor:pointer;padding:4px 14px">‹</button>
         <span id="wt-stats-week-label" style="font-size:13px;font-weight:700;color:#fff;min-width:120px;text-align:center"></span>
-        <button id="wt-stats-week-next" style="background:none;border:none;color:${'#3a3a3c'};font-size:20px;cursor:pointer;padding:4px 14px;opacity:0.3;pointer-events:none">›</button>
+        <button id="wt-stats-week-next" style="background:none;border:none;color:${'var(--wt-text-tertiary)'};font-size:20px;cursor:pointer;padding:4px 14px;opacity:0.3;pointer-events:none">›</button>
       </div>
       <div id="wt-stats-results"></div>`;
     _root.appendChild(w);
@@ -2007,7 +2007,7 @@ const WorkTracker = (() => {
     function loadWeek() {
       const r = StatsRules.weekRange(weekOffset);
       weekLabelEl.textContent = formatWeekLabel(r.weekStart);
-      weekNextBtn.style.color = weekOffset >= 0 ? '#3a3a3c' : '#5E5CE6';
+      weekNextBtn.style.color = weekOffset >= 0 ? 'var(--wt-text-tertiary)' : '#5E5CE6';
       weekNextBtn.style.opacity = weekOffset >= 0 ? '0.3' : '1';
       weekNextBtn.style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
       loadRange(r.start, r.end, weekOffset === 0 ? 'This week' : 'Week of');
