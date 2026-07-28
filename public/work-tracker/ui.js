@@ -1910,22 +1910,24 @@ const WorkTracker = (() => {
       const hasGapNumber = typeof cd.hoursPerWeekToCloseGap === 'number';
       const outOfTime = !ok && !hasGapNumber;
       const pillColor = ok ? '#30D158' : (outOfTime ? 'var(--wt-text-secondary)' : '#FF9F0A');
+      const surplus = ok ? Math.max(0, cd.earnedSoFar - r.monthlyExpenses) : 0;
       html += `
       <div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:8px">This cycle: ${new Date(cd.cycleStart + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})} – ${new Date(cd.cycleEnd + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})} · ${cd.daysRemainingInCycle} day${cd.daysRemainingInCycle !== 1 ? 's' : ''} left</div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <div style="flex:1;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;padding:10px 6px;text-align:center">
-          <div style="font-size:16px;font-weight:800;color:var(--wt-text-primary)">${fmt(cd.earnedSoFar)}</div>
+        <div style="flex:1;background:rgba(94,92,230,.15);border-radius:12px;padding:10px 6px;text-align:center">
+          <div style="font-size:15px;font-weight:800;color:#B0AEFF">${fmt(cd.earnedSoFar)}</div>
           <div style="font-size:9px;color:var(--wt-text-tertiary);margin-top:3px;line-height:1.3">You've earned this cycle so far</div>
         </div>
-        <div style="flex:1;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;padding:10px 6px;text-align:center">
-          <div style="font-size:16px;font-weight:800;color:var(--wt-text-primary)">${fmt(cd.stillNeeded)}</div>
-          <div style="font-size:9px;color:var(--wt-text-tertiary);margin-top:3px;line-height:1.3">Still needed to cover your bills</div>
+        <div style="flex:1;background:${ok ? 'rgba(48,209,88,.15)' : 'var(--wt-surface-secondary)'};border-radius:12px;padding:10px 6px;text-align:center">
+          <div style="font-size:15px;font-weight:800;color:${ok ? '#30D158' : 'var(--wt-text-primary)'}">${ok ? '+' + fmt(surplus) : fmt(cd.stillNeeded)}</div>
+          <div style="font-size:9px;color:var(--wt-text-tertiary);margin-top:3px;line-height:1.3">${ok ? "Extra you've earned beyond your goal" : 'Still needed to cover your bills'}</div>
         </div>
         <div style="flex:1;background:${ok ? 'rgba(48,209,88,.15)' : outOfTime ? 'var(--wt-surface-secondary)' : 'rgba(255,159,10,.12)'};border-radius:12px;padding:10px 6px;text-align:center">
           <div style="font-size:16px;font-weight:800;color:${pillColor}">${ok ? '✓' : outOfTime ? '—' : cd.hoursPerWeekToCloseGap.toFixed(1) + ' <span style="font-size:11px;font-weight:600">hrs</span>'}</div>
           <div style="font-size:9px;color:var(--wt-text-tertiary);margin-top:3px;line-height:1.3">${ok ? "You've covered your bills this cycle" : outOfTime ? "Won't close the gap this cycle" : 'Hours per week needed to catch up'}</div>
         </div>
       </div>
+      <div style="font-size:11px;color:var(--wt-text-tertiary);background:var(--wt-surface-secondary);border-radius:10px;padding:8px 10px;margin-bottom:10px">You're averaging <strong style="color:var(--wt-text-primary)">${r.avgHoursPerWeek.toFixed(1)} hrs/week</strong> right now${(!ok && hasGapNumber) ? (Math.abs(r.avgHoursPerWeek - cd.hoursPerWeekToCloseGap) < 1 ? ' — about the same as what you need to close the gap.' : (r.avgHoursPerWeek > cd.hoursPerWeekToCloseGap ? ' — more than what you need to close the gap.' : ' — a bit less than what you need to close the gap.')) : '.'}</div>
 
       <div data-cash-breakeven-toggle style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;cursor:pointer;margin-bottom:10px">
         <span style="font-size:12px;color:var(--wt-text-primary)">${r.includeCashInBreakEven ? '🔓' : '🔒'} Count cash tips toward this goal</span>
@@ -4036,7 +4038,11 @@ const WorkTracker = (() => {
       const b = WTDb.getBudget();
       b.includeCashInBreakEven = !b.includeCashInBreakEven;
       WTDb.saveBudget(b);
-      _go('settings');
+      const toggleEl = sustainBlock.querySelector('#wt-sustain-cash-toggle');
+      toggleEl.querySelector('span:first-child').textContent = `${b.includeCashInBreakEven ? '🔓' : '🔒'} Count cash tips toward this goal`;
+      toggleEl.querySelector('span:last-child').textContent = b.includeCashInBreakEven ? 'Yes' : 'No';
+      const body = sustainBlock.querySelector('[data-standalone-body="sustain"]');
+      if (body && body.style.display !== 'none') renderSustainResults();
     };
     sustainBlock.querySelector('[data-standalone-header="sustain"]').onclick = () => {
       const body = sustainBlock.querySelector('[data-standalone-body="sustain"]');
