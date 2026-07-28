@@ -180,7 +180,14 @@ const WorkTracker = (() => {
           <h2>${greeting}</h2>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
             <p style="margin:0">${formatWeekLabel(ws)}</p>
-            ${homeSustain.hoursSurplusPerWeek !== null ? `<button id="wt-pace-pill" class="wt-tap-scale" style="background:${homeSustain.hoursSurplusPerWeek >= 0 ? 'rgba(48,209,88,.12)' : 'var(--wt-surface-secondary)'};border:none;border-radius:20px;padding:4px 11px;cursor:pointer"><span style="font-size:11px;font-weight:700;color:${homeSustain.hoursSurplusPerWeek >= 0 ? '#30D158' : 'var(--wt-text-secondary)'}">${homeSustain.hoursSurplusPerWeek >= 0 ? '+' : ''}${homeSustain.hoursSurplusPerWeek.toFixed(1)}h ${homeSustain.hoursSurplusPerWeek >= 0 ? 'ahead' : 'to go'}</span></button>` : ''}
+            ${homeSustain.cycleData ? (() => {
+              const cd = homeSustain.cycleData;
+              const outOfTime = !cd.onPace && cd.hoursPerWeekToCloseGap === null;
+              const bg = cd.onPace ? 'rgba(48,209,88,.12)' : 'var(--wt-surface-secondary)';
+              const color = cd.onPace ? '#30D158' : 'var(--wt-text-secondary)';
+              const text = cd.onPace ? 'On track' : (outOfTime ? 'Short this cycle' : `${cd.hoursPerWeekToCloseGap.toFixed(1)} hrs to catch up`);
+              return `<button id="wt-pace-pill" class="wt-tap-scale" style="background:${bg};border:none;border-radius:20px;padding:4px 11px;cursor:pointer"><span style="font-size:11px;font-weight:700;color:${color}">${text}</span></button>`;
+            })() : ''}
           </div>
         </div>
         <button class="wt-hdr-btn" id="wt-settings-btn">⚙</button>
