@@ -2113,28 +2113,36 @@ const WorkTracker = (() => {
   }
 
   function _svgLineChart(points) {
-    if (!points.length) return '<div style="color:#636366;font-size:13px;padding:8px 0">No data</div>';
+    if (!points.length) return '<div style="color:var(--wt-text-tertiary);font-size:13px;padding:8px 0">No data</div>';
     const w = 300, h = 110, padding = 10;
     const maxVal = Math.max(...points.map(p => p.total), 0.01);
     const stepX = points.length > 1 ? (w - padding * 2) / (points.length - 1) : 0;
     const coords = points.map((p, i) => ({
       x: padding + i * stepX,
-      y: h - padding - (p.total / maxVal) * (h - padding * 2),
-      date: p.date,
-      total: p.total
+      y: h - padding - (p.total / maxVal) * (h - padding * 2)
     }));
     const pathD = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1)).join(' ');
     const last = coords[coords.length - 1], first = coords[0];
     const areaD = `${pathD} L${last.x.toFixed(1)},${h - padding} L${first.x.toFixed(1)},${h - padding} Z`;
-    const dots = coords.map(c =>
-      `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="9" fill="transparent" data-chart-date="${c.date}" style="cursor:pointer"/>
-       <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="#5E5CE6" data-chart-date="${c.date}" style="cursor:pointer;pointer-events:none"/>`
+    const staticDots = coords.map((c, i) =>
+      `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="${points[i].hasShift ? '#5E5CE6' : 'var(--wt-surface-secondary-border)'}" data-static-dot="${i}"/>`
     ).join('');
-    return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" xmlns="http://www.w3.org/2000/svg">
-      <path d="${areaD}" fill="rgba(94,92,230,.12)"/>
-      <path d="${pathD}" fill="none" stroke="#5E5CE6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      ${dots}
-    </svg>`;
+    const lastIdx = points.length - 1;
+    return `
+      <div data-chart-date-label style="font-size:12px;color:var(--wt-text-secondary)">${_fmtChartDate(points[lastIdx].date)}</div>
+      <div data-chart-total style="font-size:22px;font-weight:700;color:var(--wt-text-primary);margin-top:1px">${points[lastIdx].hasShift ? WTRules.fmtMoney(points[lastIdx].total) : 'Day off'}</div>
+      <div data-chart-breakdown style="display:flex;gap:14px;margin-top:2px;${points[lastIdx].hasShift ? '' : 'visibility:hidden'}">
+        <div style="font-size:12px;color:#FF9F0A">Card tips <span data-chart-cc>${WTRules.fmtMoney(points[lastIdx].cc)}</span></div>
+        <div style="font-size:12px;color:#30D158">Cash <span data-chart-cash>${WTRules.fmtMoney(points[lastIdx].cash)}</span></div>
+      </div>
+      <svg data-chart-svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" xmlns="http://www.w3.org/2000/svg" style="touch-action:none;cursor:pointer;margin-top:10px" data-points='${JSON.stringify(points).replace(/'/g, "&apos;")}'>
+        <path d="${areaD}" fill="rgba(94,92,230,.12)"/>
+        <path d="${pathD}" fill="none" stroke="#5E5CE6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        ${staticDots}
+        <line data-chart-crossline x1="${last.x}" y1="0" x2="${last.x}" y2="${h - padding}" stroke="#64D2FF" stroke-width="1" stroke-dasharray="2,3" opacity="0"/>
+        <circle data-chart-activehalo cx="${last.x}" cy="${last.y}" r="9" fill="#64D2FF" opacity="0.2"/>
+        <circle data-chart-activedot cx="${last.x}" cy="${last.y}" r="5.5" fill="#64D2FF" stroke="var(--wt-bg-card-solid)" stroke-width="2"/>
+      </svg>`;
   }
 
   function _renderStatsResults(stats, closedCardIds, locationId) {
