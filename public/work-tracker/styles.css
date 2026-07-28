@@ -45,6 +45,9 @@
   --wt-shift-card-bg: rgba(28,28,30,0.6);
   --wt-highlight-card-bg: rgba(94,92,230,.08);
   --wt-highlight-card-border: rgba(94,92,230,.25);
+  --wt-tier-top: #30D158;
+  --wt-tier-mid: #5E5CE6;
+  --wt-tier-low: #48484A;
 }
 body.wt-light {
   --wt-bg-page: #F5F5F7;
@@ -91,6 +94,9 @@ body.wt-light {
   --wt-shift-card-bg: #fff;
   --wt-highlight-card-bg: #F3F2FE;
   --wt-highlight-card-border: #D9D6FB;
+  --wt-tier-top: #1D8348;
+  --wt-tier-mid: #5E5CE6;
+  --wt-tier-low: #C7C7CC;
 }
 
 .wt-screen {

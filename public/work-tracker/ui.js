@@ -1785,6 +1785,14 @@ const WorkTracker = (() => {
     container.innerHTML = `<table class="wt-table"><thead><tr><th>Date</th><th>Location</th><th>Shift</th><th>In</th><th>Out</th><th>Hrs</th><th>Pay</th><th>CC Tips</th><th>Cash Tips</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
+  function _tierColor(rank, total) {
+    const topCut = Math.ceil(total / 3);
+    const midCut = Math.ceil(total * 2 / 3);
+    if (rank < topCut) return 'var(--wt-tier-top)';
+    if (rank < midCut) return 'var(--wt-tier-mid)';
+    return 'var(--wt-tier-low)';
+  }
+
   function _svgBarRow(items, fmtFn) {
     if (!items.length) return '<div style="color:#636366;font-size:13px;padding:8px 0">No data</div>';
     const maxVal = Math.max(...items.map(i => i.value), 0.01);
@@ -2177,7 +2185,7 @@ const WorkTracker = (() => {
       ? _collapsibleCard('dow', 'Best days to work', `
           <div style="font-size:11px;color:#636366;margin-bottom:10px">Includes hourly wage + CC tips + cash tips. Tap a bar for the breakdown.</div>
           ${_svgBarRow(dowData.map((d, i) => ({
-            label: d.day, value: d.avg, color: colors[i % colors.length],
+            label: d.day, value: d.avg, color: _tierColor(i, dowData.length),
             dataAttrs: { 'bar-target': 'dow', 'bar-label': d.day, 'bar-wage': d.avgWage.toFixed(2), 'bar-cc': d.avgCC.toFixed(2), 'bar-cash': d.avgCash.toFixed(2) }
           })), v => WTRules.fmtMoney(v))}
           <div data-bar-msg="dow"></div>
@@ -2191,7 +2199,7 @@ const WorkTracker = (() => {
       ? _collapsibleCard('month', 'Best months to work', `
           <div style="font-size:11px;color:#636366;margin-bottom:10px">Includes hourly wage + CC tips + cash tips. Tap a bar for the breakdown.</div>
           ${_svgBarRow(monthData.map((m, i) => ({
-            label: m.month, value: m.avg, color: colors[i % colors.length],
+            label: m.month, value: m.avg, color: _tierColor(i, monthData.length),
             dataAttrs: { 'bar-target': 'month', 'bar-label': m.month, 'bar-wage': m.avgWage.toFixed(2), 'bar-cc': m.avgCC.toFixed(2), 'bar-cash': m.avgCash.toFixed(2) }
           })), v => WTRules.fmtMoney(v))}
           <div data-bar-msg="month"></div>
