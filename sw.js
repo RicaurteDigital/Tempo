@@ -1,4 +1,4 @@
-const CACHE = 'tempo-v252';
+const CACHE = 'tempo-v253';
 const ASSETS = ['.', 'index.html', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

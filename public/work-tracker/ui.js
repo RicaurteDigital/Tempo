@@ -1866,31 +1866,39 @@ const WorkTracker = (() => {
       return `<div style="font-size:12px;color:var(--wt-text-tertiary)">Not enough recent shifts yet — log some work first.</div>`;
     }
     const fmt = WTRules.fmtMoney;
-    let html = `<div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:12px;line-height:1.4">Based on your last ${r.lookbackDays} days. This is math from your own data, not a recommendation for how much you should work — take care of yourself.</div>`;
+    const taxLabel = r.usingNet && r.taxPercent !== null ? `, after taxes (~${Math.round(r.taxPercent)}%)` : '';
+    let html = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--wt-text-tertiary);line-height:1.4">Based on your last ${r.lookbackDays} day${r.lookbackDays !== 1 ? 's' : ''} of work${taxLabel}.</div>
+        <button data-sustain-info style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);color:var(--wt-text-secondary);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">ⓘ</button>
+      </div>`;
 
-    if (r.monthlyExpenses > 0) {
-      const ok = r.hoursSurplusPerWeek >= 0;
-      const pillBg = ok ? 'rgba(48,209,88,.15)' : 'rgba(255,159,10,.12)';
-      const pillColor = ok ? '#30D158' : '#FF9F0A';
-      const pillText = ok ? 'On track' : `${Math.abs(r.hoursSurplusPerWeek).toFixed(1)}h to go`;
+    if (r.monthlyExpenses > 0 && r.cycleData) {
+      const cd = r.cycleData;
+      const ok = cd.onPace;
+      const outOfTime = !ok && cd.hoursPerWeekToCloseGap === null;
+      const pillColor = ok ? '#30D158' : (outOfTime ? 'var(--wt-text-secondary)' : '#FF9F0A');
       html += `
-      <div style="background:var(--wt-highlight-card-bg);border:1px solid var(--wt-highlight-card-border);border-radius:14px;padding:14px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <div style="font-size:11px;color:var(--wt-text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.3px">You need</div>
-          <div style="background:${pillBg};color:${pillColor};font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px">${pillText}</div>
+      <div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:8px">This cycle: ${new Date(cd.cycleStart + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})} – ${new Date(cd.cycleEnd + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})} · ${cd.daysRemainingInCycle} day${cd.daysRemainingInCycle !== 1 ? 's' : ''} left</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;padding:10px 6px;text-align:center">
+          <div style="font-size:16px;font-weight:800;color:var(--wt-text-primary)">${fmt(cd.earnedSoFar)}</div>
+          <div style="font-size:9px;color:var(--wt-text-tertiary);margin-top:3px;line-height:1.3">You've earned this cycle so far</div>
         </div>
-        <div style="font-size:24px;font-weight:700;color:var(--wt-text-primary);margin-top:2px">${r.hoursNeededPerWeek.toFixed(1)} <span style="font-size:14px;color:var(--wt-text-secondary);font-weight:600">hrs/week</span></div>
-        <div style="font-size:12px;color:var(--wt-text-secondary);margin-top:2px">≈ ${r.shiftsNeededPerWeek.toFixed(1)} shifts/week at your ~${r.avgHoursPerShift.toFixed(1)}h average</div>
-        <div style="height:1px;background:var(--wt-border);margin:10px 0"></div>
-        <div style="font-size:12px;color:var(--wt-text-primary)">You're averaging <strong style="color:${pillColor}">${r.avgHoursPerWeek.toFixed(1)} hrs/week</strong> — ${ok ? `${r.hoursSurplusPerWeek.toFixed(1)} hrs ahead` : `${Math.abs(r.hoursSurplusPerWeek).toFixed(1)} hrs short`}</div>
+        <div style="flex:1;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;padding:10px 6px;text-align:center">
+          <div style="font-size:16px;font-weight:800;color:var(--wt-text-primary)">${fmt(cd.stillNeeded)}</div>
+          <div style="font-size:9px;color:var(--wt-text-tertiary);margin-top:3px;line-height:1.3">Still needed to cover your bills</div>
+        </div>
+        <div style="flex:1;background:${ok ? 'rgba(48,209,88,.15)' : outOfTime ? 'var(--wt-surface-secondary)' : 'rgba(255,159,10,.12)'};border-radius:12px;padding:10px 6px;text-align:center">
+          <div style="font-size:16px;font-weight:800;color:${pillColor}">${ok ? '✓' : outOfTime ? '—' : cd.hoursPerWeekToCloseGap.toFixed(1) + ' <span style="font-size:11px;font-weight:600">hrs</span>'}</div>
+          <div style="font-size:9px;color:var(--wt-text-tertiary);margin-top:3px;line-height:1.3">${ok ? "You've covered your bills this cycle" : outOfTime ? "Won't close the gap this cycle" : 'Hours per week needed to catch up'}</div>
+        </div>
       </div>
 
       <div data-cash-breakeven-toggle style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;cursor:pointer;margin-bottom:10px">
         <span style="font-size:12px;color:var(--wt-text-primary)">${r.includeCashInBreakEven ? '🔓' : '🔒'} Count cash tips toward this goal</span>
         <span style="font-size:11px;color:var(--wt-text-tertiary)">${r.includeCashInBreakEven ? 'Yes' : 'No'}</span>
       </div>
-
-      <div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:6px">${fmt(r.annualExpenses)}/year in expenses · projected ${r.surplusAnnual >= 0 ? '+' : ''}${fmt(r.surplusAnnual)} this year</div>
       `;
     } else {
       html += `<div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:10px">Enter your monthly expenses in Settings → Sustainability to see if this pace covers your bills.</div>`;
@@ -1908,7 +1916,7 @@ const WorkTracker = (() => {
         ${r.usingNet ? _statRow('Est. net (after your tax %)', fmt(r.avgPerShift), '#64D2FF') : ''}
         ${r.hasReceivedData ? `<div style="font-size:11px;color:#30D158;margin-top:8px">✓ ${fmt(r.receivedNetInWindow)} of this window has been confirmed from payments you've actually recorded.</div>` : ''}
 
-        <div margin-top:12px;padding-top:10px;border-top:1px solid var(--wt-border)">
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--wt-border)">
           ${_statRow('Hours worked / week', r.avgHoursPerWeek.toFixed(1))}
           ${_statRow('Shifts worked / week', r.avgShiftsPerWeek.toFixed(1))}
           ${_statRow('Projected this year (est. net)', fmt(r.projectedAnnual))}
