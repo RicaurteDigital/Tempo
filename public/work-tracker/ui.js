@@ -1763,15 +1763,17 @@ const WorkTracker = (() => {
         </tr>`;
         first = false; dHrs += hrs; dPay += pay; dCC += cut.cc; dCash += cut.cash;
       });
-      rows += `<tr class="wt-row-sub">
-        <td colspan="5" class="wt-td-right">Day Total</td>
-        <td class="wt-td-num">${WTRules.fmtMoney(dPay)}</td>
-        <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(dCC)}</td>
-        <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(dCash)}</td>
-      </tr>`;
+      if (ds.length > 1) {
+        rows += `<tr class="wt-row-sub">
+          <td colspan="6" class="wt-td-right">Day Total</td>
+          <td class="wt-td-num">${WTRules.fmtMoney(dPay)}</td>
+          <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(dCC)}</td>
+          <td class="wt-td-num wt-td-green">${WTRules.fmtMoney(dCash)}</td>
+        </tr>`;
+      }
       gHrs += dHrs; gPay += dPay; gCC += dCC; gCash += dCash;
     });
-    rows += `<tr class="wt-row-total"><td colspan="4"><strong>TOTAL</strong></td><td class="wt-td-num"><strong>${WTRules.fmtHours(gHrs)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gPay)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gCC)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gCash)}</strong></td></tr>`;
+    rows += `<tr class="wt-row-total"><td colspan="5"><strong>TOTAL</strong></td><td class="wt-td-num"><strong>${WTRules.fmtHours(gHrs)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gPay)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gCC)}</strong></td><td class="wt-td-num"><strong>${WTRules.fmtMoney(gCash)}</strong></td></tr>`;
     container.innerHTML = `<table class="wt-table"><thead><tr><th>Date</th><th>Location</th><th>Shift</th><th>In</th><th>Out</th><th>Hrs</th><th>Pay</th><th>CC Tips</th><th>Cash Tips</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
