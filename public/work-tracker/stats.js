@@ -499,8 +499,55 @@ const StatsRules = (() => {
   // smooth out one unusual week) and estimated NET income (via the user's own tax settings,
   // reusing WTRules.estimateNet) rather than gross, since "can I cover my bills" is a
   // take-home question. Falls back to gross with a clear flag if tax estimation is off.
-  function sustainabilityAnalysis(workProfile, lookbackDays) {
-    const days = lookbackDays || 90;
+  function _daysInMonth(year, month) {
+    return new Date(year, month + 1, 0).getDate();
+  }
+
+  function _cycleStartFor(year, month, cycleStartDay) {
+    const day = Math.min(cycleStartDay, _daysInMonth(year, month));
+    return new Date(year, month, day);
+  }
+
+  // The user's budget cycle doesn't have to match the calendar month — someone whose rent is
+  // due the 22nd wants "this month" to mean the 22nd through the 21st of the next one. Handles
+  // short months automatically (day 31 in a 30-day month clamps to the last real day, and the
+  // following cycle still starts on time next month).
+  function budgetCycleRange(cycleStartDay, refDate) {
+    const ref = refDate || new Date();
+    const y = ref.getFullYear(), m = ref.getMonth(), d = ref.getDate();
+    const clampedThisMonth = _cycleStartFor(y, m, cycleStartDay).getDate();
+    let cycleStart;
+    if (d >= clampedThisMonth) {
+      cycleStart = _cycleStartFor(y, m, cycleStartDay);
+    } else {
+      const pm = m - 1 < 0 ? 11 : m - 1, py = m - 1 < 0 ? y - 1 : y;
+      cycleStart = _cycleStartFor(py, pm, cycleStartDay);
+    }
+    let nm = cycleStart.getMonth() + 1, ny = cycleStart.getFullYear();
+    if (nm > 11) { nm = 0; ny += 1; }
+    const nextCycleStart = _cycleStartFor(ny, nm, cycleStartDay);
+    const cycleEnd = new Date(nextCycleStart);
+    cycleEnd.setDate(cycleEnd.getDate() - 1);
+    return { cycleStart, cycleEnd };
+  }
+
+  // How many days of history exist for this profile — lets the rate window grow with the user
+  // instead of demanding a full 90 days of data before showing anything useful.
+  function _daysSinceFirstShift(workProfile) {
+    const shifts = WTDb.getShiftsInRange('2000-01-01', _ds(new Date()))
+      .filter(s => (s.workProfile || 'restaurant') === (workProfile || 'restaurant'));
+    if (!shifts.length) return 0;
+    const firstDate = new Date(shifts.map(s => s.date).sort()[0] + 'T12:00:00');
+    return Math.round((new Date() - firstDate) / 86400000) + 1;
+  }
+
+  function sustainabilityAnalysis(workProfile, lookbackDaysOverride) {
+    // Adaptive rate window: uses all available history up to 90 days, so a brand-new user gets
+    // a (rougher) number from day one rather than waiting three months for anything to show —
+    // accuracy improves as more days accumulate, capped at 90 so a stale early pace doesn't
+    // linger and dilute a real recent change once there's plenty of history to draw on instead.
+    const daysAvailable = _daysSinceFirstShift(workProfile);
+    const days = lookbackDaysOverride || Math.max(1, Math.min(daysAvailable, 90));
     const end = new Date();
     const start = new Date(); start.setDate(start.getDate() - (days - 1));
     const t = computeAllStats(_ds(start), _ds(end), workProfile).totals;
@@ -531,32 +578,50 @@ const StatsRules = (() => {
     const budget = WTDb.getBudget();
     const monthlyExpenses = budget.monthlyExpenses || null;
     const includeCashInBreakEven = !!budget.includeCashInBreakEven;
-    // The break-even target uses its own, separate rate — this is the one figure that respects
-    // the cash toggle, since "how many hours do I need" is a planning question where someone
-    // may reasonably want a conservative number, while "how much am I actually making" above
-    // always stays the true, complete picture regardless of the toggle.
+    const cycleStartDay = budget.cycleStartDay || 1;
+    const taxPercent = usingNet ? (taxSettings.mode === 'simple' ? taxSettings.simplePercent : Math.round((1 - netEstimate.net / netEstimate.gross) * 100)) : null;
+
+    // The break-even rate respects the cash toggle — "how many hours do I need" is a planning
+    // question where someone may reasonably want a conservative number, while "how much am I
+    // actually making" above always stays the true, complete picture regardless of the toggle.
     const grossForBreakEven = includeCashInBreakEven ? t.expectedGross : (t.expectedGross - t.cashTips);
     const netEstimateForBreakEven = usingNet ? WTRules.estimateNet(grossForBreakEven, taxSettings) : null;
     const netForBreakEven = netEstimateForBreakEven ? netEstimateForBreakEven.net : grossForBreakEven;
     const breakEvenPerHour = t.hours > 0 ? netForBreakEven / t.hours : 0;
-    const breakEvenPerShift = t.shiftsCount > 0 ? netForBreakEven / t.shiftsCount : 0;
 
-    let annualExpenses = null, surplusAnnual = null, hoursNeededPerWeek = null, shiftsNeededPerWeek = null, hoursSurplusPerWeek = null;
+    let cycleData = null;
     if (monthlyExpenses > 0) {
-      annualExpenses = monthlyExpenses * 12;
-      surplusAnnual = projectedAnnual - annualExpenses;
-      if (breakEvenPerHour > 0) hoursNeededPerWeek = (annualExpenses / 52) / breakEvenPerHour;
-      if (breakEvenPerShift > 0) shiftsNeededPerWeek = (annualExpenses / 52) / breakEvenPerShift;
-      if (hoursNeededPerWeek !== null) hoursSurplusPerWeek = avgHoursPerWeek - hoursNeededPerWeek;
+      const { cycleStart, cycleEnd } = budgetCycleRange(cycleStartDay);
+      const todayDs = _ds(new Date());
+      const cycleTotals = computeAllStats(_ds(cycleStart), todayDs, workProfile).totals;
+      const cycleGrossForGoal = includeCashInBreakEven ? cycleTotals.expectedGross : (cycleTotals.expectedGross - cycleTotals.cashTips);
+      const cycleNetEstimate = usingNet ? WTRules.estimateNet(cycleGrossForGoal, taxSettings) : null;
+      const earnedSoFar = cycleNetEstimate ? cycleNetEstimate.net : cycleGrossForGoal;
+      const stillNeeded = Math.max(0, monthlyExpenses - earnedSoFar);
+      const daysTotalInCycle = Math.round((cycleEnd - cycleStart) / 86400000) + 1;
+      const daysElapsedInCycle = Math.round((new Date() - cycleStart) / 86400000) + 1;
+      const daysRemainingInCycle = Math.max(0, daysTotalInCycle - daysElapsedInCycle);
+      const weeksRemaining = daysRemainingInCycle / 7;
+      let hoursPerWeekToCloseGap = null;
+      if (stillNeeded <= 0) hoursPerWeekToCloseGap = 0;
+      else if (weeksRemaining > 0 && breakEvenPerHour > 0) {
+        const raw = (stillNeeded / breakEvenPerHour) / weeksRemaining;
+        hoursPerWeekToCloseGap = raw <= 100 ? raw : null; // beyond this it's not a real plan, just noise from too little time left
+      }
+      cycleData = {
+        cycleStart: _ds(cycleStart), cycleEnd: _ds(cycleEnd),
+        daysTotalInCycle, daysElapsedInCycle, daysRemainingInCycle,
+        earnedSoFar, stillNeeded, hoursPerWeekToCloseGap,
+        onPace: stillNeeded <= 0
+      };
     }
 
     return {
-      hasData: t.hours > 0, usingNet, lookbackDays: days,
+      hasData: t.hours > 0, usingNet, lookbackDays: days, daysAvailable, taxPercent,
       avgPerHour, avgPerShift, avgHoursPerWeek, avgShiftsPerWeek, avgHoursPerShift,
       grossPerHour, grossPerShift, hasReceivedData, receivedNetInWindow,
       projectedAnnual, projectedMonthly: projectedAnnual / 12,
-      monthlyExpenses, annualExpenses, surplusAnnual,
-      hoursNeededPerWeek, shiftsNeededPerWeek, hoursSurplusPerWeek, includeCashInBreakEven
+      monthlyExpenses, includeCashInBreakEven, cycleStartDay, cycleData
     };
   }
 
