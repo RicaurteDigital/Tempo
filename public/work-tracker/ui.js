@@ -2118,6 +2118,44 @@ const WorkTracker = (() => {
         });
         updateActive(points.length - 1);
       });
+      resultsEl.querySelectorAll('[data-progress-svg]').forEach(svgEl => {
+        const points = JSON.parse(svgEl.dataset.points);
+        const cw = 300, ch = 90, cpad = 10;
+        const stepX = points.length > 1 ? (cw - cpad * 2) / (points.length - 1) : 0;
+        const maxVal = Math.max(...points.map(p => p.cumulative), 1);
+        const cardEl = svgEl.closest('[data-collapse-body]') || svgEl.parentElement;
+        const dateLabel = cardEl.querySelector('[data-progress-date]');
+        const amountLabel = cardEl.querySelector('[data-progress-amount]');
+        const crossline = svgEl.querySelector('[data-progress-crossline]');
+        const activeDot = svgEl.querySelector('[data-progress-activedot]');
+        const activeHalo = svgEl.querySelector('[data-progress-activehalo]');
+        function updateActive(idx) {
+          const p = points[idx];
+          const x = cpad + idx * stepX;
+          const y = ch - cpad - (p.cumulative / maxVal) * (ch - cpad * 2);
+          activeDot.setAttribute('cx', x); activeDot.setAttribute('cy', y);
+          activeHalo.setAttribute('cx', x); activeHalo.setAttribute('cy', y);
+          crossline.setAttribute('x1', x); crossline.setAttribute('x2', x);
+          crossline.setAttribute('opacity', 1);
+          dateLabel.textContent = _fmtChartDate(p.date);
+          amountLabel.innerHTML = `${WTRules.fmtMoney(p.cumulative)} <span style="font-size:11px;color:var(--wt-text-tertiary);font-weight:400">earned so far</span>`;
+        }
+        function pointToIdx(clientX) {
+          const rect = svgEl.getBoundingClientRect();
+          const x = ((clientX - rect.left) / rect.width) * cw;
+          let closest = 0, dist = Infinity;
+          points.forEach((p, i) => {
+            const d = Math.abs((cpad + i * stepX) - x);
+            if (d < dist) { dist = d; closest = i; }
+          });
+          return closest;
+        }
+        svgEl.addEventListener('pointerdown', e => { updateActive(pointToIdx(e.clientX)); svgEl.setPointerCapture(e.pointerId); });
+        svgEl.addEventListener('pointermove', e => {
+          if (e.buttons !== 1 && e.pointerType !== 'touch') return;
+          updateActive(pointToIdx(e.clientX));
+        });
+      });
       const sustainLink = resultsEl.querySelector('#wt-stats-sustain-link');
       if (sustainLink) sustainLink.onclick = (e) => { e.stopPropagation(); _go('settings'); };
       resultsEl.onclick = (e) => {
@@ -2230,6 +2268,70 @@ const WorkTracker = (() => {
         if (sustainHeader) sustainHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 50);
     }
+  }
+
+  function _sustainFullAnalysisHtml(full) {
+    if (!full || !full.dailyPoints || !full.dailyPoints.length) return '';
+    const fmt = WTRules.fmtMoney;
+    const w = 300, h = 90, padding = 10;
+    const points = full.dailyPoints;
+    const maxVal = Math.max(full.monthlyExpenses, ...points.map(p => p.cumulative), 1);
+    const stepX = points.length > 1 ? (w - padding * 2) / (points.length - 1) : 0;
+    const coords = points.map((p, i) => ({
+      x: padding + i * stepX,
+      y: h - padding - (p.cumulative / maxVal) * (h - padding * 2)
+    }));
+    const pathD = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1)).join(' ');
+    const last = coords[coords.length - 1], first = coords[0];
+    const areaD = `${pathD} L${last.x.toFixed(1)},${h - padding} L${first.x.toFixed(1)},${h - padding} Z`;
+    const goalY = h - padding - (full.monthlyExpenses / maxVal) * (h - padding * 2);
+    const lastIdx = points.length - 1;
+
+    let html = `
+      <div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin:16px 0 2px">Progress this cycle</div>
+      <div data-progress-date style="font-size:12px;color:var(--wt-text-tertiary)">${_fmtChartDate(points[lastIdx].date)}</div>
+      <div data-progress-amount style="font-size:20px;font-weight:700;color:var(--wt-text-primary);margin-top:1px">${fmt(points[lastIdx].cumulative)} <span style="font-size:11px;color:var(--wt-text-tertiary);font-weight:400">earned so far</span></div>
+      <svg data-progress-svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" xmlns="http://www.w3.org/2000/svg" style="touch-action:none;cursor:pointer;margin-top:8px" data-points='${JSON.stringify(points).replace(/'/g, "&apos;")}'>
+        <line x1="${padding}" y1="${goalY.toFixed(1)}" x2="${w - padding}" y2="${goalY.toFixed(1)}" stroke="var(--wt-border)" stroke-width="1" stroke-dasharray="2,3"/>
+        <path d="${areaD}" fill="rgba(94,92,230,.12)"/>
+        <path d="${pathD}" fill="none" stroke="#5E5CE6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <line data-progress-crossline x1="${last.x}" y1="0" x2="${last.x}" y2="${h - padding}" stroke="#64D2FF" stroke-width="1" stroke-dasharray="2,3" opacity="0"/>
+        <circle data-progress-activehalo cx="${last.x}" cy="${last.y}" r="9" fill="#64D2FF" opacity="0.2"/>
+        <circle data-progress-activedot cx="${last.x}" cy="${last.y}" r="5.5" fill="#64D2FF" stroke="var(--wt-bg-card-solid)" stroke-width="2"/>
+      </svg>
+      <div style="font-size:10px;color:var(--wt-text-tertiary);margin-top:2px">Goal: ${fmt(full.monthlyExpenses)}</div>`;
+
+    if (full.whatIf) {
+      const dateLabel = _fmtChartDate(full.whatIf.projectedDate);
+      const soonerText = full.whatIf.daysSooner ? ` — ${full.whatIf.daysSooner} day${full.whatIf.daysSooner !== 1 ? 's' : ''} sooner than your current pace.` : '';
+      html += `
+      <div style="margin-top:16px;background:var(--wt-highlight-card-bg);border:1px solid var(--wt-highlight-card-border);border-radius:12px;padding:12px">
+        <div style="font-size:12px;color:var(--wt-text-primary);font-weight:700;margin-bottom:4px">💡 What if...</div>
+        <div style="font-size:12px;color:var(--wt-text-secondary);line-height:1.4">Pick up <strong style="color:var(--wt-text-primary)">1 more shift</strong> this week and you'd close the gap by <strong style="color:var(--wt-text-primary)">${dateLabel}</strong>${soonerText}</div>
+      </div>`;
+    }
+
+    if (full.cycleHistory && full.cycleHistory.length) {
+      html += `<div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin:16px 0 8px">Last few cycles</div><div style="display:flex;flex-direction:column;gap:6px">`;
+      full.cycleHistory.forEach(c => {
+        const label = `${_fmtChartDate(c.start)} – ${_fmtChartDate(c.end)}`;
+        const statusText = c.met ? `✓ +${fmt(Math.abs(c.delta))}` : `${fmt(Math.abs(c.delta))} short`;
+        const statusColor = c.met ? '#30D158' : '#FF9F0A';
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--wt-surface-secondary);border-radius:10px;padding:8px 10px"><span style="font-size:11px;color:var(--wt-text-primary)">${label}</span><span style="font-size:11px;color:${statusColor};font-weight:700">${statusText}</span></div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (full.dayEarningsList && full.dayEarningsList.length) {
+      html += `<div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin:16px 0 8px">Day by day, this cycle</div><div style="display:flex;flex-direction:column;gap:5px">`;
+      full.dayEarningsList.forEach((d, i) => {
+        const isLast = i === full.dayEarningsList.length - 1;
+        html += `<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;${isLast ? '' : 'border-bottom:1px solid var(--wt-border)'}"><span style="color:var(--wt-text-secondary)">${_fmtChartDate(d.date)}</span><span style="color:var(--wt-text-primary);font-weight:700">${fmt(d.amount)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+
+    return html;
   }
 
   function _svgLineChart(points, bucketType) {
@@ -2419,8 +2521,10 @@ const WorkTracker = (() => {
     // Always the fixed 90-day lookback, independent of whichever pill is selected above —
     // sustainability is about your current real pace, not the specific range you're browsing.
     const sustainResult = StatsRules.sustainabilityAnalysis(statsProfile);
+    const sustainFull = sustainResult.hasData ? StatsRules.sustainabilityFullAnalysis(statsProfile) : null;
     const sustainCard = sustainResult.hasData ? _collapsibleCard('sustain', 'Sustainability', `
       ${_sustainabilityResultsHtml(sustainResult)}
+      ${_sustainFullAnalysisHtml(sustainFull)}
       <div id="wt-stats-sustain-link" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">Edit expenses in Settings →</div>
     `, !closedCardIds.has('sustain')) : '';
 
