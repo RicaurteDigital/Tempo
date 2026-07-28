@@ -2290,11 +2290,11 @@ const WorkTracker = (() => {
       : '';
 
     const hoursChart = stats.perLocation.length > 1
-      ? _collapsibleCard('hourschart', 'Hours by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.hours, color: colors[i % colors.length] })), v => WTRules.fmtHours(v)), !closedCardIds.has('hourschart'))
+      ? _collapsibleCard('hourschart', 'Hours by location', _svgBarRow([...stats.perLocation].sort((a, b) => b.hours - a.hours).map((l, i, arr) => ({ label: l.locationName, value: l.hours, color: _tierColor(i, arr.length) })), v => WTRules.fmtHours(v)), !closedCardIds.has('hourschart'))
       : '';
 
     const incomeChart = stats.perLocation.length > 1
-      ? _collapsibleCard('incomechart', 'Expected income by location', _svgBarRow(stats.perLocation.map((l, i) => ({ label: l.locationName, value: l.expectedGross, color: colors[i % colors.length] })), v => WTRules.fmtMoney(v)), !closedCardIds.has('incomechart'))
+      ? _collapsibleCard('incomechart', 'Expected income by location', _svgBarRow([...stats.perLocation].sort((a, b) => b.expectedGross - a.expectedGross).map((l, i, arr) => ({ label: l.locationName, value: l.expectedGross, color: _tierColor(i, arr.length) })), v => WTRules.fmtMoney(v)), !closedCardIds.has('incomechart'))
       : '';
 
     const locCards = stats.perLocation.map((l, i) => _collapsibleCard(`loc-${i}`, `
