@@ -528,13 +528,26 @@ const StatsRules = (() => {
     const hasReceivedData = t.receivedNet !== null;
     const receivedNetInWindow = hasReceivedData ? t.receivedNet : null;
 
-    const monthlyExpenses = (WTDb.getBudget().monthlyExpenses) || null;
-    let annualExpenses = null, surplusAnnual = null, hoursNeededPerWeek = null, shiftsNeededPerWeek = null;
+    const budget = WTDb.getBudget();
+    const monthlyExpenses = budget.monthlyExpenses || null;
+    const includeCashInBreakEven = !!budget.includeCashInBreakEven;
+    // The break-even target uses its own, separate rate — this is the one figure that respects
+    // the cash toggle, since "how many hours do I need" is a planning question where someone
+    // may reasonably want a conservative number, while "how much am I actually making" above
+    // always stays the true, complete picture regardless of the toggle.
+    const grossForBreakEven = includeCashInBreakEven ? t.expectedGross : (t.expectedGross - t.cashTips);
+    const netEstimateForBreakEven = usingNet ? WTRules.estimateNet(grossForBreakEven, taxSettings) : null;
+    const netForBreakEven = netEstimateForBreakEven ? netEstimateForBreakEven.net : grossForBreakEven;
+    const breakEvenPerHour = t.hours > 0 ? netForBreakEven / t.hours : 0;
+    const breakEvenPerShift = t.shiftsCount > 0 ? netForBreakEven / t.shiftsCount : 0;
+
+    let annualExpenses = null, surplusAnnual = null, hoursNeededPerWeek = null, shiftsNeededPerWeek = null, hoursSurplusPerWeek = null;
     if (monthlyExpenses > 0) {
       annualExpenses = monthlyExpenses * 12;
       surplusAnnual = projectedAnnual - annualExpenses;
-      if (avgPerHour > 0) hoursNeededPerWeek = (annualExpenses / 52) / avgPerHour;
-      if (avgPerShift > 0) shiftsNeededPerWeek = (annualExpenses / 52) / avgPerShift;
+      if (breakEvenPerHour > 0) hoursNeededPerWeek = (annualExpenses / 52) / breakEvenPerHour;
+      if (breakEvenPerShift > 0) shiftsNeededPerWeek = (annualExpenses / 52) / breakEvenPerShift;
+      if (hoursNeededPerWeek !== null) hoursSurplusPerWeek = avgHoursPerWeek - hoursNeededPerWeek;
     }
 
     return {
@@ -543,7 +556,7 @@ const StatsRules = (() => {
       grossPerHour, grossPerShift, hasReceivedData, receivedNetInWindow,
       projectedAnnual, projectedMonthly: projectedAnnual / 12,
       monthlyExpenses, annualExpenses, surplusAnnual,
-      hoursNeededPerWeek, shiftsNeededPerWeek
+      hoursNeededPerWeek, shiftsNeededPerWeek, hoursSurplusPerWeek, includeCashInBreakEven
     };
   }
 

@@ -204,9 +204,13 @@ const WTDb = (() => {
   function getBudget() {
     try {
       const raw = localStorage.getItem('wt_budget_v1');
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const b = JSON.parse(raw);
+        if (b.includeCashInBreakEven === undefined) b.includeCashInBreakEven = false;
+        return b;
+      }
     } catch {}
-    return { monthlyExpenses: null };
+    return { monthlyExpenses: null, includeCashInBreakEven: false };
   }
 
   function saveBudget(b) {
