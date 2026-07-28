@@ -1984,7 +1984,6 @@ const WorkTracker = (() => {
         const activeDot = svgEl.querySelector('[data-chart-activedot]');
         const activeHalo = svgEl.querySelector('[data-chart-activehalo]');
         let activeIdx = points.length - 1, downX = 0, moved = false;
-        function _fmtChartDate(d) { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
         function updateActive(idx) {
           activeIdx = idx;
           const p = points[idx];
@@ -2143,6 +2142,10 @@ const WorkTracker = (() => {
         <circle data-chart-activehalo cx="${last.x}" cy="${last.y}" r="9" fill="#64D2FF" opacity="0.2"/>
         <circle data-chart-activedot cx="${last.x}" cy="${last.y}" r="5.5" fill="#64D2FF" stroke="var(--wt-bg-card-solid)" stroke-width="2"/>
       </svg>`;
+  }
+
+  function _fmtChartDate(ds) {
+    return new Date(ds + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
   function _renderStatsResults(stats, closedCardIds, locationId) {
