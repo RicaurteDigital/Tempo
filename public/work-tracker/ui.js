@@ -182,10 +182,12 @@ const WorkTracker = (() => {
             <p style="margin:0">${formatWeekLabel(ws)}</p>
             ${homeSustain.cycleData ? (() => {
               const cd = homeSustain.cycleData;
-              const outOfTime = !cd.onPace && cd.hoursPerWeekToCloseGap === null;
-              const bg = cd.onPace ? 'rgba(48,209,88,.12)' : 'var(--wt-surface-secondary)';
-              const color = cd.onPace ? '#30D158' : 'var(--wt-text-secondary)';
-              const text = cd.onPace ? 'On track' : (outOfTime ? 'Short this cycle' : `${cd.hoursPerWeekToCloseGap.toFixed(1)} hrs to catch up`);
+              const ok = !!cd.onPace;
+              const hasGapNumber = typeof cd.hoursPerWeekToCloseGap === 'number';
+              const outOfTime = !ok && !hasGapNumber;
+              const bg = ok ? 'rgba(48,209,88,.12)' : 'var(--wt-surface-secondary)';
+              const color = ok ? '#30D158' : 'var(--wt-text-secondary)';
+              const text = ok ? 'On track' : (outOfTime ? 'Short this cycle' : `${cd.hoursPerWeekToCloseGap.toFixed(1)} hrs to catch up`);
               return `<button id="wt-pace-pill" class="wt-tap-scale" style="background:${bg};border:none;border-radius:20px;padding:4px 11px;cursor:pointer"><span style="font-size:11px;font-weight:700;color:${color}">${text}</span></button>`;
             })() : ''}
           </div>
@@ -1875,8 +1877,9 @@ const WorkTracker = (() => {
 
     if (r.monthlyExpenses > 0 && r.cycleData) {
       const cd = r.cycleData;
-      const ok = cd.onPace;
-      const outOfTime = !ok && cd.hoursPerWeekToCloseGap === null;
+      const ok = !!cd.onPace;
+      const hasGapNumber = typeof cd.hoursPerWeekToCloseGap === 'number';
+      const outOfTime = !ok && !hasGapNumber;
       const pillColor = ok ? '#30D158' : (outOfTime ? 'var(--wt-text-secondary)' : '#FF9F0A');
       html += `
       <div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:8px">This cycle: ${new Date(cd.cycleStart + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})} – ${new Date(cd.cycleEnd + 'T12:00:00').toLocaleDateString('en-US', {month:'short',day:'numeric'})} · ${cd.daysRemainingInCycle} day${cd.daysRemainingInCycle !== 1 ? 's' : ''} left</div>
