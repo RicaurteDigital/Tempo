@@ -2230,21 +2230,27 @@ const WorkTracker = (() => {
       const unitLabel = i.unit === 'perHour' ? '/hr' : i.unit === 'perShift' ? '/shift' : '/wk';
       const better = i.deltaPercent >= 0;
       return `
-        <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--wt-border)">
-          <div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:2px">${i.label} <span style="color:#636366;font-weight:400">(${i.groupCount} shift${i.groupCount !== 1 ? 's' : ''})</span></div>
-          <div style="font-size:12px;color:#98989D">${WTRules.fmtMoney(i.groupAvg)}${unitLabel} vs. your usual ${WTRules.fmtMoney(i.baselineAvg)}${unitLabel} — <span style="color:${better ? '#30D158' : '#FF453A'};font-weight:700">${Math.abs(i.deltaPercent).toFixed(0)}% ${better ? 'more' : 'less'}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--wt-border)">
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:13px;font-weight:700;color:var(--wt-text-primary)">${i.label}</div>
+              <div style="font-size:10px;color:var(--wt-text-secondary);background:var(--wt-chip-bg);padding:2px 6px;border-radius:6px;flex-shrink:0">${i.groupCount} shift${i.groupCount !== 1 ? 's' : ''}</div>
+            </div>
+            <div style="font-size:11px;color:var(--wt-text-secondary);margin-top:2px">${i.oppositeLabel} ${WTRules.fmtMoney(i.baselineAvg)}${unitLabel} vs ${i.label} ${WTRules.fmtMoney(i.groupAvg)}${unitLabel}</div>
+          </div>
+          <div style="background:${better ? 'rgba(48,209,88,.15)' : 'rgba(255,69,58,.15)'};color:${better ? '#30D158' : '#FF453A'};font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;white-space:nowrap;margin-left:10px;flex-shrink:0">${better ? '↑' : '↓'} ${Math.abs(i.deltaPercent).toFixed(0)}%</div>
         </div>`;
     }
 
     const lengthPatterns = StatsRules.shiftLengthPatterns(stats.startDate, stats.endDate, statsProfile, locationId);
     const contextBody = (contextInsights.length > 0 || lengthPatterns.length > 0) ? `
-      <div style="font-size:11px;color:#636366;margin-bottom:14px;line-height:1.4">Each line compares your average pay in that situation against your average on everything else this period, using your real numbers.</div>
+      <div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:6px;line-height:1.4">How different situations compare, this period.</div>
       ${contextInsights.map(_contextRow).join('')}
-      ${contextInsights.length === 0 ? `<div style="font-size:11px;color:#636366;margin-bottom:14px;line-height:1.4">Not enough shifts yet in this period for earnings comparisons (need at least 2 on each side). Check back after a few more.</div>` : ''}
+      ${contextInsights.length === 0 ? `<div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:14px;line-height:1.4">Not enough shifts yet in this period for earnings comparisons (need at least 2 on each side). Check back after a few more.</div>` : ''}
       ${contextResult.needsTagging ? `<div style="font-size:11px;color:#FF9F0A;margin-bottom:14px;line-height:1.4">🏷️ Tag more shifts with weather and pace (on each shift's card) to unlock those insights here.</div>` : ''}
-      ${lengthPatterns.length ? `<div style="font-size:12px;color:#98989D;font-weight:700;margin-bottom:6px">Avg hours per shift</div>` : ''}
+      ${lengthPatterns.length ? `<div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin-bottom:6px">Avg hours per shift</div>` : ''}
       ${lengthPatterns.map(p => `
-        <div style="font-size:13px;color:#fff;margin-bottom:6px">${p.location}</div>
+        <div style="font-size:13px;color:var(--wt-text-primary);margin-bottom:6px">${p.location}</div>
         ${p.weekdayCount ? _statRow(`Weekday (${p.weekdayCount} shift${p.weekdayCount !== 1 ? 's' : ''})`, WTRules.fmtHours(p.weekdayAvg)) : ''}
         ${p.weekendCount ? _statRow(`Weekend (${p.weekendCount} shift${p.weekendCount !== 1 ? 's' : ''})`, WTRules.fmtHours(p.weekendAvg)) : ''}
       `).join('')}

@@ -357,32 +357,32 @@ const StatsRules = (() => {
       records.push({
         shift: s, hrs, earn, perHour: earn / hrs,
         day: d.getDate(), lastDay: new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(),
-        isWeekend: dow === 0 || dow === 5 || dow === 6, // Fri/Sat/Sun
+        isWeekend: dow === 0 || dow === 6, // Sat/Sun
         isHoliday: _isHospitalityHoliday(s.date)
       });
     });
 
     const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
     const insights = [];
-    function addInsight(label, inRecs, outRecs, metric, unit) {
+    function addInsight(label, oppositeLabel, inRecs, outRecs, metric, unit) {
       if (inRecs.length < 2 || outRecs.length < 2) return;
       const inAvg = avg(inRecs.map(metric)), outAvg = avg(outRecs.map(metric));
       insights.push({
-        label, unit, groupCount: inRecs.length,
+        label, oppositeLabel, unit, groupCount: inRecs.length,
         groupAvg: inAvg, baselineAvg: outAvg,
         deltaPercent: outAvg > 0 ? ((inAvg - outAvg) / outAvg) * 100 : 0
       });
     }
 
     if (rangeSpanDays >= 20) {
-      addInsight('Start of Month (1st–5th)', records.filter(r => r.day <= 5), records.filter(r => r.day > 5), r => r.earn, 'perShift');
-      addInsight('End of Month (last 5 days)', records.filter(r => r.day > r.lastDay - 5), records.filter(r => r.day <= r.lastDay - 5), r => r.earn, 'perShift');
+      addInsight('Start of Month (1st–5th)', 'Rest of month', records.filter(r => r.day <= 5), records.filter(r => r.day > 5), r => r.earn, 'perShift');
+      addInsight('End of Month (last 5 days)', 'Rest of month', records.filter(r => r.day > r.lastDay - 5), records.filter(r => r.day <= r.lastDay - 5), r => r.earn, 'perShift');
     }
-    addInsight('Holidays', records.filter(r => r.isHoliday), records.filter(r => !r.isHoliday), r => r.perHour, 'perHour');
-    addInsight('Weekends (Fri–Sun)', records.filter(r => r.isWeekend), records.filter(r => !r.isWeekend), r => r.perHour, 'perHour');
-    addInsight('Bad Weather', records.filter(r => r.shift.weatherTag === 'bad'), records.filter(r => r.shift.weatherTag !== 'bad'), r => r.perHour, 'perHour');
-    addInsight('Marked "Slower"', records.filter(r => r.shift.paceTag === 'slow'), records.filter(r => r.shift.paceTag !== 'slow'), r => r.perHour, 'perHour');
-    addInsight('Marked "Busier"', records.filter(r => r.shift.paceTag === 'busy'), records.filter(r => r.shift.paceTag !== 'busy'), r => r.perHour, 'perHour');
+    addInsight('Holidays', 'Regular days', records.filter(r => r.isHoliday), records.filter(r => !r.isHoliday), r => r.perHour, 'perHour');
+    addInsight('Weekend (Sat–Sun)', 'Weekday', records.filter(r => r.isWeekend), records.filter(r => !r.isWeekend), r => r.perHour, 'perHour');
+    addInsight('Bad Weather', 'Other weather', records.filter(r => r.shift.weatherTag === 'bad'), records.filter(r => r.shift.weatherTag !== 'bad'), r => r.perHour, 'perHour');
+    addInsight('Marked "Slower"', 'Other shifts', records.filter(r => r.shift.paceTag === 'slow'), records.filter(r => r.shift.paceTag !== 'slow'), r => r.perHour, 'perHour');
+    addInsight('Marked "Busier"', 'Other shifts', records.filter(r => r.shift.paceTag === 'busy'), records.filter(r => r.shift.paceTag !== 'busy'), r => r.perHour, 'perHour');
 
     // Larger vs smaller tip pools, split at the median total points in range — does sharing
     // with more people actually cost you per hour, or does it wash out with bigger sales?
@@ -394,7 +394,7 @@ const StatsRules = (() => {
     if (withPts.length >= 4) {
       const sortedPts = withPts.map(r => r.pts).sort((a, b) => a - b);
       const median = sortedPts[Math.floor(sortedPts.length / 2)];
-      addInsight(`Larger Tip Pools (${median.toFixed(2)}+ pts)`,
+      addInsight('Larger Tip Pools', 'Smaller tip pools',
         withPts.filter(r => r.pts >= median), withPts.filter(r => r.pts < median), r => r.perHour, 'perHour');
     }
 
@@ -441,7 +441,7 @@ const StatsRules = (() => {
     shifts.forEach(s => {
       const hrs = WTRules.shiftHours(s);
       if (hrs <= 0) return;
-      const isWeekend = [0, 5, 6].includes(new Date(s.date + 'T12:00:00').getDay());
+      const isWeekend = [0, 6].includes(new Date(s.date + 'T12:00:00').getDay());
       const key = s.locationName || 'Unknown';
       if (!byLoc[key]) byLoc[key] = { weekday: [], weekend: [] };
       (isWeekend ? byLoc[key].weekend : byLoc[key].weekday).push(hrs);
