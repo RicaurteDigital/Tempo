@@ -236,10 +236,10 @@ const StatsRules = (() => {
     const rangeStart = new Date(startDate + 'T12:00:00');
     const rangeEnd = new Date(endDate + 'T12:00:00');
     const totalDays = Math.round((rangeEnd - rangeStart) / 86400000) + 1;
-    const useWeekly = totalDays > 31;
+    const bucketMode = totalDays > 200 ? 'month' : totalDays > 31 ? 'week' : 'day';
     const byDate = _dayEarningsMap(shifts, feePercent);
 
-    if (!useWeekly) {
+    if (bucketMode === 'day') {
       const points = [];
       for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
         const ds = _ds(d);
@@ -247,7 +247,7 @@ const StatsRules = (() => {
         points.push({ date: ds, total: day ? day.total : 0, cc: day ? day.cc : 0, cash: day ? day.cash : 0, hasShift: !!day });
       }
       return { points, bucketType: 'day' };
-    } else {
+    } else if (bucketMode === 'week') {
       const byWeek = {};
       Object.keys(byDate).forEach(ds => {
         const wsKey = _ds(getWeekStart(new Date(ds + 'T12:00:00')));
@@ -266,6 +266,24 @@ const StatsRules = (() => {
         wsIter.setDate(wsIter.getDate() + 7);
       }
       return { points, bucketType: 'week' };
+    } else {
+      const byMonth = {};
+      Object.keys(byDate).forEach(ds => {
+        const mKey = ds.slice(0, 7) + '-01';
+        if (!byMonth[mKey]) byMonth[mKey] = { total: 0, cc: 0, cash: 0 };
+        byMonth[mKey].total += byDate[ds].total;
+        byMonth[mKey].cc += byDate[ds].cc;
+        byMonth[mKey].cash += byDate[ds].cash;
+      });
+      const points = [];
+      let mIter = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+      while (mIter <= rangeEnd) {
+        const key = _ds(mIter);
+        const mo = byMonth[key];
+        points.push({ date: key, total: mo ? mo.total : 0, cc: mo ? mo.cc : 0, cash: mo ? mo.cash : 0, hasShift: !!mo });
+        mIter = new Date(mIter.getFullYear(), mIter.getMonth() + 1, 1);
+      }
+      return { points, bucketType: 'month' };
     }
   }
 

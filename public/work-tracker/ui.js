@@ -1979,6 +1979,7 @@ const WorkTracker = (() => {
       resultsEl.innerHTML = _renderStatsResults(stats, closedCardIds, selectedLocationId || null);
       resultsEl.querySelectorAll('[data-chart-svg]').forEach(svgEl => {
         const points = JSON.parse(svgEl.dataset.points);
+        const chartBucketType = svgEl.dataset.bucketType;
         const cw = 300, ch = 110, cpad = 10;
         const stepX = points.length > 1 ? (cw - cpad * 2) / (points.length - 1) : 0;
         const maxVal = Math.max(...points.map(p => p.total), 0.01);
@@ -2001,7 +2002,7 @@ const WorkTracker = (() => {
           activeHalo.setAttribute('cx', x); activeHalo.setAttribute('cy', y);
           crossline.setAttribute('x1', x); crossline.setAttribute('x2', x);
           crossline.setAttribute('opacity', 1);
-          dateLabel.textContent = _fmtChartDate(p.date);
+          dateLabel.textContent = _fmtChartDate(p.date, chartBucketType);
           if (p.hasShift) {
             totalLabel.textContent = WTRules.fmtMoney(p.total);
             breakdownEl.style.visibility = 'visible';
@@ -2119,7 +2120,7 @@ const WorkTracker = (() => {
     loadRange(r0.start, r0.end, 'Last 30 days');
   }
 
-  function _svgLineChart(points) {
+  function _svgLineChart(points, bucketType) {
     if (!points.length) return '<div style="color:var(--wt-text-tertiary);font-size:13px;padding:8px 0">No data</div>';
     const w = 300, h = 110, padding = 10;
     const maxVal = Math.max(...points.map(p => p.total), 0.01);
@@ -2136,13 +2137,13 @@ const WorkTracker = (() => {
     ).join('');
     const lastIdx = points.length - 1;
     return `
-      <div data-chart-date-label style="font-size:12px;color:var(--wt-text-secondary)">${_fmtChartDate(points[lastIdx].date)}</div>
+      <div data-chart-date-label style="font-size:12px;color:var(--wt-text-secondary)">${_fmtChartDate(points[lastIdx].date, bucketType)}</div>
       <div data-chart-total style="font-size:22px;font-weight:700;color:var(--wt-text-primary);margin-top:1px">${points[lastIdx].hasShift ? WTRules.fmtMoney(points[lastIdx].total) : 'Day off'}</div>
       <div data-chart-breakdown style="display:flex;gap:14px;margin-top:2px;${points[lastIdx].hasShift ? '' : 'visibility:hidden'}">
         <div style="font-size:12px;color:#FF9F0A">Card tips <span data-chart-cc>${WTRules.fmtMoney(points[lastIdx].cc)}</span></div>
         <div style="font-size:12px;color:#30D158">Cash <span data-chart-cash>${WTRules.fmtMoney(points[lastIdx].cash)}</span></div>
       </div>
-      <svg data-chart-svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" xmlns="http://www.w3.org/2000/svg" style="touch-action:none;cursor:pointer;margin-top:10px" data-points='${JSON.stringify(points).replace(/'/g, "&apos;")}'>
+      <svg data-chart-svg data-bucket-type="${bucketType}" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" xmlns="http://www.w3.org/2000/svg" style="touch-action:none;cursor:pointer;margin-top:10px" data-points='${JSON.stringify(points).replace(/'/g, "&apos;")}'>
         <path d="${areaD}" fill="rgba(94,92,230,.12)"/>
         <path d="${pathD}" fill="none" stroke="#5E5CE6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
         ${staticDots}
@@ -2152,8 +2153,11 @@ const WorkTracker = (() => {
       </svg>`;
   }
 
-  function _fmtChartDate(ds) {
-    return new Date(ds + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  function _fmtChartDate(ds, bucketType) {
+    const d = new Date(ds + 'T12:00:00');
+    if (bucketType === 'month') return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (bucketType === 'week') return 'Week of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
   function _renderStatsResults(stats, closedCardIds, locationId) {
@@ -2165,7 +2169,7 @@ const WorkTracker = (() => {
     const statsProfile = WTDb.getSettings().workProfile || 'restaurant';
 
     const ts = StatsRules.timeSeries(stats.startDate, stats.endDate, statsProfile, locationId);
-    const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points), !closedCardIds.has('chart'));
+    const lineChartCard = _collapsibleCard('chart', 'Earnings over time', _svgLineChart(ts.points, ts.bucketType), !closedCardIds.has('chart'));
 
     const dowData = StatsRules.dayOfWeekPattern(stats.startDate, stats.endDate, statsProfile, locationId)
       .sort((a, b) => b.avg - a.avg);
