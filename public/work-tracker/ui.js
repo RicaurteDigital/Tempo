@@ -8,6 +8,10 @@ const WorkTracker = (() => {
                               // you were actually looking at, not always "today's" week —
                               // read once and cleared, so any other path back into History
                               // (switching tabs, tapping Home, etc.) resets to the current week
+  let _dayReturnView = 'week'; // where Day view's Back button goes — defaults to Week (its
+                                // original, only entry point); set to 'stats' right before
+                                // navigating in from the chart, then reset on read so it
+                                // doesn't leak into unrelated visits to Day
   let _floorPlanLocationId = null;
   let _heroTimer = null;
   let _weekHistoryCount = 12;
@@ -1575,7 +1579,11 @@ const WorkTracker = (() => {
       w.appendChild(emp);
     }
     _root.appendChild(w);
-    w.querySelector('#wt-back').onclick = () => { _weekFocusDate = dateStr; _go('week'); };
+    w.querySelector('#wt-back').onclick = () => {
+      const rv = _dayReturnView; _dayReturnView = 'week';
+      if (rv === 'stats') { _go('stats'); return; }
+      _weekFocusDate = dateStr; _go('week');
+    };
     w.querySelector('#wt-add-shift-day').onclick = () => _showAddShift(dateStr);
     if (prevDate) w.querySelector('#wt-day-prev').onclick = () => _go('day', { date: prevDate });
     if (nextDate) w.querySelector('#wt-day-next').onclick = () => _go('day', { date: nextDate });
@@ -2026,7 +2034,7 @@ const WorkTracker = (() => {
           updateActive(pointToIdx(e.clientX));
         });
         svgEl.addEventListener('pointerup', () => {
-          if (!moved) _go('day', { date: points[activeIdx].date });
+          if (!moved) { _dayReturnView = 'stats'; _go('day', { date: points[activeIdx].date }); }
         });
         updateActive(points.length - 1);
       });
