@@ -661,10 +661,100 @@ const StatsRules = (() => {
     }));
   }
 
+  // Deeper analysis for the Stats "full view" only — kept separate from sustainabilityAnalysis
+  // so the compact Settings/pill view (already working) is never touched by this.
+  function sustainabilityFullAnalysis(workProfile) {
+    const budget = WTDb.getBudget();
+    const monthlyExpenses = budget.monthlyExpenses || null;
+    if (!monthlyExpenses) return null;
+    const cycleStartDay = budget.cycleStartDay || 1;
+    const includeCash = !!budget.includeCashInBreakEven;
+    const taxSettings = WTDb.getTaxSettings();
+    const feePercent = WTDb.getTipSettings().processingFeePercent;
+
+    const { cycleStart, cycleEnd } = budgetCycleRange(cycleStartDay);
+    const today = new Date();
+    const todayDs = _ds(today);
+
+    const shiftsInCycle = WTDb.getShiftsInRange(_ds(cycleStart), todayDs).filter(s => (s.workProfile || 'restaurant') === (workProfile || 'restaurant'));
+    const byDate = _dayEarningsMap(shiftsInCycle, feePercent);
+
+    // One effective net multiplier for the whole cycle, applied per day below — avoids running
+    // full tax math per day for a trend chart, with only imperceptible rounding vs. exact.
+    const cycleGrossTotal = Object.values(byDate).reduce((sum, d) => sum + (includeCash ? d.total : d.total - d.cash), 0);
+    const cycleNetEstimate = taxSettings.showEstimate ? WTRules.estimateNet(cycleGrossTotal, taxSettings) : null;
+    const netMultiplier = (cycleNetEstimate && cycleGrossTotal > 0) ? cycleNetEstimate.net / cycleGrossTotal : 1;
+
+    const dailyPoints = [];
+    let cumulative = 0;
+    for (let d = new Date(cycleStart); d <= today; d.setDate(d.getDate() + 1)) {
+      const ds = _ds(d);
+      const day = byDate[ds];
+      const dayGross = day ? (includeCash ? day.total : day.total - day.cash) : 0;
+      cumulative += dayGross * netMultiplier;
+      dailyPoints.push({ date: ds, cumulative, hasShift: !!day });
+    }
+
+    const dayEarningsList = Object.keys(byDate).sort().map(ds => {
+      const day = byDate[ds];
+      const dayGross = includeCash ? day.total : day.total - day.cash;
+      return { date: ds, amount: dayGross * netMultiplier };
+    });
+
+    const earnedSoFar = cumulative;
+    const stillNeeded = Math.max(0, monthlyExpenses - earnedSoFar);
+    const daysElapsedInCycle = Math.round((today - cycleStart) / 86400000) + 1;
+    const daysTotalInCycle = Math.round((cycleEnd - cycleStart) / 86400000) + 1;
+    const daysRemainingInCycle = Math.max(0, daysTotalInCycle - daysElapsedInCycle);
+    const currentDailyRate = daysElapsedInCycle > 0 ? earnedSoFar / daysElapsedInCycle : 0;
+
+    const t90start = new Date(); t90start.setDate(t90start.getDate() - 89);
+    const t90 = computeAllStats(_ds(t90start), todayDs, workProfile).totals;
+    const gross90 = includeCash ? t90.expectedGross : (t90.expectedGross - t90.cashTips);
+    const net90Estimate = taxSettings.showEstimate ? WTRules.estimateNet(gross90, taxSettings) : null;
+    const net90 = net90Estimate ? net90Estimate.net : gross90;
+    const perShiftRate = t90.shiftsCount > 0 ? net90 / t90.shiftsCount : 0;
+
+    let whatIf = null;
+    if (stillNeeded > 0 && perShiftRate > 0) {
+      const extraDailyRate = currentDailyRate + (perShiftRate / 7);
+      const daysAtCurrentPace = currentDailyRate > 0 ? stillNeeded / currentDailyRate : null;
+      const daysWithExtra = extraDailyRate > 0 ? stillNeeded / extraDailyRate : null;
+      if (daysWithExtra !== null && daysWithExtra <= daysRemainingInCycle) {
+        const projectedDate = new Date(today);
+        projectedDate.setDate(projectedDate.getDate() + Math.ceil(daysWithExtra));
+        whatIf = {
+          projectedDate: _ds(projectedDate),
+          daysSooner: (daysAtCurrentPace !== null && daysAtCurrentPace <= daysRemainingInCycle) ? Math.max(0, Math.ceil(daysAtCurrentPace) - Math.ceil(daysWithExtra)) : null
+        };
+      }
+    }
+
+    const cycleHistory = [];
+    let refDate = new Date(cycleStart);
+    refDate.setDate(refDate.getDate() - 1);
+    for (let i = 0; i < 3; i++) {
+      const { cycleStart: pStart, cycleEnd: pEnd } = budgetCycleRange(cycleStartDay, refDate);
+      const pTotals = computeAllStats(_ds(pStart), _ds(pEnd), workProfile).totals;
+      const pGross = includeCash ? pTotals.expectedGross : (pTotals.expectedGross - pTotals.cashTips);
+      const pNetEstimate = taxSettings.showEstimate ? WTRules.estimateNet(pGross, taxSettings) : null;
+      const pNet = pNetEstimate ? pNetEstimate.net : pGross;
+      cycleHistory.push({
+        start: _ds(pStart), end: _ds(pEnd), earned: pNet,
+        met: pNet >= monthlyExpenses, delta: pNet - monthlyExpenses
+      });
+      refDate = new Date(pStart);
+      refDate.setDate(refDate.getDate() - 1);
+    }
+    cycleHistory.reverse();
+
+    return { dailyPoints, dayEarningsList, whatIf, cycleHistory, monthlyExpenses };
+  }
+
   return {
     rollingRange, yearRange, weekRange, activeYears,
     computeLocationStats, computeAllStats, timeSeries, dayOfWeekPattern, daysOffInRange,
     computeShiftContext, shiftLengthPatterns, periodComparison, sustainabilityAnalysis,
-    monthPattern
+    monthPattern, sustainabilityFullAnalysis
   };
 })();
