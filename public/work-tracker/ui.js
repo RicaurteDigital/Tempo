@@ -3969,16 +3969,29 @@ const WorkTracker = (() => {
         <span class="wt-settings-chevron" data-standalone-chevron="sustain">▼</span>
       </div>
       <div class="wt-settings-body" data-standalone-body="sustain" style="display:none;margin-top:14px">
-      <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Does this job actually cover your bills? Enter your real monthly expenses, and Tempo compares them against your real earnings from the last 90 days — no guessing.</div>
+      <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Does this job actually cover your bills? Enter your real monthly expenses, and Tempo compares them against your real earnings — no guessing.</div>
       <label class="wt-modal-label">Monthly expenses ($)</label>
       <input id="wt-sustain-expenses" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 3200" value="${budget.monthlyExpenses || ''}" style="margin-bottom:12px">
+      <label class="wt-modal-label">Your budget cycle starts on day</label>
+      <input id="wt-sustain-cycle-day" class="wt-input" type="number" min="1" max="31" placeholder="1" value="${budget.cycleStartDay || 1}" style="margin-bottom:6px">
+      <div style="font-size:11px;color:#636366;margin-bottom:12px;line-height:1.4">Use whatever day your rent or bills are due — doesn't have to be the 1st.</div>
+      <div id="wt-sustain-cash-toggle" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;cursor:pointer;margin-bottom:14px">
+        <span style="font-size:12px;color:var(--wt-text-primary)">${budget.includeCashInBreakEven ? '🔓' : '🔒'} Count cash tips toward this goal</span>
+        <span style="font-size:11px;color:var(--wt-text-tertiary)">${budget.includeCashInBreakEven ? 'Yes' : 'No'}</span>
+      </div>
       <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:14px" id="wt-sustain-save">Calculate</button>
       <div id="wt-sustain-results"></div>
       <div id="wt-sustain-view-stats" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">View full analysis in Stats →</div>
       </div>
     `;
     w.appendChild(sustainBlock);
-    sustainBlock.querySelector('#wt-sustain-view-stats').onclick = () => _go('stats');
+    sustainBlock.querySelector('#wt-sustain-view-stats').onclick = () => _go('stats', { openSustain: true });
+    sustainBlock.querySelector('#wt-sustain-cash-toggle').onclick = () => {
+      const b = WTDb.getBudget();
+      b.includeCashInBreakEven = !b.includeCashInBreakEven;
+      WTDb.saveBudget(b);
+      _go('settings');
+    };
     sustainBlock.querySelector('[data-standalone-header="sustain"]').onclick = () => {
       const body = sustainBlock.querySelector('[data-standalone-body="sustain"]');
       const chev = sustainBlock.querySelector('[data-standalone-chevron="sustain"]');
@@ -3991,13 +4004,17 @@ const WorkTracker = (() => {
     function renderSustainResults() {
       const resultsEl = sustainBlock.querySelector('#wt-sustain-results');
       const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
-      const r = StatsRules.sustainabilityAnalysis(currentProfile, 90);
+      const r = StatsRules.sustainabilityAnalysis(currentProfile);
       resultsEl.innerHTML = _sustainabilityResultsHtml(r);
     }
 
     sustainBlock.querySelector('#wt-sustain-save').onclick = () => {
       const val = parseFloat(sustainBlock.querySelector('#wt-sustain-expenses').value.replace(',', '.'));
-      WTDb.saveBudget({ monthlyExpenses: !isNaN(val) && val > 0 ? val : null });
+      const cycleDayVal = parseInt(sustainBlock.querySelector('#wt-sustain-cycle-day').value, 10);
+      const budgetToSave = WTDb.getBudget();
+      budgetToSave.monthlyExpenses = !isNaN(val) && val > 0 ? val : null;
+      budgetToSave.cycleStartDay = (!isNaN(cycleDayVal) && cycleDayVal >= 1 && cycleDayVal <= 31) ? cycleDayVal : 1;
+      WTDb.saveBudget(budgetToSave);
       renderSustainResults();
     };
 
