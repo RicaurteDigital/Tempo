@@ -214,10 +214,12 @@ const StatsRules = (() => {
   function _dayEarningsMap(shifts, feePercent) {
     const byDate = {};
     shifts.forEach(s => {
-      if (!byDate[s.date]) byDate[s.date] = 0;
+      if (!byDate[s.date]) byDate[s.date] = { total: 0, cc: 0, cash: 0 };
       const hrs = WTRules.shiftHours(s);
       const cut = _myTipCut(s, feePercent);
-      byDate[s.date] += hrs * (s.hourlyRate || NYC_MIN_WAGE) + cut.cc + cut.cash;
+      byDate[s.date].total += hrs * (s.hourlyRate || NYC_MIN_WAGE) + cut.cc + cut.cash;
+      byDate[s.date].cc += cut.cc;
+      byDate[s.date].cash += cut.cash;
     });
     return byDate;
   }
@@ -241,20 +243,25 @@ const StatsRules = (() => {
       const points = [];
       for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
         const ds = _ds(d);
-        points.push({ date: ds, total: byDate[ds] || 0 });
+        const day = byDate[ds];
+        points.push({ date: ds, total: day ? day.total : 0, cc: day ? day.cc : 0, cash: day ? day.cash : 0, hasShift: !!day });
       }
       return { points, bucketType: 'day' };
     } else {
       const byWeek = {};
       Object.keys(byDate).forEach(ds => {
         const wsKey = _ds(getWeekStart(new Date(ds + 'T12:00:00')));
-        byWeek[wsKey] = (byWeek[wsKey] || 0) + byDate[ds];
+        if (!byWeek[wsKey]) byWeek[wsKey] = { total: 0, cc: 0, cash: 0 };
+        byWeek[wsKey].total += byDate[ds].total;
+        byWeek[wsKey].cc += byDate[ds].cc;
+        byWeek[wsKey].cash += byDate[ds].cash;
       });
       const points = [];
       let wsIter = getWeekStart(new Date(rangeStart));
       while (wsIter <= rangeEnd) {
         const key = _ds(wsIter);
-        points.push({ date: key, total: byWeek[key] || 0 });
+        const wk = byWeek[key];
+        points.push({ date: key, total: wk ? wk.total : 0, cc: wk ? wk.cc : 0, cash: wk ? wk.cash : 0, hasShift: !!wk });
         wsIter = new Date(wsIter);
         wsIter.setDate(wsIter.getDate() + 7);
       }
