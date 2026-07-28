@@ -2156,7 +2156,7 @@ const WorkTracker = (() => {
   function _fmtChartDate(ds, bucketType) {
     const d = new Date(ds + 'T12:00:00');
     if (bucketType === 'month') return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    if (bucketType === 'week') return 'Week of ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (bucketType === 'week') return formatWeekLabel(d);
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   }
 
