@@ -2128,11 +2128,11 @@ const WorkTracker = (() => {
       ? contextInsights.reduce((best, i) => Math.abs(i.deltaPercent) > Math.abs(best.deltaPercent) ? i : best)
       : null;
     const headlineCard = cmp.deltaPercent !== null ? `
-      <div class="wt-settings-block" style="margin-bottom:16px;background:rgba(94,92,230,.08);border:1px solid rgba(94,92,230,.25)">
-        <div style="font-size:14px;line-height:1.5;color:#fff">
+      <div class="wt-settings-block" style="margin-bottom:16px;background:var(--wt-highlight-card-bg);border:1px solid var(--wt-highlight-card-border)">
+        <div style="font-size:14px;line-height:1.5;color:var(--wt-text-primary)">
           You earned <strong>${WTRules.fmtMoney(cmp.curTotal)}</strong> this period — <strong style="color:${cmp.deltaPercent >= 0 ? '#30D158' : '#FF453A'}">${cmp.deltaPercent >= 0 ? '+' : ''}${cmp.deltaPercent.toFixed(0)}%</strong> vs. the previous ${cmp.spanDays === 1 ? 'day' : cmp.spanDays + ' days'} (${WTRules.fmtMoney(cmp.prevTotal)})${topDriver && Math.abs(topDriver.deltaPercent) >= 15 ? `, largely coinciding with <strong>${topDriver.label}</strong> (${topDriver.deltaPercent >= 0 ? '+' : ''}${topDriver.deltaPercent.toFixed(0)}%)` : ''}.
         </div>
-        <div style="font-size:11px;color:#98989D;margin-top:6px">${cmp.usingNet ? 'Estimated net, after your configured taxes — not a confirmed paycheck.' : 'Gross, before taxes — turn on tax estimates in Settings for a take-home number.'}</div>
+        <div style="font-size:11px;color:var(--wt-text-secondary);margin-top:6px">${cmp.usingNet ? 'Estimated net, after your configured taxes — not a confirmed paycheck.' : 'Gross, before taxes — turn on tax estimates in Settings for a take-home number.'}</div>
       </div>` : '';
 
     function _contextRow(i) {

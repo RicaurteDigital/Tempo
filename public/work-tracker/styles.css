@@ -43,6 +43,8 @@
   --wt-input-text: #fff;
   --wt-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2398989D' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --wt-shift-card-bg: rgba(28,28,30,0.6);
+  --wt-highlight-card-bg: rgba(94,92,230,.08);
+  --wt-highlight-card-border: rgba(94,92,230,.25);
 }
 body.wt-light {
   --wt-bg-page: #F5F5F7;
@@ -87,6 +89,8 @@ body.wt-light {
   --wt-input-text: #3A3A3C;
   --wt-select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236C6C70' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --wt-shift-card-bg: #fff;
+  --wt-highlight-card-bg: #F3F2FE;
+  --wt-highlight-card-border: #D9D6FB;
 }
 
 .wt-screen {
@@ -766,10 +770,11 @@ body.wt-light {
 
 /* ── SUMMARY CARD ────────────────────────────────────── */
 .wt-summary {
-  background: rgba(28,28,30,0.55);
+  background: var(--wt-settings-block-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid var(--wt-border);
+  box-shadow: var(--wt-shadow-card);
   border-radius: 18px;
   padding: 14px 16px;
   margin-bottom: 14px;
@@ -780,11 +785,11 @@ body.wt-light {
   align-items: center;
   padding: 6px 0;
   font-size: 14px;
-  border-bottom: 1px solid #2C2C2E;
+  border-bottom: 1px solid var(--wt-border);
 }
 .wt-sum-row:last-child { border-bottom: none; }
-.wt-sum-row span { color: #98989D; }
-.wt-sum-row strong { font-weight: 700; font-variant-numeric: tabular-nums; }
+.wt-sum-row span { color: var(--wt-text-secondary); }
+.wt-sum-row strong { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--wt-text-primary); }
 
 .wt-hero-break {
   background: var(--wt-hero-break-bg);
