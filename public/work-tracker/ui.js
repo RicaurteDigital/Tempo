@@ -12,6 +12,9 @@ const WorkTracker = (() => {
                                 // original, only entry point); set to 'stats' right before
                                 // navigating in from the chart, then reset on read so it
                                 // doesn't leak into unrelated visits to Day
+  let _statsOpenSustain = false; // set right before navigating to Stats from the Home pace pill
+                                  // or Settings, so Stats scrolls straight to Sustainability
+                                  // instead of landing at the top; read once and cleared
   let _floorPlanLocationId = null;
   let _heroTimer = null;
   let _weekHistoryCount = 12;
@@ -38,6 +41,7 @@ const WorkTracker = (() => {
   function _go(view, opts) {
     _view = view;
     if (opts && opts.date) _date = opts.date;
+    if (opts && opts.openSustain) _statsOpenSustain = true;
     clearInterval(_heroTimer);
     if (!_root) return;
     _root.innerHTML = '';
@@ -148,7 +152,7 @@ const WorkTracker = (() => {
     const _greetTime = _greetHour < 12 ? 'Good morning' : _greetHour < 18 ? 'Good afternoon' : 'Good evening';
     const greeting = settings.userName ? `${_greetTime}, ${settings.userName}` : _greetTime;
     const currentProfile = settings.workProfile || 'restaurant';
-    const homeSustain = StatsRules.sustainabilityAnalysis(currentProfile, 90);
+    const homeSustain = StatsRules.sustainabilityAnalysis(currentProfile);
     const weekShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === currentProfile);
     const todayShifts = WTDb.getShiftsForDate(today).filter(s => (s.workProfile || 'restaurant') === currentProfile);
     const todayMarkedOff = todayShifts.length === 0 && !!WTDb.getDayOffReason(today, currentProfile);
@@ -566,7 +570,7 @@ const WorkTracker = (() => {
 
     w.querySelector('#wt-settings-btn').onclick = () => _go('settings');
     const pacePill = w.querySelector('#wt-pace-pill');
-    if (pacePill) pacePill.onclick = () => _go('stats');
+    if (pacePill) pacePill.onclick = () => _go('stats', { openSustain: true });
     w.querySelector('#wt-nav-prev').onclick = () => _navDay(-1);
     const nextBtn = w.querySelector('#wt-nav-next');
     if (nextBtn && !isToday) nextBtn.onclick = () => _navDay(1);
@@ -1863,6 +1867,31 @@ const WorkTracker = (() => {
   // estimated net (your own configured tax %, clearly labeled as an estimate — taxes are a
   // real fiscal question this app can't know for certain), and, when available, whatever
   // net has actually been confirmed via payments you've recorded, as a trust cross-check.
+  function _showSustainInfo(r) {
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    ov.innerHTML = `
+      <div class="wt-modal" style="max-height:85vh;overflow-y:auto">
+        <div class="wt-modal-handle"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div class="wt-modal-title" style="margin:0">How this is calculated</div>
+          <button id="wt-sustain-info-close" style="width:28px;height:28px;border-radius:50%;background:var(--wt-surface-secondary);border:none;color:var(--wt-text-secondary);font-size:14px;cursor:pointer">✕</button>
+        </div>
+        <div style="font-size:13px;color:var(--wt-text-primary);line-height:1.6">
+          <p style="margin-bottom:12px">To estimate your hourly rate, Tempo looks at your recent work history — up to the last 90 days.</p>
+          <p style="margin-bottom:12px"><strong>Precision improves over time.</strong> If you're brand new to Tempo, there might only be a few days of history to go on, so the number will be rougher — but you'll still see something useful instead of waiting three months for a result.</p>
+          <p style="margin-bottom:12px">As you log more shifts, the window grows day by day. Once you pass 90 days, it settles there and stops growing, so a real recent change in your pace (a raise, a new job, a slow season) doesn't get diluted by data from many months ago.</p>
+          <p style="margin-bottom:0">You currently have <strong>${r.daysAvailable}</strong> day${r.daysAvailable !== 1 ? 's' : ''} of history, so this is based on the last <strong>${r.lookbackDays}</strong> day${r.lookbackDays !== 1 ? 's' : ''}.</p>
+        </div>
+        <button class="wt-btn wt-btn-primary" id="wt-sustain-info-done" style="width:100%;margin-top:20px">Got it</button>
+      </div>`;
+    document.body.appendChild(ov);
+    const close = () => ov.remove();
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+    ov.querySelector('#wt-sustain-info-close').onclick = close;
+    ov.querySelector('#wt-sustain-info-done').onclick = close;
+  }
+
   function _sustainabilityResultsHtml(r) {
     if (!r.hasData) {
       return `<div style="font-size:12px;color:var(--wt-text-tertiary)">Not enough recent shifts yet — log some work first.</div>`;
@@ -2090,13 +2119,19 @@ const WorkTracker = (() => {
       const sustainLink = resultsEl.querySelector('#wt-stats-sustain-link');
       if (sustainLink) sustainLink.onclick = (e) => { e.stopPropagation(); _go('settings'); };
       resultsEl.onclick = (e) => {
+        const infoBtn = e.target.closest('[data-sustain-info]');
+        if (infoBtn) {
+          const profile = WTDb.getSettings().workProfile || 'restaurant';
+          _showSustainInfo(StatsRules.sustainabilityAnalysis(profile));
+          return;
+        }
         const cashToggle = e.target.closest('[data-cash-breakeven-toggle]');
         if (cashToggle) {
           const b = WTDb.getBudget();
           b.includeCashInBreakEven = !b.includeCashInBreakEven;
           WTDb.saveBudget(b);
           const profile = WTDb.getSettings().workProfile || 'restaurant';
-          const fresh = StatsRules.sustainabilityAnalysis(profile, 90);
+          const fresh = StatsRules.sustainabilityAnalysis(profile);
           const body = resultsEl.querySelector('[data-collapse-body="sustain"]');
           if (body) body.innerHTML = _sustainabilityResultsHtml(fresh);
           return;
@@ -2185,6 +2220,14 @@ const WorkTracker = (() => {
     setActivePill('30D');
     const r0 = StatsRules.rollingRange(30);
     loadRange(r0.start, r0.end, 'Last 30 days');
+
+    if (_statsOpenSustain) {
+      _statsOpenSustain = false;
+      setTimeout(() => {
+        const sustainHeader = resultsEl.querySelector('[data-collapse-toggle="sustain"]');
+        if (sustainHeader) sustainHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
   }
 
   function _svgLineChart(points, bucketType) {
@@ -2373,7 +2416,7 @@ const WorkTracker = (() => {
 
     // Always the fixed 90-day lookback, independent of whichever pill is selected above —
     // sustainability is about your current real pace, not the specific range you're browsing.
-    const sustainResult = StatsRules.sustainabilityAnalysis(statsProfile, 90);
+    const sustainResult = StatsRules.sustainabilityAnalysis(statsProfile);
     const sustainCard = sustainResult.hasData ? _collapsibleCard('sustain', 'Sustainability', `
       ${_sustainabilityResultsHtml(sustainResult)}
       <div id="wt-stats-sustain-link" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">Edit expenses in Settings →</div>
