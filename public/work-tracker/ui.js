@@ -2129,12 +2129,23 @@ const WorkTracker = (() => {
     const topDriver = contextInsights.length
       ? contextInsights.reduce((best, i) => Math.abs(i.deltaPercent) > Math.abs(best.deltaPercent) ? i : best)
       : null;
+    const pctColor = cmp.deltaPercent >= 0 ? '#30D158' : '#FF453A';
+    const pctBg = cmp.deltaPercent >= 0 ? 'rgba(48,209,88,.15)' : 'rgba(255,69,58,.15)';
+    const pctArrow = cmp.deltaPercent >= 0 ? '↑' : '↓';
+    const spanLabel = cmp.spanDays === 1 ? 'yesterday' : `last ${cmp.spanDays} days`;
+    const insightLine = (topDriver && Math.abs(topDriver.deltaPercent) >= 15)
+      ? `${topDriver.label} paid ${Math.abs(topDriver.deltaPercent).toFixed(0)}% ${topDriver.deltaPercent >= 0 ? 'more' : 'less'} than other shifts this period.`
+      : '';
     const headlineCard = cmp.deltaPercent !== null ? `
       <div class="wt-settings-block" style="margin-bottom:16px;background:var(--wt-highlight-card-bg);border:1px solid var(--wt-highlight-card-border)">
-        <div style="font-size:14px;line-height:1.5;color:var(--wt-text-primary)">
-          You earned <strong>${WTRules.fmtMoney(cmp.curTotal)}</strong> this period — <strong style="color:${cmp.deltaPercent >= 0 ? '#30D158' : '#FF453A'}">${cmp.deltaPercent >= 0 ? '+' : ''}${cmp.deltaPercent.toFixed(0)}%</strong> vs. the previous ${cmp.spanDays === 1 ? 'day' : cmp.spanDays + ' days'} (${WTRules.fmtMoney(cmp.prevTotal)})${topDriver && Math.abs(topDriver.deltaPercent) >= 15 ? `, largely coinciding with <strong>${topDriver.label}</strong> (${topDriver.deltaPercent >= 0 ? '+' : ''}${topDriver.deltaPercent.toFixed(0)}%)` : ''}.
+        <div style="font-size:11px;color:var(--wt-text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.3px">This period</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
+          <div style="font-size:26px;font-weight:700;color:var(--wt-text-primary)">${WTRules.fmtMoney(cmp.curTotal)}</div>
+          <div style="background:${pctBg};color:${pctColor};font-size:12px;font-weight:700;padding:2px 8px;border-radius:8px">${pctArrow} ${Math.abs(cmp.deltaPercent).toFixed(0)}%</div>
         </div>
-        <div style="font-size:11px;color:var(--wt-text-secondary);margin-top:6px">${cmp.usingNet ? 'Estimated net, after your configured taxes — not a confirmed paycheck.' : 'Gross, before taxes — turn on tax estimates in Settings for a take-home number.'}</div>
+        <div style="font-size:12px;color:var(--wt-text-secondary);margin-top:2px">vs ${WTRules.fmtMoney(cmp.prevTotal)} ${spanLabel}</div>
+        ${insightLine ? `<div style="height:1px;background:var(--wt-border);margin:12px 0"></div><div style="font-size:12px;color:var(--wt-text-primary);line-height:1.4">${insightLine}</div>` : ''}
+        <div style="font-size:10px;color:var(--wt-text-tertiary);margin-top:10px">${cmp.usingNet ? 'Estimated net · not a confirmed paycheck' : 'Gross, before taxes — turn on tax estimates in Settings'}</div>
       </div>` : '';
 
     function _contextRow(i) {
