@@ -148,6 +148,7 @@ const WorkTracker = (() => {
     const _greetTime = _greetHour < 12 ? 'Good morning' : _greetHour < 18 ? 'Good afternoon' : 'Good evening';
     const greeting = settings.userName ? `${_greetTime}, ${settings.userName}` : _greetTime;
     const currentProfile = settings.workProfile || 'restaurant';
+    const homeSustain = StatsRules.sustainabilityAnalysis(currentProfile, 90);
     const weekShifts = WTDb.getShiftsForWeek(ws).filter(s => (s.workProfile || 'restaurant') === currentProfile);
     const todayShifts = WTDb.getShiftsForDate(today).filter(s => (s.workProfile || 'restaurant') === currentProfile);
     const todayMarkedOff = todayShifts.length === 0 && !!WTDb.getDayOffReason(today, currentProfile);
@@ -177,7 +178,10 @@ const WorkTracker = (() => {
         <div class="wt-hdr-left">
           <div style="font-size:11px;color:var(--wt-text-secondary);font-weight:700;letter-spacing:.5px;margin-bottom:2px">TEMPO</div>
           <h2>${greeting}</h2>
-          <p>${formatWeekLabel(ws)}</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <p style="margin:0">${formatWeekLabel(ws)}</p>
+            ${homeSustain.hoursSurplusPerWeek !== null ? `<button id="wt-pace-pill" class="wt-tap-scale" style="background:${homeSustain.hoursSurplusPerWeek >= 0 ? 'rgba(48,209,88,.12)' : 'var(--wt-surface-secondary)'};border:none;border-radius:20px;padding:4px 11px;cursor:pointer"><span style="font-size:11px;font-weight:700;color:${homeSustain.hoursSurplusPerWeek >= 0 ? '#30D158' : 'var(--wt-text-secondary)'}">${homeSustain.hoursSurplusPerWeek >= 0 ? '+' : ''}${homeSustain.hoursSurplusPerWeek.toFixed(1)}h ${homeSustain.hoursSurplusPerWeek >= 0 ? 'ahead' : 'to go'}</span></button>` : ''}
+          </div>
         </div>
         <button class="wt-hdr-btn" id="wt-settings-btn">⚙</button>
       </div>
@@ -552,6 +556,8 @@ const WorkTracker = (() => {
     _root.appendChild(w);
 
     w.querySelector('#wt-settings-btn').onclick = () => _go('settings');
+    const pacePill = w.querySelector('#wt-pace-pill');
+    if (pacePill) pacePill.onclick = () => _go('stats');
     w.querySelector('#wt-nav-prev').onclick = () => _navDay(-1);
     const nextBtn = w.querySelector('#wt-nav-next');
     if (nextBtn && !isToday) nextBtn.onclick = () => _navDay(1);
@@ -1850,41 +1856,57 @@ const WorkTracker = (() => {
   // net has actually been confirmed via payments you've recorded, as a trust cross-check.
   function _sustainabilityResultsHtml(r) {
     if (!r.hasData) {
-      return `<div style="font-size:12px;color:#636366">Not enough recent shifts yet — log some work first.</div>`;
+      return `<div style="font-size:12px;color:var(--wt-text-tertiary)">Not enough recent shifts yet — log some work first.</div>`;
     }
     const fmt = WTRules.fmtMoney;
-    let html = `
-      <div style="font-size:11px;color:#636366;margin-bottom:12px;line-height:1.4">Based on your last ${r.lookbackDays} days. This is math from your own data, not a recommendation for how much you should work — take care of yourself.</div>
+    let html = `<div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:12px;line-height:1.4">Based on your last ${r.lookbackDays} days. This is math from your own data, not a recommendation for how much you should work — take care of yourself.</div>`;
 
-      <div style="font-size:12px;color:#98989D;font-weight:700;margin-bottom:6px">Per hour</div>
-      ${_statRow('Gross (real, no estimate)', fmt(r.grossPerHour))}
-      ${r.usingNet ? _statRow('Est. net (after your tax %)', fmt(r.avgPerHour), '#64D2FF') : ''}
-
-      <div style="font-size:12px;color:#98989D;font-weight:700;margin:12px 0 6px">Per shift</div>
-      ${_statRow('Gross (real, no estimate)', fmt(r.grossPerShift))}
-      ${r.usingNet ? _statRow('Est. net (after your tax %)', fmt(r.avgPerShift), '#64D2FF') : ''}
-      ${r.hasReceivedData ? `<div style="font-size:11px;color:#30D158;margin-top:8px">✓ ${fmt(r.receivedNetInWindow)} of this window has been confirmed from payments you've actually recorded.</div>` : ''}
-
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2C2C2E">
-        ${_statRow('Hours worked / week', r.avgHoursPerWeek.toFixed(1))}
-        ${_statRow('Shifts worked / week', r.avgShiftsPerWeek.toFixed(1))}
-        ${_statRow('Projected this year (est. net)', fmt(r.projectedAnnual))}
-      </div>`;
     if (r.monthlyExpenses > 0) {
-      const ok = r.surplusAnnual >= 0;
+      const ok = r.hoursSurplusPerWeek >= 0;
+      const pillBg = ok ? 'rgba(48,209,88,.15)' : 'rgba(255,159,10,.12)';
+      const pillColor = ok ? '#30D158' : '#FF9F0A';
+      const pillText = ok ? 'On track' : `${Math.abs(r.hoursSurplusPerWeek).toFixed(1)}h to go`;
       html += `
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2C2C2E">
-        ${_statRow('Your annual expenses', fmt(r.annualExpenses))}
-        ${_statRow(ok ? 'Projected surplus' : 'Projected shortfall', (ok ? '+' : '') + fmt(r.surplusAnnual), ok ? '#30D158' : '#FF453A')}
+      <div style="background:var(--wt-highlight-card-bg);border:1px solid var(--wt-highlight-card-border);border-radius:14px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font-size:11px;color:var(--wt-text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.3px">You need</div>
+          <div style="background:${pillBg};color:${pillColor};font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px">${pillText}</div>
+        </div>
+        <div style="font-size:24px;font-weight:700;color:var(--wt-text-primary);margin-top:2px">${r.hoursNeededPerWeek.toFixed(1)} <span style="font-size:14px;color:var(--wt-text-secondary);font-weight:600">hrs/week</span></div>
+        <div style="font-size:12px;color:var(--wt-text-secondary);margin-top:2px">≈ ${r.shiftsNeededPerWeek.toFixed(1)} shifts/week at your ~${r.avgHoursPerShift.toFixed(1)}h average</div>
+        <div style="height:1px;background:var(--wt-border);margin:10px 0"></div>
+        <div style="font-size:12px;color:var(--wt-text-primary)">You're averaging <strong style="color:${pillColor}">${r.avgHoursPerWeek.toFixed(1)} hrs/week</strong> — ${ok ? `${r.hoursSurplusPerWeek.toFixed(1)} hrs ahead` : `${Math.abs(r.hoursSurplusPerWeek).toFixed(1)} hrs short`}</div>
       </div>
-      <div style="margin-top:12px;padding-top:10px;border-top:1px solid #2C2C2E">
-        <div style="font-size:13px;color:#636366;margin-bottom:4px">Needed to break even</div>
-        <div style="font-size:15px;font-weight:700;color:${ok ? '#30D158' : '#FF9F0A'}">${r.hoursNeededPerWeek.toFixed(1)} hrs/week</div>
-        <div style="font-size:12px;color:#636366;margin-top:2px">≈ ${r.shiftsNeededPerWeek.toFixed(1)} shifts/week, at your average ~${r.avgHoursPerShift.toFixed(1)}h per shift</div>
-      </div>`;
+
+      <div data-cash-breakeven-toggle style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:12px;cursor:pointer;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--wt-text-primary)">${r.includeCashInBreakEven ? '🔓' : '🔒'} Count cash tips toward this goal</span>
+        <span style="font-size:11px;color:var(--wt-text-tertiary)">${r.includeCashInBreakEven ? 'Yes' : 'No'}</span>
+      </div>
+
+      <div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:6px">${fmt(r.annualExpenses)}/year in expenses · projected ${r.surplusAnnual >= 0 ? '+' : ''}${fmt(r.surplusAnnual)} this year</div>
+      `;
     } else {
-      html += `<div style="font-size:11px;color:#636366;margin-top:10px">Enter your monthly expenses in Settings → Sustainability to see if this pace covers your bills.</div>`;
+      html += `<div style="font-size:11px;color:var(--wt-text-tertiary);margin-bottom:10px">Enter your monthly expenses in Settings → Sustainability to see if this pace covers your bills.</div>`;
     }
+
+    html += `
+      <div data-breakdown-toggle style="font-size:11px;color:var(--wt-text-tertiary);text-align:center;cursor:pointer;padding:6px 0">▾ Show full breakdown</div>
+      <div data-breakdown-body style="display:none;margin-top:8px">
+        <div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin-bottom:6px">Per hour</div>
+        ${_statRow('Gross (real, no estimate)', fmt(r.grossPerHour))}
+        ${r.usingNet ? _statRow('Est. net (after your tax %)', fmt(r.avgPerHour), '#64D2FF') : ''}
+
+        <div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin:12px 0 6px">Per shift</div>
+        ${_statRow('Gross (real, no estimate)', fmt(r.grossPerShift))}
+        ${r.usingNet ? _statRow('Est. net (after your tax %)', fmt(r.avgPerShift), '#64D2FF') : ''}
+        ${r.hasReceivedData ? `<div style="font-size:11px;color:#30D158;margin-top:8px">✓ ${fmt(r.receivedNetInWindow)} of this window has been confirmed from payments you've actually recorded.</div>` : ''}
+
+        <div margin-top:12px;padding-top:10px;border-top:1px solid var(--wt-border)">
+          ${_statRow('Hours worked / week', r.avgHoursPerWeek.toFixed(1))}
+          ${_statRow('Shifts worked / week', r.avgShiftsPerWeek.toFixed(1))}
+          ${_statRow('Projected this year (est. net)', fmt(r.projectedAnnual))}
+        </div>
+      </div>`;
     return html;
   }
 
@@ -2050,6 +2072,25 @@ const WorkTracker = (() => {
       const sustainLink = resultsEl.querySelector('#wt-stats-sustain-link');
       if (sustainLink) sustainLink.onclick = (e) => { e.stopPropagation(); _go('settings'); };
       resultsEl.onclick = (e) => {
+        const cashToggle = e.target.closest('[data-cash-breakeven-toggle]');
+        if (cashToggle) {
+          const b = WTDb.getBudget();
+          b.includeCashInBreakEven = !b.includeCashInBreakEven;
+          WTDb.saveBudget(b);
+          const profile = WTDb.getSettings().workProfile || 'restaurant';
+          const fresh = StatsRules.sustainabilityAnalysis(profile, 90);
+          const body = resultsEl.querySelector('[data-collapse-body="sustain"]');
+          if (body) body.innerHTML = _sustainabilityResultsHtml(fresh);
+          return;
+        }
+        const breakdownToggle = e.target.closest('[data-breakdown-toggle]');
+        if (breakdownToggle) {
+          const body = breakdownToggle.nextElementSibling;
+          const open = body.style.display !== 'none';
+          body.style.display = open ? 'none' : 'block';
+          breakdownToggle.textContent = open ? '▾ Show full breakdown' : '▴ Hide full breakdown';
+          return;
+        }
         const barEl = e.target.closest('[data-bar-target]');
         if (barEl) {
           const target = barEl.dataset.barTarget;
