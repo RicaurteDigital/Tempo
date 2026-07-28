@@ -1969,8 +1969,67 @@ const WorkTracker = (() => {
       const currentProfile = WTDb.getSettings().workProfile || 'restaurant';
       const stats = StatsRules.computeAllStats(start, end, currentProfile, selectedLocationId || null);
       resultsEl.innerHTML = _renderStatsResults(stats, closedCardIds, selectedLocationId || null);
-      resultsEl.querySelectorAll('[data-chart-date]').forEach(el => {
-        el.onclick = () => _go('day', { date: el.dataset.chartDate });
+      resultsEl.querySelectorAll('[data-chart-svg]').forEach(svgEl => {
+        const points = JSON.parse(svgEl.dataset.points);
+        const cw = 300, ch = 110, cpad = 10;
+        const stepX = points.length > 1 ? (cw - cpad * 2) / (points.length - 1) : 0;
+        const maxVal = Math.max(...points.map(p => p.total), 0.01);
+        const cardEl = svgEl.closest('[data-collapse-body]') || svgEl.parentElement;
+        const dateLabel = cardEl.querySelector('[data-chart-date-label]');
+        const totalLabel = cardEl.querySelector('[data-chart-total]');
+        const breakdownEl = cardEl.querySelector('[data-chart-breakdown]');
+        const ccEl = cardEl.querySelector('[data-chart-cc]');
+        const cashEl = cardEl.querySelector('[data-chart-cash]');
+        const crossline = svgEl.querySelector('[data-chart-crossline]');
+        const activeDot = svgEl.querySelector('[data-chart-activedot]');
+        const activeHalo = svgEl.querySelector('[data-chart-activehalo]');
+        let activeIdx = points.length - 1, downX = 0, moved = false;
+        function _fmtChartDate(d) { return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+        function updateActive(idx) {
+          activeIdx = idx;
+          const p = points[idx];
+          const x = cpad + idx * stepX;
+          const y = ch - cpad - (p.total / maxVal) * (ch - cpad * 2);
+          activeDot.setAttribute('cx', x); activeDot.setAttribute('cy', y);
+          activeHalo.setAttribute('cx', x); activeHalo.setAttribute('cy', y);
+          crossline.setAttribute('x1', x); crossline.setAttribute('x2', x);
+          crossline.setAttribute('opacity', 1);
+          dateLabel.textContent = _fmtChartDate(p.date);
+          if (p.hasShift) {
+            totalLabel.textContent = WTRules.fmtMoney(p.total);
+            breakdownEl.style.visibility = 'visible';
+            ccEl.textContent = WTRules.fmtMoney(p.cc);
+            cashEl.textContent = WTRules.fmtMoney(p.cash);
+          } else {
+            totalLabel.textContent = 'Day off';
+            breakdownEl.style.visibility = 'hidden';
+          }
+          svgEl.querySelectorAll('[data-static-dot]').forEach((d, i) => { d.style.opacity = i === idx ? 0 : 1; });
+        }
+        function pointToIdx(clientX) {
+          const rect = svgEl.getBoundingClientRect();
+          const x = ((clientX - rect.left) / rect.width) * cw;
+          let closest = 0, dist = Infinity;
+          points.forEach((p, i) => {
+            const d = Math.abs((cpad + i * stepX) - x);
+            if (d < dist) { dist = d; closest = i; }
+          });
+          return closest;
+        }
+        svgEl.addEventListener('pointerdown', e => {
+          downX = e.clientX; moved = false;
+          updateActive(pointToIdx(e.clientX));
+          svgEl.setPointerCapture(e.pointerId);
+        });
+        svgEl.addEventListener('pointermove', e => {
+          if (e.buttons !== 1 && e.pointerType !== 'touch') return;
+          if (Math.abs(e.clientX - downX) > 4) moved = true;
+          updateActive(pointToIdx(e.clientX));
+        });
+        svgEl.addEventListener('pointerup', () => {
+          if (!moved) _go('day', { date: points[activeIdx].date });
+        });
+        updateActive(points.length - 1);
       });
       const sustainLink = resultsEl.querySelector('#wt-stats-sustain-link');
       if (sustainLink) sustainLink.onclick = (e) => { e.stopPropagation(); _go('settings'); };
