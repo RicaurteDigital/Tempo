@@ -2701,71 +2701,123 @@ const WorkTracker = (() => {
 
   function _openOrderScreen(el, locationId, order, onClose) {
     const CATS = [
-      { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', border: 'rgba(147,143,255,.2)', text: '#C9C6FF' },
-      { id: 'wine', label: 'Wine', bg: 'linear-gradient(135deg,#5C2436,#3D1826)', border: 'rgba(216,131,155,.2)', text: '#E8B4C4' },
-      { id: 'beer', label: 'Beer', bg: 'linear-gradient(135deg,#5C4419,#3D2E0F)', border: 'rgba(216,175,110,.2)', text: '#E8CBA0' },
-      { id: 'nonalcoholic', label: 'Non-Alcoholic', bg: 'linear-gradient(135deg,#1E4A3D,#153529)', border: 'rgba(110,196,167,.2)', text: '#A0DCC4' }
+      { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', text: '#C9C6FF' },
+      { id: 'wine', label: 'Wine', bg: 'linear-gradient(135deg,#5C2436,#3D1826)', text: '#E8B4C4' },
+      { id: 'beer', label: 'Beer', bg: 'linear-gradient(135deg,#5C4419,#3D2E0F)', text: '#E8CBA0' },
+      { id: 'nonalcoholic', label: 'Non-Alc', bg: 'linear-gradient(135deg,#1E4A3D,#153529)', text: '#A0DCC4' }
     ];
     const catalog = _getOrSeedBarCatalog();
-    const hh = WTDb.getBarHHSettings();
+    let hh = WTDb.getBarHHSettings();
     let activeSeatId = 'shared';
-    let activeCat = null;
+    let activeCat = 'cocktail';
+    let searchTerm = '';
 
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch';
     ov.innerHTML = `
-      <div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <button id="wt-order-back" class="wt-tap-scale" style="width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:18px;cursor:pointer">‹</button>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:#fff">${el.label} <span style="color:#48484A;font-weight:400">· ${order.guestCount} guest${order.guestCount !== 1 ? 's' : ''}</span></div>
-            <div style="font-size:11px;color:#8A8A8E">Check #${order.internalCheckNumber} · ${new Date(order.openedAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</div>
+      <div style="padding:calc(env(safe-area-inset-top) + 14px) 14px 24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <button id="wt-order-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer;flex-shrink:0">‹</button>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:#fff">${el.label} <span style="color:#48484A;font-weight:400">· Check #${order.internalCheckNumber}</span></div>
+          </div>
+          <button id="wt-hh-toggle" class="wt-tap-scale" style="flex-shrink:0;border:1px solid rgba(216,175,110,.3);border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer"></button>
+        </div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1.3;min-width:0">
+            <input id="wt-drink-search" placeholder="🔍 Search drinks..." style="width:100%;background:#1C1C1F;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 9px;font-size:11px;color:#fff;margin-bottom:8px;box-sizing:border-box">
+            <div id="wt-cat-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px"></div>
+            <div id="wt-order-content" style="max-height:340px;overflow-y:auto"></div>
+          </div>
+          <div style="flex:1;min-width:0;background:#131315;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-self:flex-start;position:sticky;top:calc(env(safe-area-inset-top) + 14px)">
+            <div style="font-size:10px;color:#8A8A8E;font-weight:700;margin-bottom:8px">CURRENT ORDER</div>
+            <div id="wt-seat-row" style="display:flex;gap:5px;margin-bottom:8px;overflow-x:auto"></div>
+            <div id="wt-order-check"></div>
           </div>
         </div>
-        <div id="wt-seat-row" style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-          ${CATS.map(c => `<button data-order-cat="${c.id}" class="wt-tap-scale" style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:16px 8px;text-align:center;font-size:13px;font-weight:700;color:${c.text};cursor:pointer">${c.label}</button>`).join('')}
-        </div>
-        <div id="wt-order-content"></div>
-        <div id="wt-order-check" style="margin-top:20px"></div>
       </div>`;
     document.body.appendChild(ov);
     ov.querySelector('#wt-order-back').onclick = () => { ov.remove(); if (onClose) onClose(); };
 
     function persist() { WTDb.saveTableOrder(locationId, el.id, order); }
 
+    function renderHHToggle() {
+      const active = _isHappyHourActive(hh);
+      const isManual = hh.sessionOverride && hh.sessionOverride.active !== undefined && hh.sessionOverride.active !== null;
+      const btn = ov.querySelector('#wt-hh-toggle');
+      btn.style.background = active ? 'linear-gradient(135deg,#5C4419,#3D2E0F)' : 'rgba(255,255,255,.05)';
+      btn.style.color = active ? '#E8CBA0' : '#8A8A8E';
+      btn.textContent = `🕐 HH ${active ? 'ON' : 'OFF'}${isManual ? ' (manual)' : ''}`;
+    }
+
     function renderSeatRow() {
       const row = ov.querySelector('#wt-seat-row');
-      row.innerHTML = order.seats.map(s => `<button data-seat="${s.id}" class="wt-tap-scale" style="flex-shrink:0;background:${s.id === activeSeatId ? '#5E5CE6' : '#1C1C1F'};border:1px solid ${s.id === activeSeatId ? 'transparent' : 'rgba(255,255,255,.06)'};border-radius:8px;padding:6px 14px;font-size:12px;font-weight:${s.id === activeSeatId ? '700' : '400'};color:${s.id === activeSeatId ? '#fff' : '#8A8A8E'};cursor:pointer;white-space:nowrap">${s.name}</button>`).join('');
+      row.innerHTML = order.seats.map(s => `<button data-seat="${s.id}" class="wt-tap-scale" style="flex-shrink:0;background:${s.id === activeSeatId ? '#5E5CE6' : '#1C1C1F'};border:1px solid ${s.id === activeSeatId ? 'transparent' : 'rgba(255,255,255,.06)'};border-radius:6px;padding:4px 10px;font-size:10px;font-weight:${s.id === activeSeatId ? '700' : '400'};color:${s.id === activeSeatId ? '#fff' : '#8A8A8E'};cursor:pointer;white-space:nowrap">${s.name}</button>`).join('');
       row.querySelectorAll('[data-seat]').forEach(b => {
-        b.onclick = () => { activeSeatId = b.dataset.seat; renderSeatRow(); };
+        b.onclick = () => { activeSeatId = b.dataset.seat; renderSeatRow(); renderItemList(); };
       });
     }
 
-    function renderCategoryItems(catId) {
-      activeCat = catId;
+    function renderCatGrid() {
+      const grid = ov.querySelector('#wt-cat-grid');
+      grid.innerHTML = CATS.map(c => {
+        const sel = c.id === activeCat && !searchTerm;
+        return `<button data-order-cat="${c.id}" class="wt-tap-scale" style="background:${c.bg};border:2px solid ${sel ? '#fff' : 'transparent'};filter:${sel ? 'brightness(1.4)' : 'brightness(0.85)'};border-radius:10px;padding:14px 6px;text-align:center;font-size:12px;font-weight:700;color:${c.text};cursor:pointer;transition:filter .15s">${c.label}</button>`;
+      }).join('');
+      grid.querySelectorAll('[data-order-cat]').forEach(b => {
+        b.onclick = () => { activeCat = b.dataset.orderCat; searchTerm = ''; ov.querySelector('#wt-drink-search').value = ''; renderCatGrid(); renderItemList(); };
+      });
+    }
+
+    function qtyForActiveSeat(catalogId) {
+      return order.seats.find(s => s.id === activeSeatId).items.filter(it => it.catalogId === catalogId).length;
+    }
+
+    function addOne(item, price) {
+      const seat = order.seats.find(s => s.id === activeSeatId);
+      seat.items.push({ id: 'oi_' + Math.random().toString(36).slice(2, 10), catalogId: item.id, name: item.name, price: price || 0, modifiers: [] });
+      persist();
+    }
+
+    function removeOne(catalogId) {
+      const seat = order.seats.find(s => s.id === activeSeatId);
+      const idx = seat.items.findIndex(it => it.catalogId === catalogId);
+      if (idx >= 0) seat.items.splice(idx, 1);
+      persist();
+    }
+
+    function renderItemList() {
       const hhActive = _isHappyHourActive(hh);
-      const items = catalog.filter(i => i.category === catId);
+      const items = searchTerm
+        ? catalog.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        : catalog.filter(i => i.category === activeCat);
       const content = ov.querySelector('#wt-order-content');
-      content.innerHTML = `
-        ${hhActive ? `<div style="display:inline-block;background:linear-gradient(135deg,#5C4419,#3D2E0F);border:1px solid rgba(216,175,110,.3);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:#E8CBA0;margin-bottom:10px">🕐 Happy Hour active — ends ${_fmtHHTime(hh.endTime)}</div>` : ''}
-        <div style="display:flex;flex-direction:column;gap:6px">
-          ${items.map(i => {
-            const price = _priceForItem(i, hhActive, hh.prices);
-            const onHH = hhActive && hh.prices[catId] != null && price !== i.price;
-            return `<div data-item-id="${i.id}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,#18181B,#131315);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px;cursor:pointer">
-              <span style="font-size:13px;color:#fff">${i.name}</span>
-              <span style="font-size:13px;font-weight:700">${onHH ? `<span style="color:#48484A;text-decoration:line-through;font-size:11px;margin-right:4px">$${i.price}</span>` : ''}${price === null ? '<span style="color:#48484A;font-size:11px">ask price</span>' : `<span style="color:${onHH ? '#E8CBA0' : '#fff'}">$${price}</span>`}</span>
-            </div>`;
-          }).join('')}
+      content.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px">${items.map(i => {
+        const price = _priceForItem(i, hhActive, hh.prices);
+        const onHH = hhActive && hh.prices[i.category] != null && price !== i.price;
+        const qty = qtyForActiveSeat(i.id);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;background:#18181B;border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:9px 10px">
+          <span style="font-size:12px;color:#fff;flex:1;min-width:0">${i.name}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span style="font-size:12px;font-weight:700">${onHH ? `<span style="color:#48484A;text-decoration:line-through;font-size:10px;margin-right:3px">$${i.price}</span>` : ''}${price === null ? '<span style="color:#48484A;font-size:10px">ask price</span>' : `<span style="color:${onHH ? '#E8CBA0' : '#fff'}">$${price}</span>`}</span>
+            ${qty > 0
+              ? `<div style="display:flex;align-items:center;gap:10px;background:#000;border-radius:8px;padding:6px 10px"><span data-qty-minus="${i.id}" style="color:#8A8A8E;font-size:18px;width:20px;text-align:center;cursor:pointer">−</span><span style="color:#fff;font-size:13px;font-weight:700;min-width:14px;text-align:center">${qty}</span><span data-qty-plus="${i.id}" style="color:#fff;font-size:18px;width:20px;text-align:center;cursor:pointer">+</span></div>`
+              : `<span data-qty-plus="${i.id}" class="wt-tap-scale" style="color:#8A8A8E;font-size:11px;padding:7px 12px;background:#131315;border-radius:8px;cursor:pointer">+ Add</span>`}
+          </div>
         </div>`;
-      content.querySelectorAll('[data-item-id]').forEach(row => {
-        row.onclick = () => {
-          const item = items.find(i => i.id === row.dataset.itemId);
-          const price = _priceForItem(item, hhActive, hh.prices);
-          const seat = order.seats.find(s => s.id === activeSeatId);
-          seat.items.push({ id: 'oi_' + Math.random().toString(36).slice(2, 10), catalogId: item.id, name: item.name, price: price || 0, modifiers: [] });
-          persist();
+      }).join('')}</div>`;
+      content.querySelectorAll('[data-qty-plus]').forEach(x => {
+        x.onclick = () => {
+          const item = catalog.find(i => i.id === x.dataset.qtyPlus);
+          addOne(item, _priceForItem(item, hhActive, hh.prices));
+          renderItemList();
+          renderCheck();
+        };
+      });
+      content.querySelectorAll('[data-qty-minus]').forEach(x => {
+        x.onclick = () => {
+          removeOne(x.dataset.qtyMinus);
+          renderItemList();
           renderCheck();
         };
       });
@@ -2773,33 +2825,35 @@ const WorkTracker = (() => {
 
     function renderCheck() {
       const box = ov.querySelector('#wt-order-check');
-      const allItems = order.seats.flatMap(s => s.items.map(it => ({ ...it, seatName: s.name })));
-      if (!allItems.length) { box.innerHTML = ''; return; }
+      const allItems = order.seats.flatMap(s => s.items);
+      if (!allItems.length) { box.innerHTML = `<div style="font-size:10px;color:#48484A">No items yet</div>`; return; }
       const subtotal = allItems.reduce((sum, it) => sum + it.price, 0);
+      const grouped = {};
+      allItems.forEach(it => { grouped[it.name] = (grouped[it.name] || 0) + 1; });
       box.innerHTML = `
-        <div style="font-size:11px;color:#8A8A8E;font-weight:700;margin-bottom:8px">CURRENT ORDER</div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-          ${allItems.map(it => `<div style="display:flex;justify-content:space-between;align-items:center;background:#131315;border-radius:8px;padding:8px 10px">
-            <span style="font-size:12px;color:#fff">${it.name} <span style="color:#48484A">· ${it.seatName}</span></span>
-            <span style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:700;color:#E8CBA0">$${it.price.toFixed(2)}</span><span data-remove-item="${it.id}" style="color:#48484A;font-size:14px;cursor:pointer;padding:0 4px">✕</span></span>
-          </div>`).join('')}
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
+          ${Object.keys(grouped).map(name => `<div style="display:flex;justify-content:space-between;font-size:10px;color:#D0D0D2"><span>${grouped[name]}× ${name}</span></div>`).join('')}
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#fff;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>`;
-      box.querySelectorAll('[data-remove-item]').forEach(x => {
-        x.onclick = () => {
-          const itemId = x.dataset.removeItem;
-          order.seats.forEach(s => { s.items = s.items.filter(it => it.id !== itemId); });
-          persist();
-          renderCheck();
-        };
-      });
+        <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:6px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#fff"><span>Total</span><span>$${subtotal.toFixed(2)}</span></div>`;
     }
 
-    ov.querySelectorAll('[data-order-cat]').forEach(b => {
-      b.onclick = () => renderCategoryItems(b.dataset.orderCat);
-    });
+    ov.querySelector('#wt-drink-search').oninput = (e) => {
+      searchTerm = e.target.value;
+      renderCatGrid();
+      renderItemList();
+    };
+    ov.querySelector('#wt-hh-toggle').onclick = () => {
+      const currentlyActive = _isHappyHourActive(hh);
+      hh.sessionOverride = { active: !currentlyActive };
+      WTDb.saveBarHHSettings(hh);
+      renderHHToggle();
+      renderItemList();
+    };
 
+    renderHHToggle();
+    renderCatGrid();
     renderSeatRow();
+    renderItemList();
     renderCheck();
   }
 
