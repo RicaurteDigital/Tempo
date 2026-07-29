@@ -2727,7 +2727,7 @@ const WorkTracker = (() => {
           <div style="flex:1.3;min-width:0">
             <input id="wt-drink-search" placeholder="🔍 Search drinks..." style="width:100%;background:#1C1C1F;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 9px;font-size:11px;color:#fff;margin-bottom:8px;box-sizing:border-box">
             <div id="wt-cat-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px"></div>
-            <div id="wt-order-content" style="max-height:340px;overflow-y:auto"></div>
+            <div id="wt-order-content"></div>
           </div>
           <div style="flex:1;min-width:0;background:#131315;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-self:flex-start;position:sticky;top:calc(env(safe-area-inset-top) + 14px)">
             <div style="font-size:10px;color:#8A8A8E;font-weight:700;margin-bottom:8px">CURRENT ORDER</div>
@@ -2829,12 +2829,41 @@ const WorkTracker = (() => {
       if (!allItems.length) { box.innerHTML = `<div style="font-size:10px;color:#48484A">No items yet</div>`; return; }
       const subtotal = allItems.reduce((sum, it) => sum + it.price, 0);
       const grouped = {};
-      allItems.forEach(it => { grouped[it.name] = (grouped[it.name] || 0) + 1; });
+      allItems.forEach(it => {
+        if (!grouped[it.catalogId]) grouped[it.catalogId] = { name: it.name, count: 0 };
+        grouped[it.catalogId].count++;
+      });
       box.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px">
-          ${Object.keys(grouped).map(name => `<div style="display:flex;justify-content:space-between;font-size:10px;color:#D0D0D2"><span>${grouped[name]}× ${name}</span></div>`).join('')}
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+          ${Object.keys(grouped).map(catalogId => {
+            const g = grouped[catalogId];
+            const activeQty = qtyForActiveSeat(catalogId);
+            return `<div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:10px;color:#D0D0D2;flex:1;min-width:0">${g.count}× ${g.name}</span>
+              <div style="display:flex;align-items:center;gap:8px;background:#000;border-radius:6px;padding:3px 8px;flex-shrink:0">
+                <span data-check-minus="${catalogId}" style="color:${activeQty > 0 ? '#8A8A8E' : '#3A3A3C'};font-size:15px;width:16px;text-align:center;cursor:pointer">−</span>
+                <span data-check-plus="${catalogId}" style="color:#fff;font-size:15px;width:16px;text-align:center;cursor:pointer">+</span>
+              </div>
+            </div>`;
+          }).join('')}
         </div>
         <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:6px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#fff"><span>Total</span><span>$${subtotal.toFixed(2)}</span></div>`;
+      box.querySelectorAll('[data-check-plus]').forEach(x => {
+        x.onclick = () => {
+          const item = catalog.find(i => i.id === x.dataset.checkPlus);
+          const hhActive = _isHappyHourActive(hh);
+          addOne(item, _priceForItem(item, hhActive, hh.prices));
+          renderItemList();
+          renderCheck();
+        };
+      });
+      box.querySelectorAll('[data-check-minus]').forEach(x => {
+        x.onclick = () => {
+          removeOne(x.dataset.checkMinus);
+          renderItemList();
+          renderCheck();
+        };
+      });
     }
 
     ov.querySelector('#wt-drink-search').oninput = (e) => {
