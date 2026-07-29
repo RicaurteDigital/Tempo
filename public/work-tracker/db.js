@@ -460,6 +460,133 @@ const WTDb = (() => {
     return settings;
   }
 
+  // Curated starting catalog for AtoZ Rooftop's bar menu. Verified classic cocktails cite a
+  // real source (IBA official list, or another named published recipe); house originals are
+  // left with empty ingredients until the real recipe is provided — never guessed at.
+  function getDefaultBarCatalogSeed() {
+    return [
+      // --- Cocktails ---
+      {
+        id: 'aperol_spritz', name: 'Aperol Spritz', category: 'cocktail', price: 20,
+        isHouseOriginal: false, source: 'IBA Official Cocktail (Spritz Veneziano)',
+        glass: 'Wine glass',
+        ingredients: [
+          { name: 'Prosecco', amount: 3, unit: 'oz' },
+          { name: 'Aperol', amount: 2, unit: 'oz' },
+          { name: 'Soda water', amount: 0, unit: 'splash' }
+        ],
+        garnish: 'Orange slice',
+        method: 'Build into a wine glass filled with ice. Stir gently.'
+      },
+      {
+        id: 'margarita', name: 'Margarita', category: 'cocktail', price: 19,
+        isHouseOriginal: false, source: 'IBA Official Cocktail',
+        glass: 'Margarita glass (salt rim)',
+        ingredients: [
+          { name: 'Tequila', amount: 1.25, unit: 'oz' },
+          { name: 'Triple Sec (Cointreau)', amount: 0.75, unit: 'oz' },
+          { name: 'Lime juice', amount: 0.5, unit: 'oz' }
+        ],
+        garnish: 'Salt rim',
+        method: 'Shake with ice. Strain into a salt-rimmed cocktail glass.'
+      },
+      {
+        id: 'negroni', name: 'Negroni', category: 'cocktail', price: 20,
+        isHouseOriginal: false, source: 'IBA Official Cocktail',
+        glass: 'Old-fashioned',
+        ingredients: [
+          { name: 'Gin', amount: 1, unit: 'oz' },
+          { name: 'Campari', amount: 1, unit: 'oz' },
+          { name: 'Sweet red vermouth', amount: 1, unit: 'oz' }
+        ],
+        garnish: 'Half an orange slice',
+        method: 'Build into an old-fashioned glass filled with ice. Stir gently.'
+      },
+      {
+        id: 'alexander', name: 'Alexander', category: 'cocktail', price: 20,
+        isHouseOriginal: false, source: 'IBA Official Cocktail',
+        glass: 'Cocktail glass',
+        ingredients: [
+          { name: 'Cognac', amount: 1, unit: 'oz' },
+          { name: 'Brown crème de cacao', amount: 1, unit: 'oz' },
+          { name: 'Cream', amount: 1, unit: 'oz' }
+        ],
+        garnish: 'Fresh grated nutmeg',
+        method: 'Shake and strain into a chilled cocktail glass. Sprinkle with nutmeg.'
+      },
+      {
+        id: 'penicillin', name: 'Penicillin', category: 'cocktail', price: 21,
+        isHouseOriginal: false, source: 'IBA Official Cocktail (created by Sam Ross, 2005)',
+        glass: 'Old-fashioned',
+        ingredients: [
+          { name: 'Blended Scotch whisky', amount: 2, unit: 'oz' },
+          { name: 'Fresh lemon juice', amount: 0.75, unit: 'oz' },
+          { name: 'Honey-ginger syrup', amount: 0.75, unit: 'oz' },
+          { name: 'Fresh ginger slices', amount: 3, unit: 'piece' },
+          { name: 'Islay single malt (float)', amount: 0.25, unit: 'oz' }
+        ],
+        garnish: 'Candied ginger',
+        method: 'Muddle ginger in shaker. Add lemon juice, honey-ginger syrup and blended Scotch. Shake with ice, double-strain into old-fashioned glass with ice. Float the Islay whisky on top.'
+      },
+      {
+        id: 'hugo_spritz', name: 'Hugo Spritz', category: 'cocktail', price: 20,
+        isHouseOriginal: false, source: 'Published classic recipe (created by Roland Gruber, 2005; LCBO recipe card)',
+        glass: 'Wine glass',
+        ingredients: [
+          { name: 'Prosecco', amount: 4, unit: 'oz' },
+          { name: 'St-Germain elderflower liqueur', amount: 1, unit: 'oz' },
+          { name: 'Club soda', amount: 1, unit: 'oz' }
+        ],
+        garnish: 'Lime wheels and mint sprig',
+        method: 'Fill a wine glass three-quarters with ice. Pour in Prosecco, then liqueur. Top with club soda. Stir gently, garnish.'
+      },
+      {
+        id: 'lychee_gin_fizz', name: 'Lychee Gin Fizz', category: 'cocktail', price: 20,
+        isHouseOriginal: false, source: 'Published named recipe (Food52) — not an IBA-official cocktail',
+        glass: 'Old-fashioned',
+        ingredients: [
+          { name: 'Gin', amount: 1, unit: 'oz' },
+          { name: 'Fresh lychees, muddled', amount: 3, unit: 'piece' },
+          { name: 'Orange juice', amount: 1, unit: 'oz' },
+          { name: 'Simple syrup', amount: 0.5, unit: 'oz' },
+          { name: 'Soda water', amount: 0, unit: 'top' }
+        ],
+        garnish: 'Lychee, orange slice, mint leaves',
+        method: 'Muddle lychees in shaker. Add remaining ingredients except soda, shake with ice. Strain into old-fashioned glass with crushed ice. Top with soda water.'
+      },
+      { id: 'florence', name: 'Florence', category: 'cocktail', price: 20, isHouseOriginal: true, source: 'House recipe — needs verification from AtoZ Rooftop', glass: null, ingredients: [], garnish: null, method: null },
+      { id: 'single_with_my_pal', name: 'Single With My Pal', category: 'cocktail', price: 19, isHouseOriginal: true, source: 'House recipe — needs verification from AtoZ Rooftop', glass: null, ingredients: [], garnish: null, method: null },
+      { id: 'chivalry_isnt_dead', name: "Chivalry Isn't Dead", category: 'cocktail', price: 20, isHouseOriginal: true, source: 'House recipe — needs verification from AtoZ Rooftop', glass: null, ingredients: [], garnish: null, method: null },
+      { id: 'drunk_in_love', name: 'Drunk In Love', category: 'cocktail', price: 20, isHouseOriginal: true, source: 'House recipe — needs verification from AtoZ Rooftop', glass: null, ingredients: [], garnish: null, method: null },
+      { id: 'the_sling', name: 'The Sling', category: 'cocktail', price: 19, isHouseOriginal: true, source: 'House recipe — needs verification from AtoZ Rooftop', glass: null, ingredients: [], garnish: null, method: null },
+      {
+        id: 'high_noon_watermelon', name: "High Noon Vodka Seltzer – Watermelon", category: 'cocktail', price: 14,
+        isHouseOriginal: false, source: 'Commercial canned product — no recipe, served as-is',
+        glass: 'Can', ingredients: [], garnish: null, method: 'Serve chilled, in the can.'
+      },
+      // --- Wine by the glass ---
+      { id: 'pinot_grigio', name: 'Pinot Grigio, Ponticello (Delle Venezie)', category: 'wine', price: 17, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'sauvignon_blanc', name: 'Sauvignon Blanc, Château les Rexilles (Bordeaux)', category: 'wine', price: 17, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'chardonnay', name: 'Chardonnay, Sea Sun by Wagner Family (Carneros Napa Valley)', category: 'wine', price: 20, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'sancerre', name: 'Sancerre, La Villandière (Loire Valley, France)', category: 'wine', price: 28, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'rose', name: 'Rosé, Jas Des Vignes (Alpes de Haute, Italy)', category: 'wine', price: 19, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'prosecco_glass', name: 'Prosecco, Ruffino (Veneto, Italy)', category: 'wine', price: 17, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'montepulciano', name: 'Montepulciano, Fendi (Abruzzo, Italy)', category: 'wine', price: 19, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'pinot_noir', name: 'Pinot Noir, Cherry Pie (Santa Barbara, California)', category: 'wine', price: 20, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      { id: 'cabernet', name: 'Cabernet Sauvignon, Ghost Pines (Sonoma, California)', category: 'wine', price: 20, isHouseOriginal: false, source: 'Menu item — no recipe needed (bottle pour)', ingredients: [] },
+      // --- Beer ---
+      { id: 'peroni', name: 'Peroni', category: 'beer', price: 11, isHouseOriginal: false, source: 'Menu item — bottled', ingredients: [] },
+      { id: 'lagunitas', name: 'Lagunitas IPA', category: 'beer', price: null, isHouseOriginal: false, source: 'Menu item — bottled', ingredients: [] },
+      { id: 'brooklyn_lager', name: 'Brooklyn Lager', category: 'beer', price: null, isHouseOriginal: false, source: 'Menu item — bottled', ingredients: [] },
+      { id: 'asahi', name: 'Asahi', category: 'beer', price: null, isHouseOriginal: false, source: 'Menu item — draft/reserve', ingredients: [] },
+      { id: 'heineken_0', name: 'Heineken 0.0 (Alcohol-Free)', category: 'beer', price: null, isHouseOriginal: false, source: 'Menu item — bottled, non-alcoholic', ingredients: [] },
+      // --- Non-alcoholic ---
+      { id: 'virgin_mojito', name: 'Virgin Mojito', category: 'nonalcoholic', price: 9, isHouseOriginal: false, source: 'Menu item', ingredients: [] },
+      { id: 'dry_florida', name: 'Dry Florida', category: 'nonalcoholic', price: 8, isHouseOriginal: false, source: 'Menu item', ingredients: [] },
+      { id: 'passion_fruit_spritz', name: 'Passion Fruit Spritz', category: 'nonalcoholic', price: 9, isHouseOriginal: false, source: 'Menu item', ingredients: [] }
+    ];
+  }
+
   return {
     getLocations, saveLocation, deleteLocation,
     getShifts, saveShift, deleteShift, getShiftsForDate, getShiftsForWeek,
@@ -479,6 +606,7 @@ const WTDb = (() => {
     deleteAllData,
     getFloorPlan, saveFloorPlan,
     getBarCatalog, saveBarCatalog,
-    getBarHHSettings, saveBarHHSettings
+    getBarHHSettings, saveBarHHSettings,
+    getDefaultBarCatalogSeed
   };
 })();
