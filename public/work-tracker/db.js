@@ -450,7 +450,7 @@ const WTDb = (() => {
       days: [1, 2, 3, 4, 5], // Mon-Fri (0=Sun...6=Sat)
       startTime: '16:30',
       endTime: '18:30',
-      prices: { wine: 12, cocktail: 14, beer: 8 },
+      prices: { wine: 14, cocktail: 14, beer: 8 },
       sessionOverride: null // { active: true/false } set from the POS for a one-off day change
     };
   }
