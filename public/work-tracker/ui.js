@@ -2611,6 +2611,95 @@ const WorkTracker = (() => {
     return `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;aspect-ratio:${el.w}/${el.h};transform:translate(-50%,-50%) rotate(${el.rotation||0}deg);background:${bg};border:${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none`;
   }
 
+  function _showTableOrder(el, locationId) {
+    const order = WTDb.getTableOrder(locationId, el.id);
+    if (!order) {
+      _showGuestCountPrompt(el, locationId);
+    } else {
+      _openOrderScreen(el, locationId, order);
+    }
+  }
+
+  function _showGuestCountPrompt(el, locationId) {
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    ov.innerHTML = `
+      <div class="wt-modal" style="text-align:center">
+        <div class="wt-modal-handle"></div>
+        <div style="font-size:13px;color:var(--wt-text-tertiary);margin-bottom:2px">${el.label}</div>
+        <div class="wt-modal-title" style="margin-bottom:16px">How many guests?</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          ${[1, 2, 3, 4, 5, 6, 7, 8].map(n => `<button data-guest-count="${n}" class="wt-tap-scale" style="background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:10px;padding:14px 0;font-size:15px;font-weight:700;color:var(--wt-text-primary);cursor:pointer">${n}</button>`).join('')}
+        </div>
+        <input id="wt-guest-custom" type="number" min="1" placeholder="Custom number..." class="wt-input" style="margin-top:8px;text-align:center" onclick="this.select()" onfocus="this.select()">
+        <button id="wt-guest-confirm" class="wt-btn wt-btn-primary" style="width:100%;margin-top:16px;opacity:.5" disabled>Open Table</button>
+      </div>`;
+    document.body.appendChild(ov);
+    let chosen = null;
+    const confirmBtn = ov.querySelector('#wt-guest-confirm');
+    function selectCount(n) {
+      chosen = n;
+      ov.querySelectorAll('[data-guest-count]').forEach(b => {
+        const isSel = parseInt(b.dataset.guestCount, 10) === n;
+        b.style.background = isSel ? '#5E5CE6' : 'var(--wt-surface-secondary)';
+        b.style.color = isSel ? '#fff' : 'var(--wt-text-primary)';
+      });
+      confirmBtn.disabled = false;
+      confirmBtn.style.opacity = '1';
+      confirmBtn.textContent = `Open Table (${n} guest${n !== 1 ? 's' : ''})`;
+    }
+    ov.querySelectorAll('[data-guest-count]').forEach(b => {
+      b.onclick = () => { ov.querySelector('#wt-guest-custom').value = ''; selectCount(parseInt(b.dataset.guestCount, 10)); };
+    });
+    ov.querySelector('#wt-guest-custom').oninput = (e) => {
+      const n = parseInt(e.target.value, 10);
+      if (n > 0) selectCount(n);
+    };
+    confirmBtn.onclick = () => {
+      if (!chosen) return;
+      const seats = [{ id: 'shared', name: 'Whole Table', items: [] }];
+      for (let i = 1; i <= chosen; i++) seats.push({ id: 'seat' + i, name: 'Seat ' + i, items: [] });
+      const order = {
+        guestCount: chosen, seats,
+        internalCheckNumber: WTDb.getNextInternalCheckNumber(),
+        realCheckNumber: '',
+        openedAt: new Date().toISOString(),
+        status: 'open'
+      };
+      WTDb.saveTableOrder(locationId, el.id, order);
+      ov.remove();
+      _openOrderScreen(el, locationId, order);
+    };
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  }
+
+  function _openOrderScreen(el, locationId, order) {
+    const CATS = [
+      { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', border: 'rgba(147,143,255,.2)', text: '#C9C6FF' },
+      { id: 'wine', label: 'Wine', bg: 'linear-gradient(135deg,#5C2436,#3D1826)', border: 'rgba(216,131,155,.2)', text: '#E8B4C4' },
+      { id: 'beer', label: 'Beer', bg: 'linear-gradient(135deg,#5C4419,#3D2E0F)', border: 'rgba(216,175,110,.2)', text: '#E8CBA0' },
+      { id: 'nonalcoholic', label: 'Non-Alcoholic', bg: 'linear-gradient(135deg,#1E4A3D,#153529)', border: 'rgba(110,196,167,.2)', text: '#A0DCC4' }
+    ];
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    ov.innerHTML = `
+      <div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <button id="wt-order-back" class="wt-tap-scale" style="width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:18px;cursor:pointer">‹</button>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#fff">${el.label} <span style="color:#48484A;font-weight:400">· ${order.guestCount} guest${order.guestCount !== 1 ? 's' : ''}</span></div>
+            <div style="font-size:11px;color:#8A8A8E">Check #${order.internalCheckNumber} · ${new Date(order.openedAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
+          ${CATS.map(c => `<button data-order-cat="${c.id}" class="wt-tap-scale" style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:16px 8px;text-align:center;font-size:13px;font-weight:700;color:${c.text};cursor:pointer">${c.label}</button>`).join('')}
+        </div>
+        <div id="wt-order-content" style="font-size:12px;color:#636366;text-align:center;padding:20px 0">Tap a category to see items — this part is coming in the next round.</div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#wt-order-back').onclick = () => ov.remove();
+  }
+
   function _FloorPlan() {
     const w = document.createElement('div');
     w.className = 'wt-screen';
@@ -3271,7 +3360,7 @@ const WorkTracker = (() => {
     }
 
     function showTableInfo(el) {
-      alert(`${el.label}\n\nOrder tracking isn't set up yet — coming in a future update.`);
+      _showTableOrder(el, locationId);
     }
 
     canvas.onpointerdown = (e) => {

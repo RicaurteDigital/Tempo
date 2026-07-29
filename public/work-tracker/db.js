@@ -460,6 +460,34 @@ const WTDb = (() => {
     return settings;
   }
 
+  const TABLE_ORDERS_KEY = 'wt_table_orders_v1';
+  const CHECK_COUNTER_KEY = 'wt_check_counter_v1';
+
+  function getTableOrder(locationId, tableId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(TABLE_ORDERS_KEY)) || {};
+      return all[locationId + '::' + tableId] || null;
+    } catch { return null; }
+  }
+
+  function saveTableOrder(locationId, tableId, order) {
+    try {
+      const all = JSON.parse(localStorage.getItem(TABLE_ORDERS_KEY)) || {};
+      const key = locationId + '::' + tableId;
+      if (order === null) delete all[key];
+      else all[key] = order;
+      localStorage.setItem(TABLE_ORDERS_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
+  function getNextInternalCheckNumber() {
+    try {
+      const next = (parseInt(localStorage.getItem(CHECK_COUNTER_KEY), 10) || 1000) + 1;
+      localStorage.setItem(CHECK_COUNTER_KEY, String(next));
+      return next;
+    } catch { return Math.floor(Math.random() * 9000) + 1000; }
+  }
+
   // Curated starting catalog for AtoZ Rooftop's bar menu. Verified classic cocktails cite a
   // real source (IBA official list, or another named published recipe); house originals are
   // left with empty ingredients until the real recipe is provided — never guessed at.
@@ -607,6 +635,7 @@ const WTDb = (() => {
     getFloorPlan, saveFloorPlan,
     getBarCatalog, saveBarCatalog,
     getBarHHSettings, saveBarHHSettings,
-    getDefaultBarCatalogSeed
+    getDefaultBarCatalogSeed,
+    getTableOrder, saveTableOrder, getNextInternalCheckNumber
   };
 })();
