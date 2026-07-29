@@ -2673,6 +2673,32 @@ const WorkTracker = (() => {
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
   }
 
+  function _isHappyHourActive(hh) {
+    if (!hh || !hh.enabled) return false;
+    if (hh.sessionOverride && hh.sessionOverride.active !== undefined && hh.sessionOverride.active !== null) return hh.sessionOverride.active;
+    const now = new Date();
+    if (!hh.days.includes(now.getDay())) return false;
+    const [startH, startM] = hh.startTime.split(':').map(Number);
+    const [endH, endM] = hh.endTime.split(':').map(Number);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    return nowMin >= (startH * 60 + startM) && nowMin < (endH * 60 + endM);
+  }
+
+  function _priceForItem(item, hhActive, hhPrices) {
+    if (item.price === null || item.price === undefined) return null;
+    if (hhActive && hhPrices && hhPrices[item.category] != null) return hhPrices[item.category];
+    return item.price;
+  }
+
+  function _getOrSeedBarCatalog() {
+    let catalog = WTDb.getBarCatalog();
+    if (!catalog || !catalog.length) {
+      catalog = WTDb.getDefaultBarCatalogSeed();
+      WTDb.saveBarCatalog(catalog);
+    }
+    return catalog;
+  }
+
   function _openOrderScreen(el, locationId, order) {
     const CATS = [
       { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', border: 'rgba(147,143,255,.2)', text: '#C9C6FF' },
@@ -2680,6 +2706,11 @@ const WorkTracker = (() => {
       { id: 'beer', label: 'Beer', bg: 'linear-gradient(135deg,#5C4419,#3D2E0F)', border: 'rgba(216,175,110,.2)', text: '#E8CBA0' },
       { id: 'nonalcoholic', label: 'Non-Alcoholic', bg: 'linear-gradient(135deg,#1E4A3D,#153529)', border: 'rgba(110,196,167,.2)', text: '#A0DCC4' }
     ];
+    const catalog = _getOrSeedBarCatalog();
+    const hh = WTDb.getBarHHSettings();
+    let activeSeatId = 'shared';
+    let activeCat = null;
+
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch';
     ov.innerHTML = `
@@ -2691,13 +2722,92 @@ const WorkTracker = (() => {
             <div style="font-size:11px;color:#8A8A8E">Check #${order.internalCheckNumber} · ${new Date(order.openedAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">
+        <div id="wt-seat-row" style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
           ${CATS.map(c => `<button data-order-cat="${c.id}" class="wt-tap-scale" style="background:${c.bg};border:1px solid ${c.border};border-radius:10px;padding:16px 8px;text-align:center;font-size:13px;font-weight:700;color:${c.text};cursor:pointer">${c.label}</button>`).join('')}
         </div>
-        <div id="wt-order-content" style="font-size:12px;color:#636366;text-align:center;padding:20px 0">Tap a category to see items — this part is coming in the next round.</div>
+        <div id="wt-order-content"></div>
+        <div id="wt-order-check" style="margin-top:20px"></div>
       </div>`;
     document.body.appendChild(ov);
     ov.querySelector('#wt-order-back').onclick = () => ov.remove();
+
+    function persist() { WTDb.saveTableOrder(locationId, el.id, order); }
+
+    function renderSeatRow() {
+      const row = ov.querySelector('#wt-seat-row');
+      row.innerHTML = order.seats.map(s => `<button data-seat="${s.id}" class="wt-tap-scale" style="flex-shrink:0;background:${s.id === activeSeatId ? '#5E5CE6' : '#1C1C1F'};border:1px solid ${s.id === activeSeatId ? 'transparent' : 'rgba(255,255,255,.06)'};border-radius:8px;padding:6px 14px;font-size:12px;font-weight:${s.id === activeSeatId ? '700' : '400'};color:${s.id === activeSeatId ? '#fff' : '#8A8A8E'};cursor:pointer;white-space:nowrap">${s.name}</button>`).join('');
+      row.querySelectorAll('[data-seat]').forEach(b => {
+        b.onclick = () => { activeSeatId = b.dataset.seat; renderSeatRow(); };
+      });
+    }
+
+    function renderCategoryItems(catId) {
+      activeCat = catId;
+      const hhActive = _isHappyHourActive(hh);
+      const items = catalog.filter(i => i.category === catId);
+      const content = ov.querySelector('#wt-order-content');
+      content.innerHTML = `
+        ${hhActive ? `<div style="display:inline-block;background:linear-gradient(135deg,#5C4419,#3D2E0F);border:1px solid rgba(216,175,110,.3);border-radius:8px;padding:4px 10px;font-size:10px;font-weight:700;color:#E8CBA0;margin-bottom:10px">🕐 Happy Hour active — ends ${_fmtHHTime(hh.endTime)}</div>` : ''}
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${items.map(i => {
+            const price = _priceForItem(i, hhActive, hh.prices);
+            const onHH = hhActive && hh.prices[catId] != null && price !== i.price;
+            return `<div data-item-id="${i.id}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,#18181B,#131315);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px;cursor:pointer">
+              <span style="font-size:13px;color:#fff">${i.name}</span>
+              <span style="font-size:13px;font-weight:700">${onHH ? `<span style="color:#48484A;text-decoration:line-through;font-size:11px;margin-right:4px">$${i.price}</span>` : ''}${price === null ? '<span style="color:#48484A;font-size:11px">ask price</span>' : `<span style="color:${onHH ? '#E8CBA0' : '#fff'}">$${price}</span>`}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+      content.querySelectorAll('[data-item-id]').forEach(row => {
+        row.onclick = () => {
+          const item = items.find(i => i.id === row.dataset.itemId);
+          const price = _priceForItem(item, hhActive, hh.prices);
+          const seat = order.seats.find(s => s.id === activeSeatId);
+          seat.items.push({ id: 'oi_' + Math.random().toString(36).slice(2, 10), catalogId: item.id, name: item.name, price: price || 0, modifiers: [] });
+          persist();
+          renderCheck();
+        };
+      });
+    }
+
+    function renderCheck() {
+      const box = ov.querySelector('#wt-order-check');
+      const allItems = order.seats.flatMap(s => s.items.map(it => ({ ...it, seatName: s.name })));
+      if (!allItems.length) { box.innerHTML = ''; return; }
+      const subtotal = allItems.reduce((sum, it) => sum + it.price, 0);
+      box.innerHTML = `
+        <div style="font-size:11px;color:#8A8A8E;font-weight:700;margin-bottom:8px">CURRENT ORDER</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+          ${allItems.map(it => `<div style="display:flex;justify-content:space-between;align-items:center;background:#131315;border-radius:8px;padding:8px 10px">
+            <span style="font-size:12px;color:#fff">${it.name} <span style="color:#48484A">· ${it.seatName}</span></span>
+            <span style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:700;color:#E8CBA0">$${it.price.toFixed(2)}</span><span data-remove-item="${it.id}" style="color:#48484A;font-size:14px;cursor:pointer;padding:0 4px">✕</span></span>
+          </div>`).join('')}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#fff;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>`;
+      box.querySelectorAll('[data-remove-item]').forEach(x => {
+        x.onclick = () => {
+          const itemId = x.dataset.removeItem;
+          order.seats.forEach(s => { s.items = s.items.filter(it => it.id !== itemId); });
+          persist();
+          renderCheck();
+        };
+      });
+    }
+
+    ov.querySelectorAll('[data-order-cat]').forEach(b => {
+      b.onclick = () => renderCategoryItems(b.dataset.orderCat);
+    });
+
+    renderSeatRow();
+    renderCheck();
+  }
+
+  function _fmtHHTime(t) {
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
   }
 
   function _FloorPlan() {
