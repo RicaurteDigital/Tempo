@@ -207,10 +207,11 @@ const WTDb = (() => {
       if (raw) {
         const b = JSON.parse(raw);
         if (b.includeCashInBreakEven === undefined) b.includeCashInBreakEven = false;
+        if (b.cycleStartDay === undefined) b.cycleStartDay = 1;
         return b;
       }
     } catch {}
-    return { monthlyExpenses: null, includeCashInBreakEven: false };
+    return { monthlyExpenses: null, includeCashInBreakEven: false, cycleStartDay: 1 };
   }
 
   function saveBudget(b) {
@@ -421,6 +422,44 @@ const WTDb = (() => {
     } catch {}
   }
 
+  const BAR_CATALOG_KEY = 'wt_bar_catalog_v1';
+  const BAR_HH_KEY = 'wt_bar_hh_settings_v1';
+
+  function getBarCatalog() {
+    try {
+      const raw = localStorage.getItem(BAR_CATALOG_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  }
+
+  function saveBarCatalog(items) {
+    localStorage.setItem(BAR_CATALOG_KEY, JSON.stringify(items));
+    return items;
+  }
+
+  function getBarHHSettings() {
+    try {
+      const raw = localStorage.getItem(BAR_HH_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    // Default matches AtoZ Rooftop's posted hours — editable in Settings and overridable
+    // per-session from the POS screen, per Fernando's confirmed requirement.
+    return {
+      enabled: true,
+      days: [1, 2, 3, 4, 5], // Mon-Fri (0=Sun...6=Sat)
+      startTime: '16:30',
+      endTime: '18:30',
+      prices: { wine: 12, cocktail: 14, beer: 8 },
+      sessionOverride: null // { active: true/false } set from the POS for a one-off day change
+    };
+  }
+
+  function saveBarHHSettings(settings) {
+    localStorage.setItem(BAR_HH_KEY, JSON.stringify(settings));
+    return settings;
+  }
+
   return {
     getLocations, saveLocation, deleteLocation,
     getShifts, saveShift, deleteShift, getShiftsForDate, getShiftsForWeek,
@@ -438,6 +477,8 @@ const WTDb = (() => {
     getShiftsInRange, getAllPayments,
     getLastBackupDate, setLastBackupDate,
     deleteAllData,
-    getFloorPlan, saveFloorPlan
+    getFloorPlan, saveFloorPlan,
+    getBarCatalog, saveBarCatalog,
+    getBarHHSettings, saveBarHHSettings
   };
 })();
