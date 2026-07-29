@@ -2781,6 +2781,11 @@ const WorkTracker = (() => {
 
     function removeOne(catalogId) {
       const seat = order.seats.find(s => s.id === activeSeatId);
+      const currentQty = seat.items.filter(it => it.catalogId === catalogId).length;
+      if (currentQty === 1) {
+        const item = catalog.find(i => i.id === catalogId);
+        if (!confirm(`Remove ${item ? item.name : 'this item'} from ${seat.name}?`)) return;
+      }
       const idx = seat.items.findIndex(it => it.catalogId === catalogId);
       if (idx >= 0) seat.items.splice(idx, 1);
       persist();
@@ -2801,7 +2806,7 @@ const WorkTracker = (() => {
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <span style="font-size:12px;font-weight:700">${onHH ? `<span style="color:#48484A;text-decoration:line-through;font-size:10px;margin-right:3px">$${i.price}</span>` : ''}${price === null ? '<span style="color:#48484A;font-size:10px">ask price</span>' : `<span style="color:${onHH ? '#E8CBA0' : '#fff'}">$${price}</span>`}</span>
             ${qty > 0
-              ? `<div style="display:flex;align-items:center;gap:10px;background:#000;border-radius:8px;padding:6px 10px"><span data-qty-minus="${i.id}" style="color:#8A8A8E;font-size:18px;width:20px;text-align:center;cursor:pointer">−</span><span style="color:#fff;font-size:13px;font-weight:700;min-width:14px;text-align:center">${qty}</span><span data-qty-plus="${i.id}" style="color:#fff;font-size:18px;width:20px;text-align:center;cursor:pointer">+</span></div>`
+              ? `<div style="display:flex;align-items:center;gap:10px;background:#000;border-radius:8px;padding:6px 10px"><span data-qty-minus="${i.id}" class="wt-tap-scale" style="color:#8A8A8E;font-size:18px;width:20px;text-align:center;cursor:pointer">−</span><span style="color:#fff;font-size:13px;font-weight:700;min-width:14px;text-align:center">${qty}</span><span data-qty-plus="${i.id}" class="wt-tap-scale" style="color:#fff;font-size:18px;width:20px;text-align:center;cursor:pointer">+</span></div>`
               : `<span data-qty-plus="${i.id}" class="wt-tap-scale" style="color:#8A8A8E;font-size:11px;padding:7px 12px;background:#131315;border-radius:8px;cursor:pointer">+ Add</span>`}
           </div>
         </div>`;
@@ -2841,8 +2846,8 @@ const WorkTracker = (() => {
             return `<div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:10px;color:#D0D0D2;flex:1;min-width:0">${g.count}× ${g.name}</span>
               <div style="display:flex;align-items:center;gap:8px;background:#000;border-radius:6px;padding:3px 8px;flex-shrink:0">
-                <span data-check-minus="${catalogId}" style="color:${activeQty > 0 ? '#8A8A8E' : '#3A3A3C'};font-size:15px;width:16px;text-align:center;cursor:pointer">−</span>
-                <span data-check-plus="${catalogId}" style="color:#fff;font-size:15px;width:16px;text-align:center;cursor:pointer">+</span>
+                <span data-check-minus="${catalogId}" class="wt-tap-scale" style="color:${activeQty > 0 ? '#8A8A8E' : '#3A3A3C'};font-size:15px;width:16px;text-align:center;cursor:pointer">−</span>
+                <span data-check-plus="${catalogId}" class="wt-tap-scale" style="color:#fff;font-size:15px;width:16px;text-align:center;cursor:pointer">+</span>
               </div>
             </div>`;
           }).join('')}
