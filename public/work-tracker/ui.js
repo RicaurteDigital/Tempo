@@ -2720,12 +2720,13 @@ const WorkTracker = (() => {
           <button id="wt-order-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer;flex-shrink:0">‹</button>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:700;color:#fff">${el.label} <span style="color:#48484A;font-weight:400">· Check #${order.internalCheckNumber}</span></div>
+            <div style="font-size:10px;color:#8A8A8E">Opened ${new Date(order.openedAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</div>
           </div>
           <button id="wt-hh-toggle" class="wt-tap-scale" style="flex-shrink:0;border:1px solid rgba(216,175,110,.3);border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;cursor:pointer"></button>
         </div>
         <div style="display:flex;gap:10px">
           <div style="flex:1.3;min-width:0">
-            <div style="position:sticky;top:calc(env(safe-area-inset-top) + 60px);background:#0A0A0C;z-index:1;padding-bottom:4px">
+            <div style="position:sticky;top:calc(env(safe-area-inset-top) + 14px);background:#0A0A0C;z-index:1;padding-bottom:4px">
               <input id="wt-drink-search" placeholder="🔍 Search drinks..." style="width:100%;background:#1C1C1F;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 9px;font-size:11px;color:#fff;margin-bottom:8px;box-sizing:border-box">
               <div id="wt-cat-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px"></div>
             </div>
