@@ -2594,33 +2594,33 @@ const WorkTracker = (() => {
     { id: 'ex_host', type: 'espacio', shape: 'rect', label: 'Empty space', x: 15, y: 80, w: 12, h: 10, rotation: 0 },
   ];
 
-  function _floorPlanElStyle(el) {
+  function _floorPlanElStyle(el, hasOrder) {
     const isStructure = FLOORPLAN_STRUCTURE_TYPES.includes(el.type);
     // Each structure type gets its own real drafting symbol instead of all looking like the
     // same plain gray box: diagonal hatching for empty space, horizontal step-lines for
     // stairs, plain solid for columns/walls. Tables/chairs/bar stay a tenuous gray at rest,
-    // ready to shift color once service state is wired up. Doors render custom SVG elsewhere
-    // and never reach this function.
+    // and shift to a green tint once an order is open on them (standard "occupied" convention).
     let bg = 'rgba(255,255,255,0.07)';
     let border = isStructure ? '1px solid #48484A' : '1.5px solid rgba(255,255,255,0.18)';
     if (el.type === 'texto') { bg = 'none'; border = 'none'; }
     else if (el.type === 'espacio') bg = 'repeating-linear-gradient(45deg, #48484A 0px, #48484A 1.5px, transparent 1.5px, transparent 9px)';
     else if (el.type === 'escaleras') bg = 'repeating-linear-gradient(0deg, #48484A 0px, #48484A 1.5px, transparent 1.5px, transparent 8px)';
     else if (isStructure) bg = '#3A3A3C';
+    else if (hasOrder) { bg = 'rgba(48,209,88,.18)'; border = '1.5px solid rgba(48,209,88,.55)'; }
     const radius = el.shape === 'circle' ? '50%' : (el.shape === 'square' || el.shape === 'rect') ? '6px' : '2px';
     return `position:absolute;left:${el.x}%;top:${el.y}%;width:${el.w}%;aspect-ratio:${el.w}/${el.h};transform:translate(-50%,-50%) rotate(${el.rotation||0}deg);background:${bg};border:${border};border-radius:${radius};display:flex;align-items:center;justify-content:center;box-sizing:border-box;touch-action:none;user-select:none;-webkit-user-select:none`;
   }
 
-  function _showTableOrder(el, locationId) {
+  function _showTableOrder(el, locationId, onClose) {
     const order = WTDb.getTableOrder(locationId, el.id);
     if (!order) {
-      _showGuestCountPrompt(el, locationId);
+      _showGuestCountPrompt(el, locationId, onClose);
     } else {
-      _openOrderScreen(el, locationId, order);
+      _openOrderScreen(el, locationId, order, onClose);
     }
   }
 
-  function _showGuestCountPrompt(el, locationId) {
+  function _showGuestCountPrompt(el, locationId, onClose) {
     const ov = document.createElement('div');
     ov.className = 'wt-overlay';
     ov.innerHTML = `
@@ -2668,7 +2668,7 @@ const WorkTracker = (() => {
       };
       WTDb.saveTableOrder(locationId, el.id, order);
       ov.remove();
-      _openOrderScreen(el, locationId, order);
+      _openOrderScreen(el, locationId, order, onClose);
     };
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
   }
@@ -2699,7 +2699,7 @@ const WorkTracker = (() => {
     return catalog;
   }
 
-  function _openOrderScreen(el, locationId, order) {
+  function _openOrderScreen(el, locationId, order, onClose) {
     const CATS = [
       { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', border: 'rgba(147,143,255,.2)', text: '#C9C6FF' },
       { id: 'wine', label: 'Wine', bg: 'linear-gradient(135deg,#5C2436,#3D1826)', border: 'rgba(216,131,155,.2)', text: '#E8B4C4' },
@@ -2730,7 +2730,7 @@ const WorkTracker = (() => {
         <div id="wt-order-check" style="margin-top:20px"></div>
       </div>`;
     document.body.appendChild(ov);
-    ov.querySelector('#wt-order-back').onclick = () => ov.remove();
+    ov.querySelector('#wt-order-back').onclick = () => { ov.remove(); if (onClose) onClose(); };
 
     function persist() { WTDb.saveTableOrder(locationId, el.id, order); }
 
@@ -3075,7 +3075,8 @@ const WorkTracker = (() => {
         const box = document.createElement('div');
         box.dataset.elId = el.id;
         const isDoor = el.type === 'puerta';
-        let styleStr = _floorPlanElStyle(el);
+        const hasOrder = el.type === 'mesa' && !!WTDb.getTableOrder(locationId, el.id);
+        let styleStr = _floorPlanElStyle(el, hasOrder);
         if (isDoor) styleStr += ';background:none;border:none';
         box.style.cssText = styleStr + (selectedId === el.id ? ';outline:2px solid #5E5CE6;outline-offset:2px' : multiSelectedIds.has(el.id) ? ';outline:2px solid #FF9F0A;outline-offset:2px' : '');
 
@@ -3470,7 +3471,7 @@ const WorkTracker = (() => {
     }
 
     function showTableInfo(el) {
-      _showTableOrder(el, locationId);
+      _showTableOrder(el, locationId, renderCanvas);
     }
 
     canvas.onpointerdown = (e) => {
