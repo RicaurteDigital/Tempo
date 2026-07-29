@@ -2804,14 +2804,19 @@ const WorkTracker = (() => {
         const price = _priceForItem(i, hhActive, hh.prices);
         const onHH = hhActive && hh.prices[i.category] != null && price !== i.price;
         const qty = qtyForActiveSeat(i.id);
-        return `<div style="display:flex;justify-content:space-between;align-items:center;background:#18181B;border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:9px 10px">
+        const priceHtml = `${onHH ? `<span style="color:#48484A;text-decoration:line-through;font-size:10px;margin-right:3px">$${i.price}</span>` : ''}${price === null ? '<span style="color:#48484A;font-size:10px">ask price</span>' : `<span style="color:${onHH ? '#E8CBA0' : '#fff'}">$${price}</span>`}`;
+        if (qty > 0) {
+          return `<div style="display:flex;justify-content:space-between;align-items:center;background:#18181B;border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:9px 10px">
+            <span style="font-size:12px;color:#fff;flex:1;min-width:0">${i.name}</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <span style="font-size:12px;font-weight:700">${priceHtml}</span>
+              <div style="display:flex;align-items:center;gap:10px;background:#000;border-radius:8px;padding:6px 10px"><span data-qty-minus="${i.id}" class="wt-tap-scale" style="color:#8A8A8E;font-size:18px;width:20px;text-align:center;cursor:pointer">−</span><span style="color:#fff;font-size:13px;font-weight:700;min-width:14px;text-align:center">${qty}</span><span data-qty-plus="${i.id}" class="wt-tap-scale" style="color:#fff;font-size:18px;width:20px;text-align:center;cursor:pointer">+</span></div>
+            </div>
+          </div>`;
+        }
+        return `<div data-qty-plus="${i.id}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;background:#18181B;border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:9px 10px;cursor:pointer">
           <span style="font-size:12px;color:#fff;flex:1;min-width:0">${i.name}</span>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <span style="font-size:12px;font-weight:700">${onHH ? `<span style="color:#48484A;text-decoration:line-through;font-size:10px;margin-right:3px">$${i.price}</span>` : ''}${price === null ? '<span style="color:#48484A;font-size:10px">ask price</span>' : `<span style="color:${onHH ? '#E8CBA0' : '#fff'}">$${price}</span>`}</span>
-            ${qty > 0
-              ? `<div style="display:flex;align-items:center;gap:10px;background:#000;border-radius:8px;padding:6px 10px"><span data-qty-minus="${i.id}" class="wt-tap-scale" style="color:#8A8A8E;font-size:18px;width:20px;text-align:center;cursor:pointer">−</span><span style="color:#fff;font-size:13px;font-weight:700;min-width:14px;text-align:center">${qty}</span><span data-qty-plus="${i.id}" class="wt-tap-scale" style="color:#fff;font-size:18px;width:20px;text-align:center;cursor:pointer">+</span></div>`
-              : `<span data-qty-plus="${i.id}" class="wt-tap-scale" style="color:#8A8A8E;font-size:11px;padding:7px 12px;background:#131315;border-radius:8px;cursor:pointer">+ Add</span>`}
-          </div>
+          <span style="font-size:12px;font-weight:700;flex-shrink:0">${priceHtml}</span>
         </div>`;
       }).join('')}</div>`;
       content.querySelectorAll('[data-qty-plus]').forEach(x => {
