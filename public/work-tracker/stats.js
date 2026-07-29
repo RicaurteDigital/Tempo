@@ -741,7 +741,8 @@ const StatsRules = (() => {
       const pNet = pNetEstimate ? pNetEstimate.net : pGross;
       cycleHistory.push({
         start: _ds(pStart), end: _ds(pEnd), earned: pNet,
-        met: pNet >= monthlyExpenses, delta: pNet - monthlyExpenses
+        met: pNet >= monthlyExpenses, delta: pNet - monthlyExpenses,
+        hasData: pTotals.shiftsCount > 0
       });
       refDate = new Date(pStart);
       refDate.setDate(refDate.getDate() - 1);

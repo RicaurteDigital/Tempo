@@ -2118,44 +2118,7 @@ const WorkTracker = (() => {
         });
         updateActive(points.length - 1);
       });
-      resultsEl.querySelectorAll('[data-progress-svg]').forEach(svgEl => {
-        const points = JSON.parse(svgEl.dataset.points);
-        const cw = 300, ch = 90, cpad = 10;
-        const stepX = points.length > 1 ? (cw - cpad * 2) / (points.length - 1) : 0;
-        const maxVal = Math.max(...points.map(p => p.cumulative), 1);
-        const cardEl = svgEl.closest('[data-collapse-body]') || svgEl.parentElement;
-        const dateLabel = cardEl.querySelector('[data-progress-date]');
-        const amountLabel = cardEl.querySelector('[data-progress-amount]');
-        const crossline = svgEl.querySelector('[data-progress-crossline]');
-        const activeDot = svgEl.querySelector('[data-progress-activedot]');
-        const activeHalo = svgEl.querySelector('[data-progress-activehalo]');
-        function updateActive(idx) {
-          const p = points[idx];
-          const x = cpad + idx * stepX;
-          const y = ch - cpad - (p.cumulative / maxVal) * (ch - cpad * 2);
-          activeDot.setAttribute('cx', x); activeDot.setAttribute('cy', y);
-          activeHalo.setAttribute('cx', x); activeHalo.setAttribute('cy', y);
-          crossline.setAttribute('x1', x); crossline.setAttribute('x2', x);
-          crossline.setAttribute('opacity', 1);
-          dateLabel.textContent = _fmtChartDate(p.date);
-          amountLabel.innerHTML = `${WTRules.fmtMoney(p.cumulative)} <span style="font-size:11px;color:var(--wt-text-tertiary);font-weight:400">earned so far</span>`;
-        }
-        function pointToIdx(clientX) {
-          const rect = svgEl.getBoundingClientRect();
-          const x = ((clientX - rect.left) / rect.width) * cw;
-          let closest = 0, dist = Infinity;
-          points.forEach((p, i) => {
-            const d = Math.abs((cpad + i * stepX) - x);
-            if (d < dist) { dist = d; closest = i; }
-          });
-          return closest;
-        }
-        svgEl.addEventListener('pointerdown', e => { updateActive(pointToIdx(e.clientX)); svgEl.setPointerCapture(e.pointerId); });
-        svgEl.addEventListener('pointermove', e => {
-          if (e.buttons !== 1 && e.pointerType !== 'touch') return;
-          updateActive(pointToIdx(e.clientX));
-        });
-      });
+      resultsEl.querySelectorAll('[data-progress-svg]').forEach(svgEl => _wireProgressChart(svgEl));
       const sustainLink = resultsEl.querySelector('#wt-stats-sustain-link');
       if (sustainLink) sustainLink.onclick = (e) => { e.stopPropagation(); _go('settings'); };
       resultsEl.onclick = (e) => {
@@ -2172,8 +2135,18 @@ const WorkTracker = (() => {
           WTDb.saveBudget(b);
           const profile = WTDb.getSettings().workProfile || 'restaurant';
           const fresh = StatsRules.sustainabilityAnalysis(profile);
+          const freshFull = fresh.hasData ? StatsRules.sustainabilityFullAnalysis(profile) : null;
           const body = resultsEl.querySelector('[data-collapse-body="sustain"]');
-          if (body) body.innerHTML = _sustainabilityResultsHtml(fresh);
+          if (body) {
+            body.innerHTML = `
+              ${_sustainabilityResultsHtml(fresh)}
+              ${_sustainFullAnalysisHtml(freshFull)}
+              <div id="wt-stats-sustain-link" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">Edit expenses in Settings →</div>
+            `;
+            body.querySelectorAll('[data-progress-svg]').forEach(svgEl => _wireProgressChart(svgEl));
+            const freshLink = body.querySelector('#wt-stats-sustain-link');
+            if (freshLink) freshLink.onclick = (ev) => { ev.stopPropagation(); _go('settings'); };
+          }
           return;
         }
         const breakdownToggle = e.target.closest('[data-breakdown-toggle]');
@@ -2270,6 +2243,48 @@ const WorkTracker = (() => {
     }
   }
 
+  function _wireProgressChart(svgEl) {
+    const points = JSON.parse(svgEl.dataset.points);
+    const cw = 300, ch = 90, cpad = 10;
+    const stepX = points.length > 1 ? (cw - cpad * 2) / (points.length - 1) : 0;
+    const maxVal = Math.max(...points.map(p => p.cumulative), 1);
+    const cardEl = svgEl.closest('[data-collapse-body]') || svgEl.parentElement;
+    const dateLabel = cardEl.querySelector('[data-progress-date]');
+    const amountLabel = cardEl.querySelector('[data-progress-amount]');
+    const crossline = svgEl.querySelector('[data-progress-crossline]');
+    const activeDot = svgEl.querySelector('[data-progress-activedot]');
+    const activeHalo = svgEl.querySelector('[data-progress-activehalo]');
+    function updateActive(idx) {
+      const p = points[idx];
+      const x = cpad + idx * stepX;
+      const y = ch - cpad - (p.cumulative / maxVal) * (ch - cpad * 2);
+      activeDot.setAttribute('cx', x); activeDot.setAttribute('cy', y);
+      activeHalo.setAttribute('cx', x); activeHalo.setAttribute('cy', y);
+      crossline.setAttribute('x1', x); crossline.setAttribute('x2', x);
+      crossline.setAttribute('opacity', 1);
+      dateLabel.textContent = _fmtChartDate(p.date);
+      amountLabel.innerHTML = `${WTRules.fmtMoney(p.cumulative)} <span style="font-size:11px;color:var(--wt-text-tertiary);font-weight:400">earned so far</span>`;
+      cardEl.querySelectorAll('[data-day-row]').forEach(row => {
+        row.style.backgroundColor = row.dataset.dayRow === p.date ? 'var(--wt-surface-secondary)' : '';
+      });
+    }
+    function pointToIdx(clientX) {
+      const rect = svgEl.getBoundingClientRect();
+      const x = ((clientX - rect.left) / rect.width) * cw;
+      let closest = 0, dist = Infinity;
+      points.forEach((p, i) => {
+        const d = Math.abs((cpad + i * stepX) - x);
+        if (d < dist) { dist = d; closest = i; }
+      });
+      return closest;
+    }
+    svgEl.addEventListener('pointerdown', e => { updateActive(pointToIdx(e.clientX)); svgEl.setPointerCapture(e.pointerId); });
+    svgEl.addEventListener('pointermove', e => {
+      if (e.buttons !== 1 && e.pointerType !== 'touch') return;
+      updateActive(pointToIdx(e.clientX));
+    });
+  }
+
   function _sustainFullAnalysisHtml(full) {
     if (!full || !full.dailyPoints || !full.dailyPoints.length) return '';
     const fmt = WTRules.fmtMoney;
@@ -2315,8 +2330,8 @@ const WorkTracker = (() => {
       html += `<div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin:16px 0 8px">Last few cycles</div><div style="display:flex;flex-direction:column;gap:6px">`;
       full.cycleHistory.forEach(c => {
         const label = `${_fmtChartDate(c.start)} – ${_fmtChartDate(c.end)}`;
-        const statusText = c.met ? `✓ +${fmt(Math.abs(c.delta))}` : `${fmt(Math.abs(c.delta))} short`;
-        const statusColor = c.met ? '#30D158' : '#FF9F0A';
+        const statusText = !c.hasData ? 'No data' : (c.met ? `✓ +${fmt(Math.abs(c.delta))}` : `${fmt(Math.abs(c.delta))} short`);
+        const statusColor = !c.hasData ? 'var(--wt-text-tertiary)' : (c.met ? '#30D158' : '#FF9F0A');
         html += `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--wt-surface-secondary);border-radius:10px;padding:8px 10px"><span style="font-size:11px;color:var(--wt-text-primary)">${label}</span><span style="font-size:11px;color:${statusColor};font-weight:700">${statusText}</span></div>`;
       });
       html += `</div>`;
@@ -2326,7 +2341,7 @@ const WorkTracker = (() => {
       html += `<div style="font-size:12px;color:var(--wt-text-secondary);font-weight:700;margin:16px 0 8px">Day by day, this cycle</div><div style="display:flex;flex-direction:column;gap:5px">`;
       full.dayEarningsList.forEach((d, i) => {
         const isLast = i === full.dayEarningsList.length - 1;
-        html += `<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;${isLast ? '' : 'border-bottom:1px solid var(--wt-border)'}"><span style="color:var(--wt-text-secondary)">${_fmtChartDate(d.date)}</span><span style="color:var(--wt-text-primary);font-weight:700">${fmt(d.amount)}</span></div>`;
+        html += `<div data-day-row="${d.date}" style="display:flex;justify-content:space-between;font-size:11px;padding:4px 6px;margin:0 -6px;border-radius:6px;transition:background-color .15s;${isLast ? '' : 'border-bottom:1px solid var(--wt-border)'}"><span style="color:var(--wt-text-secondary)">${_fmtChartDate(d.date)}</span><span style="color:var(--wt-text-primary);font-weight:700">${fmt(d.amount)}</span></div>`;
       });
       html += `</div>`;
     }
