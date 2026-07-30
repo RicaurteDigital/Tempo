@@ -2773,23 +2773,23 @@ const WorkTracker = (() => {
     }
 
     function qtyForActiveSeat(catalogId) {
-      return order.seats.find(s => s.id === activeSeatId).items.filter(it => it.catalogId === catalogId).length;
+      return order.seats.find(s => s.id === activeSeatId).items.filter(it => it.catalogId === catalogId && !it.sent).length;
     }
 
     function addOne(item, price) {
       const seat = order.seats.find(s => s.id === activeSeatId);
-      seat.items.push({ id: 'oi_' + Math.random().toString(36).slice(2, 10), catalogId: item.id, name: item.name, price: price || 0, modifiers: [] });
+      seat.items.push({ id: 'oi_' + Math.random().toString(36).slice(2, 10), catalogId: item.id, name: item.name, price: price || 0, modifiers: [], sent: false });
       persist();
     }
 
     function removeOne(catalogId) {
       const seat = order.seats.find(s => s.id === activeSeatId);
-      const currentQty = seat.items.filter(it => it.catalogId === catalogId).length;
+      const currentQty = seat.items.filter(it => it.catalogId === catalogId && !it.sent).length;
       if (currentQty === 1) {
         const item = catalog.find(i => i.id === catalogId);
         if (!confirm(`Remove ${item ? item.name : 'this item'} from ${seat.name}?`)) return;
       }
-      const idx = seat.items.findIndex(it => it.catalogId === catalogId);
+      const idx = seat.items.findIndex(it => it.catalogId === catalogId && !it.sent);
       if (idx >= 0) seat.items.splice(idx, 1);
       persist();
     }
@@ -2838,18 +2838,22 @@ const WorkTracker = (() => {
 
     function renderCheck() {
       const box = ov.querySelector('#wt-order-check');
-      const allItems = order.seats.flatMap(s => s.items);
+      const allItems = order.seats.flatMap(s => s.items.map(it => ({ ...it, seatId: s.id })));
       if (!allItems.length) { box.innerHTML = `<div style="font-size:10px;color:#48484A">No items yet</div>`; return; }
       const subtotal = allItems.reduce((sum, it) => sum + it.price, 0);
-      const grouped = {};
-      allItems.forEach(it => {
-        if (!grouped[it.catalogId]) grouped[it.catalogId] = { name: it.name, count: 0 };
-        grouped[it.catalogId].count++;
-      });
+      const pending = allItems.filter(it => !it.sent);
+      const sent = allItems.filter(it => it.sent);
+      const groupBy = (list) => {
+        const g = {};
+        list.forEach(it => { if (!g[it.catalogId]) g[it.catalogId] = { name: it.name, count: 0 }; g[it.catalogId].count++; });
+        return g;
+      };
+      const pendingGrouped = groupBy(pending);
+      const sentGrouped = groupBy(sent);
       box.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
-          ${Object.keys(grouped).map(catalogId => {
-            const g = grouped[catalogId];
+        ${Object.keys(pendingGrouped).length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+          ${Object.keys(pendingGrouped).map(catalogId => {
+            const g = pendingGrouped[catalogId];
             const activeQty = qtyForActiveSeat(catalogId);
             return `<div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:10px;color:#D0D0D2;flex:1;min-width:0">${g.count}× ${g.name}</span>
@@ -2860,7 +2864,38 @@ const WorkTracker = (() => {
             </div>`;
           }).join('')}
         </div>
+        <button id="wt-send-order" class="wt-tap-scale" style="width:100%;background:linear-gradient(180deg,#6B69E8,#5E5CE6);border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:10px">Send Order</button>` : ''}
+        ${Object.keys(sentGrouped).length ? `<div style="font-size:9px;color:#48484A;font-weight:700;margin-bottom:6px">SENT</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px">
+          ${Object.keys(sentGrouped).map(catalogId => {
+            const g = sentGrouped[catalogId];
+            return `<div data-void-item="${catalogId}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+              <span style="font-size:10px;color:#8A8A8E;flex:1;min-width:0">${g.count}× ${g.name}</span>
+              <span style="color:#30D158;font-size:11px;flex-shrink:0">✓</span>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
         <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:6px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#fff"><span>Total</span><span>$${subtotal.toFixed(2)}</span></div>`;
+      const sendBtn = box.querySelector('#wt-send-order');
+      if (sendBtn) sendBtn.onclick = () => {
+        order.seats.forEach(s => { s.items.forEach(it => { if (!it.sent) it.sent = true; }); });
+        persist();
+        renderItemList();
+        renderCheck();
+      };
+      box.querySelectorAll('[data-void-item]').forEach(x => {
+        x.onclick = () => {
+          const catalogId = x.dataset.voidItem;
+          const item = catalog.find(i => i.id === catalogId);
+          if (!confirm(`Void 1 ${item ? item.name : 'item'}? This removes it from the check.`)) return;
+          for (const s of order.seats) {
+            const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent);
+            if (idx >= 0) { s.items.splice(idx, 1); break; }
+          }
+          persist();
+          renderCheck();
+        };
+      });
       box.querySelectorAll('[data-check-plus]').forEach(x => {
         x.onclick = () => {
           const item = catalog.find(i => i.id === x.dataset.checkPlus);
