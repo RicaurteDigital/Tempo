@@ -2673,6 +2673,25 @@ const WorkTracker = (() => {
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
   }
 
+  function _showConfirmModal(message, onConfirm) {
+    const ov = document.createElement('div');
+    ov.className = 'wt-overlay';
+    ov.innerHTML = `
+      <div class="wt-modal" style="text-align:center">
+        <div class="wt-modal-handle"></div>
+        <div style="font-size:14px;color:var(--wt-text-primary);margin-bottom:20px;line-height:1.4">${message}</div>
+        <div style="display:flex;gap:8px">
+          <button id="wt-confirm-cancel" class="wt-btn wt-tap-scale" style="flex:1;background:var(--wt-surface-secondary);color:var(--wt-text-primary);border:1px solid var(--wt-surface-secondary-border)">Cancel</button>
+          <button id="wt-confirm-ok" class="wt-btn wt-btn-primary wt-tap-scale" style="flex:1">Confirm</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const close = () => ov.remove();
+    ov.querySelector('#wt-confirm-cancel').onclick = close;
+    ov.querySelector('#wt-confirm-ok').onclick = () => { close(); onConfirm(); };
+    ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  }
+
   function _isHappyHourActive(hh) {
     if (!hh || !hh.enabled) return false;
     if (hh.sessionOverride && hh.sessionOverride.active !== undefined && hh.sessionOverride.active !== null) return hh.sessionOverride.active;
@@ -2785,13 +2804,19 @@ const WorkTracker = (() => {
     function removeOne(catalogId) {
       const seat = order.seats.find(s => s.id === activeSeatId);
       const currentQty = seat.items.filter(it => it.catalogId === catalogId && !it.sent).length;
+      const doRemove = () => {
+        const idx = seat.items.findIndex(it => it.catalogId === catalogId && !it.sent);
+        if (idx >= 0) seat.items.splice(idx, 1);
+        persist();
+        renderItemList();
+        renderCheck();
+      };
       if (currentQty === 1) {
         const item = catalog.find(i => i.id === catalogId);
-        if (!confirm(`Remove ${item ? item.name : 'this item'} from ${seat.name}?`)) return;
+        _showConfirmModal(`Remove ${item ? item.name : 'this item'} from ${seat.name}?`, doRemove);
+      } else {
+        doRemove();
       }
-      const idx = seat.items.findIndex(it => it.catalogId === catalogId && !it.sent);
-      if (idx >= 0) seat.items.splice(idx, 1);
-      persist();
     }
 
     function renderItemList() {
@@ -2830,8 +2855,6 @@ const WorkTracker = (() => {
       content.querySelectorAll('[data-qty-minus]').forEach(x => {
         x.onclick = () => {
           removeOne(x.dataset.qtyMinus);
-          renderItemList();
-          renderCheck();
         };
       });
     }
@@ -2891,13 +2914,14 @@ const WorkTracker = (() => {
           const catalogId = x.dataset.voidCatalog;
           const sentAt = x.dataset.voidSentat;
           const item = catalog.find(i => i.id === catalogId);
-          if (!confirm(`Void 1 ${item ? item.name : 'item'}? This removes it from the check.`)) return;
-          for (const s of order.seats) {
-            const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent && it.sentAt === sentAt);
-            if (idx >= 0) { s.items.splice(idx, 1); break; }
-          }
-          persist();
-          renderCheck();
+          _showConfirmModal(`Void 1 ${item ? item.name : 'item'}? This removes it from the check.`, () => {
+            for (const s of order.seats) {
+              const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent && it.sentAt === sentAt);
+              if (idx >= 0) { s.items.splice(idx, 1); break; }
+            }
+            persist();
+            renderCheck();
+          });
         };
       });
       box.querySelectorAll('[data-check-plus]').forEach(x => {
@@ -2912,8 +2936,6 @@ const WorkTracker = (() => {
       box.querySelectorAll('[data-check-minus]').forEach(x => {
         x.onclick = () => {
           removeOne(x.dataset.checkMinus);
-          renderItemList();
-          renderCheck();
         };
       });
     }
