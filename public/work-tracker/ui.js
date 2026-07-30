@@ -2906,16 +2906,19 @@ const WorkTracker = (() => {
             const timeLabel = b.sentAtKey === 'legacy' ? 'Sent' : _fmtHHTime(new Date(b.sentAtKey).toTimeString().slice(0, 5));
             if (confirmingVoidKey === rowKey) {
               return `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,69,58,.1);border-radius:6px;padding:5px 8px">
-                <span style="font-size:10px;color:#FF453A;flex:1;min-width:0">Void 1 ${b.name}?</span>
+                <span style="font-size:10px;color:#FF453A;flex:1;min-width:0">Remove the last ${b.name}?</span>
                 <div style="display:flex;gap:6px;flex-shrink:0">
                   <span data-void-no="1" class="wt-tap-scale" style="font-size:10px;color:#8A8A8E;padding:4px 9px;background:#1C1C1F;border-radius:6px;cursor:pointer">No</span>
                   <span data-void-yes="${rowKey}" class="wt-tap-scale" style="font-size:10px;color:#fff;font-weight:700;padding:4px 9px;background:#FF453A;border-radius:6px;cursor:pointer">Yes</span>
                 </div>
               </div>`;
             }
-            return `<div data-void-ask="${rowKey}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+            return `<div style="display:flex;justify-content:space-between;align-items:center">
               <span style="font-size:10px;color:#8A8A8E;flex:1;min-width:0">${b.count}× ${b.name} <span style="color:#48484A">· ${timeLabel}</span></span>
-              <span style="color:#30D158;font-size:11px;flex-shrink:0">✓</span>
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                <span data-void-minus="${rowKey}" class="wt-tap-scale" style="color:#8A8A8E;font-size:15px;width:16px;text-align:center;cursor:pointer;background:#000;border-radius:6px;padding:3px 6px">−</span>
+                <span style="color:#30D158;font-size:11px">✓</span>
+              </div>
             </div>`;
           }).join('')}
         </div>` : ''}
@@ -2928,24 +2931,40 @@ const WorkTracker = (() => {
         renderItemList();
         renderCheck();
       };
-      box.querySelectorAll('[data-void-ask]').forEach(x => {
-        x.onclick = () => { confirmingVoidKey = x.dataset.voidAsk; renderCheck(); };
+      function voidOneFromBatch(rowKey) {
+        const sepIdx = rowKey.indexOf('::');
+        const catalogId = rowKey.slice(0, sepIdx);
+        const sentAtKey = rowKey.slice(sepIdx + 2);
+        for (const s of order.seats) {
+          const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent && sentKeyOf(it) === sentAtKey);
+          if (idx >= 0) { s.items.splice(idx, 1); break; }
+        }
+        persist();
+      }
+      box.querySelectorAll('[data-void-minus]').forEach(x => {
+        x.onclick = () => {
+          x.onclick = null;
+          const rowKey = x.dataset.voidMinus;
+          const batch = sentList.find(b => (b.catalogId + '::' + b.sentAtKey) === rowKey);
+          if (batch && batch.count === 1) {
+            confirmingVoidKey = rowKey;
+            renderCheck();
+          } else {
+            voidOneFromBatch(rowKey);
+            renderCheck();
+          }
+        };
       });
       box.querySelectorAll('[data-void-no]').forEach(x => {
         x.onclick = () => { confirmingVoidKey = null; renderCheck(); };
       });
       box.querySelectorAll('[data-void-yes]').forEach(x => {
         x.onclick = () => {
-          const rowKey = x.dataset.voidYes;
-          const sepIdx = rowKey.indexOf('::');
-          const catalogId = rowKey.slice(0, sepIdx);
-          const sentAtKey = rowKey.slice(sepIdx + 2);
-          for (const s of order.seats) {
-            const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent && sentKeyOf(it) === sentAtKey);
-            if (idx >= 0) { s.items.splice(idx, 1); break; }
-          }
+          x.onclick = null;
+          x.style.pointerEvents = 'none';
+          x.style.opacity = '.5';
+          voidOneFromBatch(x.dataset.voidYes);
           confirmingVoidKey = null;
-          persist();
           renderCheck();
         };
       });
