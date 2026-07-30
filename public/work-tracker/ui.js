@@ -2730,6 +2730,7 @@ const WorkTracker = (() => {
     let activeSeatId = 'shared';
     let activeCat = 'cocktail';
     let searchTerm = '';
+    let confirmingVoidKey = null;
 
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch';
@@ -2868,16 +2869,21 @@ const WorkTracker = (() => {
       const sent = allItems.filter(it => it.sent);
       const pendingGrouped = {};
       pending.forEach(it => { if (!pendingGrouped[it.catalogId]) pendingGrouped[it.catalogId] = { name: it.name, count: 0 }; pendingGrouped[it.catalogId].count++; });
-      // Each "Send Order" tap stamps its items with the same sentAt — grouping by catalogId
-      // AND sentAt keeps separate rounds visually separate instead of summing "3x Negroni"
-      // across two different times, which would hide when each round actually went out.
+      // Items sent before this round's update won't have a sentAt — fall back to a fixed key
+      // so they still group and void correctly instead of comparing undefined to "undefined".
+      const sentKeyOf = (it) => it.sentAt || 'legacy';
       const sentBatches = {};
       sent.forEach(it => {
-        const key = it.catalogId + '::' + it.sentAt;
-        if (!sentBatches[key]) sentBatches[key] = { catalogId: it.catalogId, name: it.name, sentAt: it.sentAt, count: 0 };
+        const sentAtKey = sentKeyOf(it);
+        const key = it.catalogId + '::' + sentAtKey;
+        if (!sentBatches[key]) sentBatches[key] = { catalogId: it.catalogId, name: it.name, sentAtKey, count: 0 };
         sentBatches[key].count++;
       });
-      const sentList = Object.values(sentBatches).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+      const sentList = Object.values(sentBatches).sort((a, b) => {
+        if (a.sentAtKey === 'legacy') return 1;
+        if (b.sentAtKey === 'legacy') return -1;
+        return new Date(b.sentAtKey) - new Date(a.sentAtKey);
+      });
       box.innerHTML = `
         ${Object.keys(pendingGrouped).length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
           ${Object.keys(pendingGrouped).map(catalogId => {
@@ -2895,10 +2901,23 @@ const WorkTracker = (() => {
         <button id="wt-send-order" class="wt-tap-scale" style="width:100%;background:linear-gradient(180deg,#6B69E8,#5E5CE6);border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:10px">Send Order</button>` : ''}
         ${sentList.length ? `<div style="font-size:9px;color:#48484A;font-weight:700;margin-bottom:6px">SENT</div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
-          ${sentList.map(b => `<div data-void-catalog="${b.catalogId}" data-void-sentat="${b.sentAt}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
-              <span style="font-size:10px;color:#8A8A8E;flex:1;min-width:0">${b.count}× ${b.name} <span style="color:#48484A">· ${_fmtHHTime(new Date(b.sentAt).toTimeString().slice(0,5))}</span></span>
+          ${sentList.map(b => {
+            const rowKey = b.catalogId + '::' + b.sentAtKey;
+            const timeLabel = b.sentAtKey === 'legacy' ? 'Sent' : _fmtHHTime(new Date(b.sentAtKey).toTimeString().slice(0, 5));
+            if (confirmingVoidKey === rowKey) {
+              return `<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,69,58,.1);border-radius:6px;padding:5px 8px">
+                <span style="font-size:10px;color:#FF453A;flex:1;min-width:0">Void 1 ${b.name}?</span>
+                <div style="display:flex;gap:6px;flex-shrink:0">
+                  <span data-void-no="1" class="wt-tap-scale" style="font-size:10px;color:#8A8A8E;padding:4px 9px;background:#1C1C1F;border-radius:6px;cursor:pointer">No</span>
+                  <span data-void-yes="${rowKey}" class="wt-tap-scale" style="font-size:10px;color:#fff;font-weight:700;padding:4px 9px;background:#FF453A;border-radius:6px;cursor:pointer">Yes</span>
+                </div>
+              </div>`;
+            }
+            return `<div data-void-ask="${rowKey}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+              <span style="font-size:10px;color:#8A8A8E;flex:1;min-width:0">${b.count}× ${b.name} <span style="color:#48484A">· ${timeLabel}</span></span>
               <span style="color:#30D158;font-size:11px;flex-shrink:0">✓</span>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>` : ''}
         <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:6px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#fff"><span>Total</span><span>$${subtotal.toFixed(2)}</span></div>`;
       const sendBtn = box.querySelector('#wt-send-order');
@@ -2909,19 +2928,25 @@ const WorkTracker = (() => {
         renderItemList();
         renderCheck();
       };
-      box.querySelectorAll('[data-void-catalog]').forEach(x => {
+      box.querySelectorAll('[data-void-ask]').forEach(x => {
+        x.onclick = () => { confirmingVoidKey = x.dataset.voidAsk; renderCheck(); };
+      });
+      box.querySelectorAll('[data-void-no]').forEach(x => {
+        x.onclick = () => { confirmingVoidKey = null; renderCheck(); };
+      });
+      box.querySelectorAll('[data-void-yes]').forEach(x => {
         x.onclick = () => {
-          const catalogId = x.dataset.voidCatalog;
-          const sentAt = x.dataset.voidSentat;
-          const item = catalog.find(i => i.id === catalogId);
-          _showConfirmModal(`Void 1 ${item ? item.name : 'item'}? This removes it from the check.`, () => {
-            for (const s of order.seats) {
-              const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent && it.sentAt === sentAt);
-              if (idx >= 0) { s.items.splice(idx, 1); break; }
-            }
-            persist();
-            renderCheck();
-          });
+          const rowKey = x.dataset.voidYes;
+          const sepIdx = rowKey.indexOf('::');
+          const catalogId = rowKey.slice(0, sepIdx);
+          const sentAtKey = rowKey.slice(sepIdx + 2);
+          for (const s of order.seats) {
+            const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent && sentKeyOf(it) === sentAtKey);
+            if (idx >= 0) { s.items.splice(idx, 1); break; }
+          }
+          confirmingVoidKey = null;
+          persist();
+          renderCheck();
         };
       });
       box.querySelectorAll('[data-check-plus]').forEach(x => {
