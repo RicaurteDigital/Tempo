@@ -3162,7 +3162,7 @@ const WorkTracker = (() => {
           ${allLocs.map(l => `<option value="${l.id}" ${l.id === locationId ? 'selected' : ''}>${l.name}</option>`).join('')}
         </select>` : ''}
 
-        ${!editMode ? `<button id="wt-fp-menu" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:112px;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:20px;color:#98989D;font-size:12px;font-weight:700;padding:9px 12px;cursor:pointer;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">🍸 Menu</button>` : ''}
+        ${!editMode ? `<button id="wt-fp-menu" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:158px;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:20px;color:#98989D;font-size:12px;font-weight:700;padding:9px 12px;cursor:pointer;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">🍸 Menu</button>` : ''}
 
         <button id="wt-fp-mode" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;background:${editMode ? '#1C1C1E' : 'rgba(94,92,230,.9)'};border:${editMode ? '1px solid #38383A' : 'none'};border-radius:20px;color:${editMode ? '#98989D' : '#fff'};font-size:13px;font-weight:700;padding:9px 16px;cursor:pointer;transition:transform .1s,background .25s,color .25s;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? 'Done' : '✏️ Edit Plan'}</button>
 
