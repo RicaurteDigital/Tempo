@@ -2843,13 +2843,18 @@ const WorkTracker = (() => {
       const subtotal = allItems.reduce((sum, it) => sum + it.price, 0);
       const pending = allItems.filter(it => !it.sent);
       const sent = allItems.filter(it => it.sent);
-      const groupBy = (list) => {
-        const g = {};
-        list.forEach(it => { if (!g[it.catalogId]) g[it.catalogId] = { name: it.name, count: 0 }; g[it.catalogId].count++; });
-        return g;
-      };
-      const pendingGrouped = groupBy(pending);
-      const sentGrouped = groupBy(sent);
+      const pendingGrouped = {};
+      pending.forEach(it => { if (!pendingGrouped[it.catalogId]) pendingGrouped[it.catalogId] = { name: it.name, count: 0 }; pendingGrouped[it.catalogId].count++; });
+      // Each "Send Order" tap stamps its items with the same sentAt — grouping by catalogId
+      // AND sentAt keeps separate rounds visually separate instead of summing "3x Negroni"
+      // across two different times, which would hide when each round actually went out.
+      const sentBatches = {};
+      sent.forEach(it => {
+        const key = it.catalogId + '::' + it.sentAt;
+        if (!sentBatches[key]) sentBatches[key] = { catalogId: it.catalogId, name: it.name, sentAt: it.sentAt, count: 0 };
+        sentBatches[key].count++;
+      });
+      const sentList = Object.values(sentBatches).sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
       box.innerHTML = `
         ${Object.keys(pendingGrouped).length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
           ${Object.keys(pendingGrouped).map(catalogId => {
@@ -2865,31 +2870,30 @@ const WorkTracker = (() => {
           }).join('')}
         </div>
         <button id="wt-send-order" class="wt-tap-scale" style="width:100%;background:linear-gradient(180deg,#6B69E8,#5E5CE6);border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:10px">Send Order</button>` : ''}
-        ${Object.keys(sentGrouped).length ? `<div style="font-size:9px;color:#48484A;font-weight:700;margin-bottom:6px">SENT</div>
-        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px">
-          ${Object.keys(sentGrouped).map(catalogId => {
-            const g = sentGrouped[catalogId];
-            return `<div data-void-item="${catalogId}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
-              <span style="font-size:10px;color:#8A8A8E;flex:1;min-width:0">${g.count}× ${g.name}</span>
+        ${sentList.length ? `<div style="font-size:9px;color:#48484A;font-weight:700;margin-bottom:6px">SENT</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+          ${sentList.map(b => `<div data-void-catalog="${b.catalogId}" data-void-sentat="${b.sentAt}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+              <span style="font-size:10px;color:#8A8A8E;flex:1;min-width:0">${b.count}× ${b.name} <span style="color:#48484A">· ${_fmtHHTime(new Date(b.sentAt).toTimeString().slice(0,5))}</span></span>
               <span style="color:#30D158;font-size:11px;flex-shrink:0">✓</span>
-            </div>`;
-          }).join('')}
+            </div>`).join('')}
         </div>` : ''}
         <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:6px;display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#fff"><span>Total</span><span>$${subtotal.toFixed(2)}</span></div>`;
       const sendBtn = box.querySelector('#wt-send-order');
       if (sendBtn) sendBtn.onclick = () => {
-        order.seats.forEach(s => { s.items.forEach(it => { if (!it.sent) it.sent = true; }); });
+        const sentAt = new Date().toISOString();
+        order.seats.forEach(s => { s.items.forEach(it => { if (!it.sent) { it.sent = true; it.sentAt = sentAt; } }); });
         persist();
         renderItemList();
         renderCheck();
       };
-      box.querySelectorAll('[data-void-item]').forEach(x => {
+      box.querySelectorAll('[data-void-catalog]').forEach(x => {
         x.onclick = () => {
-          const catalogId = x.dataset.voidItem;
+          const catalogId = x.dataset.voidCatalog;
+          const sentAt = x.dataset.voidSentat;
           const item = catalog.find(i => i.id === catalogId);
           if (!confirm(`Void 1 ${item ? item.name : 'item'}? This removes it from the check.`)) return;
           for (const s of order.seats) {
-            const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent);
+            const idx = s.items.findIndex(it => it.catalogId === catalogId && it.sent && it.sentAt === sentAt);
             if (idx >= 0) { s.items.splice(idx, 1); break; }
           }
           persist();
