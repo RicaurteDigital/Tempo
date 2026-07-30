@@ -2718,13 +2718,116 @@ const WorkTracker = (() => {
     return catalog;
   }
 
+  const BAR_CATS = [
+    { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', text: '#C9C6FF' },
+    { id: 'wine', label: 'Wine', bg: 'linear-gradient(135deg,#5C2436,#3D1826)', text: '#E8B4C4' },
+    { id: 'beer', label: 'Beer', bg: 'linear-gradient(135deg,#5C4419,#3D2E0F)', text: '#E8CBA0' },
+    { id: 'nonalcoholic', label: 'Non-Alc', bg: 'linear-gradient(135deg,#1E4A3D,#153529)', text: '#A0DCC4' }
+  ];
+
+  function _showMenuEditor() {
+    const catalog = _getOrSeedBarCatalog();
+    let activeCat = 'cocktail';
+
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    ov.innerHTML = `
+      <div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <button id="wt-menu-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer">‹</button>
+          <div style="font-size:14px;font-weight:700;color:#fff">Menu Editor</div>
+        </div>
+        <div id="wt-menu-cat-grid" style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto"></div>
+        <div id="wt-menu-list"></div>
+        <button id="wt-menu-add" class="wt-tap-scale" style="width:100%;margin-top:12px;background:rgba(94,92,230,.1);border:1px dashed rgba(94,92,230,.4);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:700;color:#B0AEFF;cursor:pointer">+ Add new item</button>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#wt-menu-back').onclick = () => ov.remove();
+
+    function save() { WTDb.saveBarCatalog(catalog); }
+
+    function renderCatGrid() {
+      const grid = ov.querySelector('#wt-menu-cat-grid');
+      grid.innerHTML = BAR_CATS.map(c => `<button data-menu-cat="${c.id}" class="wt-tap-scale" style="flex-shrink:0;background:${c.bg};border:2px solid ${c.id === activeCat ? '#fff' : 'transparent'};filter:${c.id === activeCat ? 'brightness(1.4)' : 'brightness(0.85)'};border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;color:${c.text};cursor:pointer">${c.label}</button>`).join('');
+      grid.querySelectorAll('[data-menu-cat]').forEach(b => {
+        b.onclick = () => { activeCat = b.dataset.menuCat; renderCatGrid(); renderList(); };
+      });
+    }
+
+    function renderList() {
+      const list = ov.querySelector('#wt-menu-list');
+      const items = catalog.filter(i => i.category === activeCat);
+      list.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px">${items.map(i => `
+        <div style="display:flex;align-items:center;gap:6px;background:#18181B;border:1px solid ${i.price === null ? 'rgba(255,159,10,.3)' : 'rgba(255,255,255,.05)'};border-radius:8px;padding:8px 10px">
+          <input data-edit-name="${i.id}" value="${i.name.replace(/"/g, '&quot;')}" style="flex:1;min-width:0;background:transparent;border:none;color:#fff;font-size:12px;padding:2px" onclick="this.select()" onfocus="this.select()">
+          <span style="color:#8A8A8E;font-size:11px;flex-shrink:0">$</span>
+          <input data-edit-price="${i.id}" value="${i.price === null ? '' : i.price}" placeholder="—" type="number" inputmode="decimal" style="width:48px;flex-shrink:0;background:#000;border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#fff;font-size:12px;text-align:center;padding:4px" onclick="this.select()" onfocus="this.select()">
+          <span data-delete-item="${i.id}" class="wt-tap-scale" style="color:#48484A;font-size:15px;flex-shrink:0;cursor:pointer;padding:0 2px">✕</span>
+        </div>`).join('')}</div>`;
+      list.querySelectorAll('[data-edit-name]').forEach(inp => {
+        inp.onchange = () => {
+          const item = catalog.find(i => i.id === inp.dataset.editName);
+          if (item && inp.value.trim()) { item.name = inp.value.trim(); save(); }
+        };
+      });
+      list.querySelectorAll('[data-edit-price]').forEach(inp => {
+        inp.onchange = () => {
+          const item = catalog.find(i => i.id === inp.dataset.editPrice);
+          const v = parseFloat(inp.value);
+          if (item) { item.price = !isNaN(v) && v >= 0 ? v : null; save(); renderList(); }
+        };
+      });
+      list.querySelectorAll('[data-delete-item]').forEach(x => {
+        x.onclick = () => {
+          const item = catalog.find(i => i.id === x.dataset.deleteItem);
+          _showConfirmModal(`Remove ${item ? item.name : 'this item'} from the menu?`, () => {
+            const idx = catalog.findIndex(i => i.id === x.dataset.deleteItem);
+            if (idx >= 0) catalog.splice(idx, 1);
+            save();
+            renderList();
+          });
+        };
+      });
+    }
+
+    ov.querySelector('#wt-menu-add').onclick = () => {
+      const addOv = document.createElement('div');
+      addOv.className = 'wt-overlay';
+      addOv.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title">Add item to ${BAR_CATS.find(c => c.id === activeCat).label}</div>
+          <label class="wt-modal-label">Name</label>
+          <input id="wt-new-item-name" class="wt-input" type="text" placeholder="e.g. Old Fashioned" style="margin-bottom:12px">
+          <label class="wt-modal-label">Price ($)</label>
+          <input id="wt-new-item-price" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 18" onclick="this.select()" onfocus="this.select()" style="margin-bottom:14px">
+          <button id="wt-new-item-save" class="wt-btn wt-btn-primary" style="width:100%">Add</button>
+        </div>`;
+      document.body.appendChild(addOv);
+      addOv.addEventListener('click', e => { if (e.target === addOv) addOv.remove(); });
+      addOv.querySelector('#wt-new-item-save').onclick = () => {
+        const name = addOv.querySelector('#wt-new-item-name').value.trim();
+        if (!name) return;
+        const priceVal = parseFloat(addOv.querySelector('#wt-new-item-price').value);
+        catalog.push({
+          id: 'custom_' + Math.random().toString(36).slice(2, 10),
+          name, category: activeCat,
+          price: !isNaN(priceVal) && priceVal >= 0 ? priceVal : null,
+          isHouseOriginal: true, source: 'Added manually in Menu Editor',
+          glass: null, ingredients: [], garnish: null, method: null
+        });
+        save();
+        addOv.remove();
+        renderList();
+      };
+    };
+
+    renderCatGrid();
+    renderList();
+  }
+
   function _openOrderScreen(el, locationId, order, onClose) {
-    const CATS = [
-      { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', text: '#C9C6FF' },
-      { id: 'wine', label: 'Wine', bg: 'linear-gradient(135deg,#5C2436,#3D1826)', text: '#E8B4C4' },
-      { id: 'beer', label: 'Beer', bg: 'linear-gradient(135deg,#5C4419,#3D2E0F)', text: '#E8CBA0' },
-      { id: 'nonalcoholic', label: 'Non-Alc', bg: 'linear-gradient(135deg,#1E4A3D,#153529)', text: '#A0DCC4' }
-    ];
+    const CATS = BAR_CATS;
     const catalog = _getOrSeedBarCatalog();
     let hh = WTDb.getBarHHSettings();
     let activeSeatId = 'shared';
@@ -3058,6 +3161,8 @@ const WorkTracker = (() => {
         <select id="wt-fp-loc" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:58px;max-width:calc(100% - 130px);background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:8px 10px;z-index:2">
           ${allLocs.map(l => `<option value="${l.id}" ${l.id === locationId ? 'selected' : ''}>${l.name}</option>`).join('')}
         </select>` : ''}
+
+        ${!editMode ? `<button id="wt-fp-menu" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:112px;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:20px;color:#98989D;font-size:12px;font-weight:700;padding:9px 12px;cursor:pointer;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">🍸 Menu</button>` : ''}
 
         <button id="wt-fp-mode" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:14px;background:${editMode ? '#1C1C1E' : 'rgba(94,92,230,.9)'};border:${editMode ? '1px solid #38383A' : 'none'};border-radius:20px;color:${editMode ? '#98989D' : '#fff'};font-size:13px;font-weight:700;padding:9px 16px;cursor:pointer;transition:transform .1s,background .25s,color .25s;z-index:2" onpointerdown="this.style.transform='scale(.96)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">${editMode ? 'Done' : '✏️ Edit Plan'}</button>
 
@@ -3889,11 +3994,16 @@ const WorkTracker = (() => {
       };
     });
 
+    const menuBtn = w.querySelector('#wt-fp-menu');
+    if (menuBtn) menuBtn.onclick = () => _showMenuEditor();
+
     w.querySelector('#wt-fp-mode').onclick = () => {
       const wasEditing = editMode;
       editMode = !editMode;
       selectedId = null;
       multiSelectedIds.clear();
+      const menuBtnEl = w.querySelector('#wt-fp-menu');
+      if (menuBtnEl) menuBtnEl.style.display = editMode ? 'none' : 'block';
       if (!wasEditing) controlsMinimized = false;
       paletteEl.style.display = editMode && !controlsMinimized ? 'flex' : 'none';
       historyRow.style.display = editMode && !controlsMinimized ? 'flex' : 'none';
