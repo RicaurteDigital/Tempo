@@ -2718,6 +2718,22 @@ const WorkTracker = (() => {
     return catalog;
   }
 
+  // Resolves the master catalog against this location's active-item selection and price
+  // overrides — same pattern as Tip Pool's roster: the master list never changes, each
+  // location just picks a subset and optionally its own prices. No config yet = everything
+  // from the master catalog is active at master catalog prices (matches prior behavior).
+  function _getEffectiveMenuForLocation(locationId) {
+    const catalog = _getOrSeedBarCatalog();
+    const locMenu = WTDb.getLocationMenu(locationId);
+    if (!locMenu) return catalog;
+    return catalog
+      .filter(i => locMenu.activeItemIds ? locMenu.activeItemIds.includes(i.id) : true)
+      .map(i => {
+        const override = locMenu.priceOverrides && locMenu.priceOverrides[i.id];
+        return (override !== undefined && override !== null) ? { ...i, price: override } : i;
+      });
+  }
+
   const BAR_CATS = [
     { id: 'cocktail', label: 'Cocktails', bg: 'linear-gradient(135deg,#2C2A5E,#1F1D42)', text: '#C9C6FF' },
     { id: 'wine', label: 'Wine', bg: 'linear-gradient(135deg,#5C2436,#3D1826)', text: '#E8B4C4' },
@@ -2725,9 +2741,81 @@ const WorkTracker = (() => {
     { id: 'nonalcoholic', label: 'Non-Alc', bg: 'linear-gradient(135deg,#1E4A3D,#153529)', text: '#A0DCC4' }
   ];
 
-  function _showMenuEditor() {
+  function _showLocationMenuEditor(locationId) {
+    const catalog = _getOrSeedBarCatalog();
+    const loc = WTDb.getLocations().find(l => l.id === locationId);
+    let locMenu = WTDb.getLocationMenu(locationId);
+    if (!locMenu) locMenu = { activeItemIds: catalog.map(i => i.id), priceOverrides: {} };
+    if (!locMenu.priceOverrides) locMenu.priceOverrides = {};
+    let activeCat = 'cocktail';
+
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:51;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    ov.innerHTML = `
+      <div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <button id="wt-locmenu-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer">‹</button>
+          <div style="font-size:14px;font-weight:700;color:#fff">Menu for ${loc ? loc.name : 'this location'}</div>
+        </div>
+        <div style="font-size:11px;color:#8A8A8E;margin:6px 0 14px;padding-left:42px">Check what's actually served here. Add a price to override the master list's price — leave blank to use it as-is.</div>
+        <div id="wt-locmenu-cat-grid" style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto"></div>
+        <div id="wt-locmenu-list"></div>
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#wt-locmenu-back').onclick = () => ov.remove();
+
+    function save() { WTDb.saveLocationMenu(locationId, locMenu); }
+
+    function renderCatGrid() {
+      const grid = ov.querySelector('#wt-locmenu-cat-grid');
+      grid.innerHTML = BAR_CATS.map(c => `<button data-locmenu-cat="${c.id}" class="wt-tap-scale" style="flex-shrink:0;background:${c.bg};border:2px solid ${c.id === activeCat ? '#fff' : 'transparent'};filter:${c.id === activeCat ? 'brightness(1.4)' : 'brightness(0.85)'};border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;color:${c.text};cursor:pointer">${c.label}</button>`).join('');
+      grid.querySelectorAll('[data-locmenu-cat]').forEach(b => {
+        b.onclick = () => { activeCat = b.dataset.locmenuCat; renderCatGrid(); renderList(); };
+      });
+    }
+
+    function renderList() {
+      const list = ov.querySelector('#wt-locmenu-list');
+      const items = catalog.filter(i => i.category === activeCat);
+      list.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px">${items.map(i => {
+        const isActive = locMenu.activeItemIds.includes(i.id);
+        const override = locMenu.priceOverrides[i.id];
+        return `<div style="display:flex;align-items:center;gap:8px;background:${isActive ? '#18181B' : '#0F0F11'};border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:8px 10px">
+          <span data-toggle-active="${i.id}" class="wt-tap-scale" style="flex-shrink:0;width:20px;height:20px;border-radius:5px;background:${isActive ? '#30D158' : 'transparent'};border:1.5px solid ${isActive ? '#30D158' : '#48484A'};display:flex;align-items:center;justify-content:center;color:#000;font-size:12px;font-weight:700;cursor:pointer">${isActive ? '✓' : ''}</span>
+          <span style="flex:1;min-width:0;font-size:12px;color:${isActive ? '#fff' : '#48484A'}">${i.name}</span>
+          <span style="color:#48484A;font-size:10px;flex-shrink:0">$${i.price === null ? '—' : i.price}</span>
+          <input data-loc-price="${i.id}" value="${override != null ? override : ''}" placeholder="own price" type="number" inputmode="decimal" ${!isActive ? 'disabled' : ''} style="width:60px;flex-shrink:0;background:#000;border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#fff;font-size:11px;text-align:center;padding:4px;opacity:${isActive ? '1' : '.4'}" onclick="this.select()" onfocus="this.select()">
+        </div>`;
+      }).join('')}</div>`;
+      list.querySelectorAll('[data-toggle-active]').forEach(x => {
+        x.onclick = () => {
+          const id = x.dataset.toggleActive;
+          const idx = locMenu.activeItemIds.indexOf(id);
+          if (idx >= 0) locMenu.activeItemIds.splice(idx, 1);
+          else locMenu.activeItemIds.push(id);
+          save();
+          renderList();
+        };
+      });
+      list.querySelectorAll('[data-loc-price]').forEach(inp => {
+        inp.onchange = () => {
+          const id = inp.dataset.locPrice;
+          const v = parseFloat(inp.value);
+          if (!isNaN(v) && v >= 0) locMenu.priceOverrides[id] = v;
+          else delete locMenu.priceOverrides[id];
+          save();
+        };
+      });
+    }
+
+    renderCatGrid();
+    renderList();
+  }
+
+  function _showMenuEditor(locationId) {
     const catalog = _getOrSeedBarCatalog();
     let activeCat = 'cocktail';
+    const loc = WTDb.getLocations().find(l => l.id === locationId);
 
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch';
@@ -2735,14 +2823,17 @@ const WorkTracker = (() => {
       <div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <button id="wt-menu-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer">‹</button>
-          <div style="font-size:14px;font-weight:700;color:#fff">Menu Editor</div>
+          <div style="font-size:14px;font-weight:700;color:#fff">Menu Editor <span style="color:#48484A;font-weight:400">· master list</span></div>
         </div>
+        ${loc ? `<button id="wt-menu-loc-config" class="wt-tap-scale" style="width:100%;margin-bottom:14px;background:rgba(94,92,230,.1);border:1px solid rgba(94,92,230,.3);border-radius:10px;padding:10px;text-align:center;font-size:12px;font-weight:700;color:#B0AEFF;cursor:pointer">📍 Configure what's active at ${loc.name} →</button>` : ''}
         <div id="wt-menu-cat-grid" style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto"></div>
         <div id="wt-menu-list"></div>
         <button id="wt-menu-add" class="wt-tap-scale" style="width:100%;margin-top:12px;background:rgba(94,92,230,.1);border:1px dashed rgba(94,92,230,.4);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:700;color:#B0AEFF;cursor:pointer">+ Add new item</button>
       </div>`;
     document.body.appendChild(ov);
     ov.querySelector('#wt-menu-back').onclick = () => ov.remove();
+    const locConfigBtn = ov.querySelector('#wt-menu-loc-config');
+    if (locConfigBtn) locConfigBtn.onclick = () => _showLocationMenuEditor(locationId);
 
     function save() { WTDb.saveBarCatalog(catalog); }
 
@@ -2828,7 +2919,7 @@ const WorkTracker = (() => {
 
   function _openOrderScreen(el, locationId, order, onClose) {
     const CATS = BAR_CATS;
-    const catalog = _getOrSeedBarCatalog();
+    const catalog = _getEffectiveMenuForLocation(locationId);
     let hh = WTDb.getBarHHSettings();
     let activeSeatId = 'shared';
     let activeCat = 'cocktail';
@@ -3995,7 +4086,7 @@ const WorkTracker = (() => {
     });
 
     const menuBtn = w.querySelector('#wt-fp-menu');
-    if (menuBtn) menuBtn.onclick = () => _showMenuEditor();
+    if (menuBtn) menuBtn.onclick = () => _showMenuEditor(locationId);
 
     w.querySelector('#wt-fp-mode').onclick = () => {
       const wasEditing = editMode;

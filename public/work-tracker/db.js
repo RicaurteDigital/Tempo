@@ -438,6 +438,26 @@ const WTDb = (() => {
     return items;
   }
 
+  const LOCATION_MENU_KEY = 'wt_location_menu_v1';
+
+  // Returns null if this location hasn't configured its menu yet — callers should treat that
+  // as "everything in the master catalog is active, at master catalog prices" (matching what
+  // already worked before this feature existed, so nothing breaks for existing locations).
+  function getLocationMenu(locationId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(LOCATION_MENU_KEY)) || {};
+      return all[locationId] || null;
+    } catch { return null; }
+  }
+
+  function saveLocationMenu(locationId, menu) {
+    try {
+      const all = JSON.parse(localStorage.getItem(LOCATION_MENU_KEY)) || {};
+      all[locationId] = menu;
+      localStorage.setItem(LOCATION_MENU_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
   function getBarHHSettings() {
     try {
       const raw = localStorage.getItem(BAR_HH_KEY);
@@ -634,6 +654,7 @@ const WTDb = (() => {
     deleteAllData,
     getFloorPlan, saveFloorPlan,
     getBarCatalog, saveBarCatalog,
+    getLocationMenu, saveLocationMenu,
     getBarHHSettings, saveBarHHSettings,
     getDefaultBarCatalogSeed,
     getTableOrder, saveTableOrder, getNextInternalCheckNumber
