@@ -2632,9 +2632,11 @@ const WorkTracker = (() => {
           ${[1, 2, 3, 4, 5, 6, 7, 8].map(n => `<button data-guest-count="${n}" class="wt-tap-scale" style="background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);border-radius:10px;padding:14px 0;font-size:15px;font-weight:700;color:var(--wt-text-primary);cursor:pointer">${n}</button>`).join('')}
         </div>
         <input id="wt-guest-custom" type="number" min="1" placeholder="Custom number..." class="wt-input" style="margin-top:8px;text-align:center" onclick="this.select()" onfocus="this.select()">
+        <div id="wt-table-hist-link" class="wt-tap-scale" style="margin-top:10px;font-size:11px;color:#8A8A8E;cursor:pointer">📋 History for ${el.label}</div>
         <button id="wt-guest-confirm" class="wt-btn wt-btn-primary" style="width:100%;margin-top:16px;opacity:.5" disabled>Open Table</button>
       </div>`;
     document.body.appendChild(ov);
+    ov.querySelector('#wt-table-hist-link').onclick = () => _showClosedOrdersHistory(locationId, el.id, el.label);
     let chosen = null;
     const confirmBtn = ov.querySelector('#wt-guest-confirm');
     function selectCount(n) {
@@ -2812,20 +2814,34 @@ const WorkTracker = (() => {
     renderList();
   }
 
-  function _showClosedOrdersHistory(locationId) {
-    const closed = WTDb.getClosedOrders(locationId).sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt));
+  function _fmtDuration(ms) {
+    const totalMin = Math.round(ms / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  }
+
+  function _showClosedOrdersHistory(locationId, tableId, tableLabel) {
+    let closed = WTDb.getClosedOrders(locationId).sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt));
+    if (tableId) closed = closed.filter(o => o.tableId === tableId);
+    const durations = closed.map(o => new Date(o.closedAt) - new Date(o.openedAt)).filter(ms => ms > 0);
+    const avgMs = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:52;overflow-y:auto;-webkit-overflow-scrolling:touch';
     ov.innerHTML = `
       <div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
           <button id="wt-hist-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer">‹</button>
-          <div style="font-size:14px;font-weight:700;color:#fff">Closed Tables</div>
+          <div style="font-size:14px;font-weight:700;color:#fff">${tableId ? `History · ${tableLabel}` : 'Closed Tables'}</div>
         </div>
+        ${closed.length && avgMs > 0 ? `<div style="font-size:11px;color:#8A8A8E;margin:8px 0 14px;padding-left:42px">Average time at table: <span style="color:#B0AEFF;font-weight:700">${_fmtDuration(avgMs)}</span> · ${closed.length} closed</div>` : '<div style="margin-bottom:14px"></div>'}
         ${!closed.length ? `<div style="font-size:12px;color:#48484A;text-align:center;padding:30px 0">No closed tables yet</div>` : `
         <div style="display:flex;flex-direction:column;gap:8px">
           ${closed.map((o, idx) => {
             const d = new Date(o.closedAt);
+            const openedD = new Date(o.openedAt);
+            const durMs = d - openedD;
             const allItems = o.seats.flatMap(s => s.items);
             const grouped = {};
             allItems.forEach(it => { grouped[it.name] = (grouped[it.name] || 0) + 1; });
@@ -2833,11 +2849,15 @@ const WorkTracker = (() => {
               <div data-hist-toggle="${idx}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
                 <div>
                   <div style="font-size:13px;font-weight:700;color:#fff">${o.tableLabel} <span style="color:#48484A;font-weight:400">· Check #${o.internalCheckNumber}${o.realCheckNumber ? ' / #' + o.realCheckNumber : ''}</span></div>
-                  <div style="font-size:10px;color:#8A8A8E">${d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                  <div style="font-size:10px;color:#8A8A8E">${d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}${durMs > 0 ? ` · ${_fmtDuration(durMs)} at table` : ''}</div>
                 </div>
                 <div style="font-size:14px;font-weight:700;color:#30D158">$${(o.total || 0).toFixed(2)}</div>
               </div>
               <div data-hist-detail="${idx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)">
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:#48484A;margin-bottom:6px">
+                  <span>Opened ${openedD.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                  <span>Closed ${d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                </div>
                 ${Object.keys(grouped).map(name => `<div style="display:flex;justify-content:space-between;font-size:11px;color:#D0D0D2;padding:2px 0"><span>${grouped[name]}× ${name}</span></div>`).join('')}
                 <div style="display:flex;justify-content:space-between;font-size:11px;color:#8A8A8E;margin-top:6px"><span>Subtotal</span><span>$${(o.subtotal || 0).toFixed(2)}</span></div>
                 <div style="display:flex;justify-content:space-between;font-size:11px;color:#8A8A8E"><span>Tax</span><span>$${(o.tax || 0).toFixed(2)}</span></div>
