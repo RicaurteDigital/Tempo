@@ -508,6 +508,37 @@ const WTDb = (() => {
     } catch { return Math.floor(Math.random() * 9000) + 1000; }
   }
 
+  const CLOSED_ORDERS_KEY = 'wt_closed_orders_v1';
+
+  function getClosedOrders(locationId) {
+    try {
+      const all = JSON.parse(localStorage.getItem(CLOSED_ORDERS_KEY)) || [];
+      return locationId ? all.filter(o => o.locationId === locationId) : all;
+    } catch { return []; }
+  }
+
+  function saveClosedOrder(closedOrder) {
+    try {
+      const all = JSON.parse(localStorage.getItem(CLOSED_ORDERS_KEY)) || [];
+      all.push(closedOrder);
+      localStorage.setItem(CLOSED_ORDERS_KEY, JSON.stringify(all));
+    } catch {}
+  }
+
+  const BAR_TAX_KEY = 'wt_bar_tax_rate_v1';
+
+  function getBarTaxRate() {
+    try {
+      const raw = localStorage.getItem(BAR_TAX_KEY);
+      if (raw !== null) return parseFloat(raw);
+    } catch {}
+    return 8.875; // NYC standard sales tax — editable, not fixed
+  }
+
+  function saveBarTaxRate(rate) {
+    localStorage.setItem(BAR_TAX_KEY, String(rate));
+  }
+
   // Curated starting catalog for AtoZ Rooftop's bar menu. Verified classic cocktails cite a
   // real source (IBA official list, or another named published recipe); house originals are
   // left with empty ingredients until the real recipe is provided — never guessed at.
@@ -657,6 +688,8 @@ const WTDb = (() => {
     getLocationMenu, saveLocationMenu,
     getBarHHSettings, saveBarHHSettings,
     getDefaultBarCatalogSeed,
-    getTableOrder, saveTableOrder, getNextInternalCheckNumber
+    getTableOrder, saveTableOrder, getNextInternalCheckNumber,
+    getClosedOrders, saveClosedOrder,
+    getBarTaxRate, saveBarTaxRate
   };
 })();

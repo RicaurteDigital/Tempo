@@ -2950,6 +2950,7 @@ const WorkTracker = (() => {
             <div style="font-size:10px;color:#8A8A8E;font-weight:700;margin-bottom:8px">CURRENT ORDER</div>
             <div id="wt-seat-row" style="display:flex;gap:5px;margin-bottom:8px;overflow-x:auto"></div>
             <div id="wt-order-check"></div>
+            <button id="wt-close-table" class="wt-tap-scale" style="width:100%;margin-top:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px;font-size:11px;font-weight:700;color:#8A8A8E;cursor:pointer">Close Table</button>
           </div>
         </div>
       </div>`;
@@ -3190,6 +3191,64 @@ const WorkTracker = (() => {
       renderHHToggle();
       renderItemList();
     };
+    ov.querySelector('#wt-close-table').onclick = () => {
+      const allItems = order.seats.flatMap(s => s.items);
+      if (!allItems.length) {
+        _showConfirmModal('This table has no items. Close it anyway?', () => _closeTable());
+        return;
+      }
+      const subtotal = allItems.reduce((sum, it) => sum + it.price, 0);
+      const taxRate = WTDb.getBarTaxRate();
+      const tax = subtotal * (taxRate / 100);
+      const total = subtotal + tax;
+      const grouped = {};
+      allItems.forEach(it => { grouped[it.name] = (grouped[it.name] || 0) + 1; });
+      const receiptOv = document.createElement('div');
+      receiptOv.className = 'wt-overlay';
+      receiptOv.innerHTML = `
+        <div class="wt-modal">
+          <div class="wt-modal-handle"></div>
+          <div class="wt-modal-title" style="text-align:center">${el.label} · Check #${order.internalCheckNumber}</div>
+          <div style="display:flex;flex-direction:column;gap:4px;margin:14px 0;font-size:13px;color:var(--wt-text-secondary)">
+            ${Object.keys(grouped).map(name => `<div style="display:flex;justify-content:space-between"><span>${grouped[name]}× ${name}</span></div>`).join('')}
+          </div>
+          <div style="border-top:1px solid var(--wt-border);padding-top:10px;display:flex;flex-direction:column;gap:4px;font-size:13px">
+            <div style="display:flex;justify-content:space-between;color:var(--wt-text-secondary)"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;color:var(--wt-text-secondary)"><span>Tax (${taxRate}%)</span><span>$${tax.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--wt-text-primary);margin-top:4px"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+          </div>
+          <label class="wt-modal-label" style="margin-top:14px">Restaurant's real check number (optional)</label>
+          <input id="wt-real-check-num" class="wt-input" type="text" value="${order.realCheckNumber || ''}" placeholder="e.g. 4471" style="margin-bottom:14px">
+          <div style="display:flex;gap:8px">
+            <button id="wt-receipt-cancel" class="wt-btn" style="flex:1;background:var(--wt-surface-secondary);color:var(--wt-text-primary);border:1px solid var(--wt-surface-secondary-border)">Cancel</button>
+            <button id="wt-receipt-confirm" class="wt-btn wt-btn-primary" style="flex:1">Close Table</button>
+          </div>
+        </div>`;
+      document.body.appendChild(receiptOv);
+      receiptOv.addEventListener('click', e => { if (e.target === receiptOv) receiptOv.remove(); });
+      receiptOv.querySelector('#wt-receipt-cancel').onclick = () => receiptOv.remove();
+      receiptOv.querySelector('#wt-receipt-confirm').onclick = () => {
+        order.realCheckNumber = receiptOv.querySelector('#wt-real-check-num').value.trim();
+        receiptOv.remove();
+        _closeTable(subtotal, tax, total);
+      };
+    };
+
+    function _closeTable(subtotal, tax, total) {
+      WTDb.saveClosedOrder({
+        ...order,
+        locationId,
+        tableLabel: el.label,
+        tableId: el.id,
+        closedAt: new Date().toISOString(),
+        subtotal: subtotal || 0,
+        tax: tax || 0,
+        total: total || 0
+      });
+      WTDb.saveTableOrder(locationId, el.id, null);
+      ov.remove();
+      if (onClose) onClose();
+    }
 
     renderHHToggle();
     renderCatGrid();
