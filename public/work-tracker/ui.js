@@ -344,11 +344,17 @@ const WorkTracker = (() => {
     const weekCCCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cc, 0);
     const weekCashCut = weekShifts.reduce((sum, s) => sum + _shiftTipCut(s).cash, 0);
     const weekTotal = pay.total + weekCCCut + weekCashCut;
+    const perHourIncludeCash = localStorage.getItem('wt_perhour_include_cash') === 'true';
+    const perHourBase = pay.total + weekCCCut + (perHourIncludeCash ? weekCashCut : 0);
+    const perHourVal = pay.totalHours > 0 ? perHourBase / pay.totalHours : null;
     stats.innerHTML = `
       <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box;${weekCardStyle}">
         <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
         <div style="font-size:26px;font-weight:800;color:var(--wt-text-primary);margin-top:2px">${WTRules.fmtMoney(weekTotal)}</div>
-        <div style="font-size:12px;color:var(--wt-text-secondary);margin-top:3px;margin-bottom:12px">${WTRules.fmtHours(pay.totalHours)} <span style="color:var(--wt-text-tertiary)">· Gross</span></div>
+        <div style="font-size:12px;color:var(--wt-text-secondary);margin-top:3px;margin-bottom:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span>${WTRules.fmtHours(pay.totalHours)}</span><span style="color:var(--wt-text-tertiary)">· Gross</span>
+          ${perHourVal !== null ? `<span id="wt-perhour-chip" style="background:${perHourIncludeCash ? 'rgba(48,209,88,.15)' : 'rgba(255,159,10,.15)'};border:1px solid ${perHourIncludeCash ? 'rgba(48,209,88,.3)' : 'rgba(255,159,10,.3)'};border-radius:20px;padding:2px 8px;color:${perHourIncludeCash ? '#30D158' : '#FF9F0A'};font-weight:700;font-size:11px;cursor:pointer">${WTRules.fmtMoney(perHourVal)}/hr${perHourIncludeCash ? ' with cash' : ''}</span>` : ''}
+        </div>
         ${pay.isOvertime ? `<div class="wt-ot-tag" style="margin-bottom:10px">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
         <div style="display:flex;gap:8px">
           <div style="flex:1;background:var(--wt-pill-neutral-bg);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
@@ -577,6 +583,13 @@ const WorkTracker = (() => {
     const jumpTodayBtn = w.querySelector('#wt-jump-today');
     if (jumpTodayBtn) jumpTodayBtn.onclick = () => { _date = realToday; _go('home'); };
     w.querySelector('#wt-pay-card').onclick = () => { _weekFocusDate = today; _go('week'); };
+    const perHourChip = w.querySelector('#wt-perhour-chip');
+    if (perHourChip) perHourChip.onclick = (e) => {
+      e.stopPropagation();
+      const current = localStorage.getItem('wt_perhour_include_cash') === 'true';
+      localStorage.setItem('wt_perhour_include_cash', String(!current));
+      _go('home');
+    };
     w.querySelectorAll('[data-loc-payday]').forEach(el => {
       el.onclick = e => {
         e.stopPropagation();
