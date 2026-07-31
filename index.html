@@ -761,27 +761,29 @@ render();
 _applyMode();
 
 // Public-facing builds focus entirely on Work (restaurants) — Tempo and Study stay fully
-// intact in code, just hidden from the top tab bar. Add ?allprofiles=1 to the URL (same flag
-// used in ui.js) to bring them back for testing, on localhost or the live site.
-const _topDevMode = new URLSearchParams(window.location.search).get('allprofiles') === '1';
-if (!_topDevMode) {
-  $('mainTabBar').style.display = 'none';
-  const _oldHeader = document.querySelector('header');
-  if (_oldHeader) _oldHeader.style.display = 'none';
-}
+// intact in code, just hidden from view. Unconditional now — the old ?allprofiles=1 URL
+// escape hatch kept resurfacing via stale bookmarks/autocomplete, so there's no way left to
+// accidentally land back on these tabs from a browser URL. Also hides vLive/vPicker
+// immediately (not just mainTabBar/header) so there's no gap before switchTab('work') runs
+// on 'load' where the picker screen could flash visible.
+$('mainTabBar').style.display = 'none';
+const _oldHeader = document.querySelector('header');
+if (_oldHeader) _oldHeader.style.display = 'none';
+$('vLive').classList.add('hide');
+$('vPicker').classList.add('hide');
 // Deferred to the window 'load' event — work-tracker/ui.js (which defines WorkTracker) loads
 // via a later <script> tag, so calling switchTab('work') immediately here would run before
 // WorkTracker exists yet.
 window.addEventListener('load', () => switchTab('work'));
 </script>
 
-<link rel="stylesheet" href="work-tracker/styles.css?v=287">
-<script src="work-tracker/types.js?v=287"></script>
-<script src="work-tracker/db.js?v=287"></script>
-<script src="work-tracker/rules.js?v=287"></script>
-<script src="work-tracker/tips.js?v=287"></script>
-<script src="work-tracker/stats.js?v=287"></script>
-<script src="work-tracker/ui.js?v=287"></script>
+<link rel="stylesheet" href="work-tracker/styles.css?v=288">
+<script src="work-tracker/types.js?v=288"></script>
+<script src="work-tracker/db.js?v=288"></script>
+<script src="work-tracker/rules.js?v=288"></script>
+<script src="work-tracker/tips.js?v=288"></script>
+<script src="work-tracker/stats.js?v=288"></script>
+<script src="work-tracker/ui.js?v=288"></script>
 <link rel="stylesheet" href="study-tracker/styles.css">
 <script src="study-tracker/types.js"></script>
 <script src="study-tracker/db.js"></script>
