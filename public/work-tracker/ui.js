@@ -6518,10 +6518,16 @@ const WorkTracker = (() => {
         if (!a.isMe && b.isMe) return 1;
         return (b.points || 0) - (a.points || 0);
       });
-      const ccTotal = parseFloat(saved.creditCardTotal) || 0;
+      const hasSplit = saved.ccBreakdown && saved.ccBreakdown.length > 1;
+      // When split is active, the breakdown is the single source of truth for the CC total —
+      // never trust saved.creditCardTotal here, since it can be left over from before the
+      // user switched into split mode (e.g. typing an amount, then splitting) and get out of
+      // sync with what the breakdown actually shows.
+      const ccTotal = hasSplit
+        ? TipRules.applyProcessingFeeMulti(saved.ccBreakdown, feePercent).gross
+        : (parseFloat(saved.creditCardTotal) || 0);
       const cashTotal = parseFloat(saved.cashTotal) || 0;
       const result = _computeTipResult(ccTotal, cashTotal, workers, feePercent, saved.manualFee, saved.cashFlatAmounts, saved.cashPointOverrides, saved.cashManualAmounts);
-      const hasSplit = saved.ccBreakdown && saved.ccBreakdown.length > 1;
       // Ensure exactFee is always calculated correctly:
       // if split, only fee-applicable amounts count toward the exact fee.
       if (result.creditCard) {
