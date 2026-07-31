@@ -474,7 +474,7 @@ const WorkTracker = (() => {
                 // If this person is over on cash specifically, route there — otherwise the CC row
                 // (which is also where "this is me" lands by default, since it's the primary row).
                 const gotoType = isCCOver && isCashOver ? 'both' : (isCashOver ? 'cash' : 'cc');
-                const tintColor = isOver ? '#FF453A' : (isWarn ? '#FF9F0A' : null);
+                const tintColor = isOver ? '#FF453A' : (isWarn ? '#8B87A8' : null);
                 // Warn-only rows (not also red) get a tap-to-explain instead of navigating —
                 // the raw values are stashed in data attributes so the rounding-vs-extra split
                 // can be computed at click time rather than baked into the HTML as text.
