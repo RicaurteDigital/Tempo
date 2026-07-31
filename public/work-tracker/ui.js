@@ -548,7 +548,7 @@ const WorkTracker = (() => {
             const { rounding, extra } = splitRounding(parseFloat(el.dataset.warnCashExact), parseFloat(el.dataset.warnCashAmount));
             parts.push(`(cash) $${rounding.toFixed(2)} was normal rounding, $${extra.toFixed(2)} was picked up from teammates' rounddowns`);
           }
-          msgEl.innerHTML = `<div style="font-size:11px;color:#FF9F0A;margin-top:6px;line-height:1.4">💡 ${el.dataset.warnName} — ${parts.join('; ')}. Nothing to fix.</div>`;
+          msgEl.innerHTML = `<div style="font-size:11px;color:var(--wt-text-primary);margin-top:6px;line-height:1.4">💡 ${el.dataset.warnName} — ${parts.join('; ')}. Nothing to fix.</div>`;
           msgEl.dataset.shownFor = el.dataset.warnName;
         };
       });
