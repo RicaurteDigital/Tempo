@@ -6566,8 +6566,8 @@ const WorkTracker = (() => {
                   style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
                   onclick="this.select()" onfocus="this.select()">
               </div>
-              <button id="wt-tp-reverse-cc" type="button" style="background:none;border:none;color:#5E5CE6;font-size:11px;padding:4px 0 0;cursor:pointer;text-align:left">I know my amount instead</button>
-              <button id="wt-tp-split" type="button" style="background:none;border:none;color:#FF9F0A;font-size:11px;padding:2px 0 0;cursor:pointer;text-align:left">${saved.ccBreakdown && saved.ccBreakdown.length > 1 ? `✓ Split (${saved.ccBreakdown.length} amounts)` : '+ Split into multiple amounts'}</button>
+              <button id="wt-tp-reverse-cc" type="button" class="wt-tap-scale" style="background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.25);border-radius:8px;color:#5E5CE6;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:left;margin-top:6px">I know my amount instead</button>
+              <button id="wt-tp-split" type="button" class="wt-tap-scale" style="background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.25);border-radius:8px;color:#FF9F0A;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:left;margin-top:6px">${saved.ccBreakdown && saved.ccBreakdown.length > 1 ? `✓ Split (${saved.ccBreakdown.length} amounts)` : '+ Split into multiple amounts'}</button>
             </div>
             <div>
               <label class="wt-modal-label">Cash Tips</label>
@@ -6578,7 +6578,7 @@ const WorkTracker = (() => {
                   style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
                   onclick="this.select()" onfocus="this.select()">
               </div>
-              <button id="wt-tp-reverse-cash" type="button" style="background:none;border:none;color:#5E5CE6;font-size:11px;padding:4px 0 0;cursor:pointer;text-align:left">I know my amount instead</button>
+              <button id="wt-tp-reverse-cash" type="button" class="wt-tap-scale" style="background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.25);border-radius:8px;color:#5E5CE6;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:left;margin-top:6px">I know my amount instead</button>
             </div>
           </div>
 
@@ -6586,8 +6586,8 @@ const WorkTracker = (() => {
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
             ${hasSplit ? `
             <div style="background:rgba(255,159,10,.06);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px">
-              ${saved.ccBreakdown.map(a => `
-                <div style="display:flex;justify-content:space-between;padding:2px 0">
+              ${saved.ccBreakdown.map((a, i) => `
+                <div data-toggle-fee-idx="${i}" class="wt-tap-scale" style="display:flex;justify-content:space-between;padding:4px 2px;cursor:pointer;border-radius:6px">
                   <span style="color:#98989D">$${(parseFloat(a.amount)||0).toFixed(2)} ${a.feeExempt ? '<span style="color:#30D158">· no fee</span>' : `<span style="color:#FF9F0A">· ${feePercent}% fee</span>`}</span>
                 </div>`).join('')}
             </div>` : ''}
@@ -6808,6 +6808,17 @@ const WorkTracker = (() => {
       ov.querySelector('#wt-tp-cash').addEventListener('blur', doRecalc);
       ov.querySelector('#wt-tp-cc').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
       ov.querySelector('#wt-tp-cash').addEventListener('keydown', e => { if(e.key==='Enter') e.target.blur(); });
+
+      ov.querySelectorAll('[data-toggle-fee-idx]').forEach(row => {
+        row.onclick = () => {
+          const idx = parseInt(row.dataset.toggleFeeIdx);
+          if (!saved.ccBreakdown || !saved.ccBreakdown[idx]) return;
+          saved.ccBreakdown[idx].feeExempt = !saved.ccBreakdown[idx].feeExempt;
+          const recalced = TipRules.applyProcessingFeeMulti(saved.ccBreakdown, feePercent);
+          saved.manualFee = recalced.fee;
+          render();
+        };
+      });
 
       const __splitBtn = ov.querySelector('#wt-tp-split');
       if (__splitBtn) __splitBtn.onclick = () => _showSplitAmounts(saved, feePercent, () => { render(); });
@@ -7077,6 +7088,27 @@ const WorkTracker = (() => {
     ov.className = 'wt-overlay';
     document.body.appendChild(ov);
 
+    // iOS keyboard fix — without this the keyboard covers the amount input while typing
+    if (window.visualViewport) {
+      const __vvHandler = () => {
+        const vh = window.visualViewport.height;
+        ov.style.height = vh + 'px';
+        ov.style.top = window.visualViewport.offsetTop + 'px';
+        const modal = ov.querySelector('.wt-modal');
+        if (modal) modal.style.maxHeight = (vh * 0.92) + 'px';
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl.tagName === 'INPUT' && ov.contains(activeEl)) {
+          setTimeout(() => activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 80);
+        }
+      };
+      window.visualViewport.addEventListener('resize', __vvHandler);
+      window.visualViewport.addEventListener('scroll', __vvHandler);
+      ov._cleanupVV = () => {
+        window.visualViewport.removeEventListener('resize', __vvHandler);
+        window.visualViewport.removeEventListener('scroll', __vvHandler);
+      };
+    }
+
     function paint() {
       const breakdown = TipRules.applyProcessingFeeMulti(amounts, feePercent);
       ov.innerHTML = `
@@ -7137,7 +7169,7 @@ const WorkTracker = (() => {
         amounts.push({ amount: 0, feeExempt: false });
         paint();
       };
-      ov.querySelector('#wt-sa-cancel').onclick = () => ov.remove();
+      ov.querySelector('#wt-sa-cancel').onclick = () => { if (ov._cleanupVV) ov._cleanupVV(); ov.remove(); };
       ov.querySelector('#wt-sa-save').onclick = () => {
         const hasManualAdjustments = (saved.workers || []).some(w => typeof w.manualAmount === 'number');
         if (hasManualAdjustments) {
@@ -7153,11 +7185,12 @@ const WorkTracker = (() => {
         saved.creditCardTotal = final.gross;
         saved.manualFee = final.fee;
         saved.ccBreakdown = amounts.map(a => ({ ...a }));
+        if (ov._cleanupVV) ov._cleanupVV();
         ov.remove();
         onSave();
       };
     }
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+    ov.addEventListener('click', e => { if (e.target === ov) { if (ov._cleanupVV) ov._cleanupVV(); ov.remove(); } });
     paint();
   }
 

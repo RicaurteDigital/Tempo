@@ -338,6 +338,18 @@ const $ = id => document.getElementById(id);
 const KEY = 'tempo_v1';
 
 let S = load();
+// Safety net: a bucket accidentally started and forgotten shouldn't silently accumulate
+// hours forever. No legitimate single Tempo session runs 12+ hours straight, so auto-close
+// it as a completed event (preserving the time actually tracked) rather than leaving it stuck.
+if (S.current && (Date.now() - S.current.start) > 12 * 60 * 60 * 1000) {
+  const now = Date.now();
+  const pausedMs = (S.current.pausedMs || 0) + (S.current.pausedAt ? now - S.current.pausedAt : 0);
+  const ev = { b: S.current.b, start: S.current.start, end: now, pausedMs };
+  const activeMs = ev.end - ev.start - pausedMs;
+  if (activeMs >= 30000) S.events.push(ev);
+  S.current = null;
+  save();
+}
 function load(){
   try{ const s = JSON.parse(localStorage.getItem(KEY)); if(s) return s; }catch(e){}
   const params = {}; BUCKETS.forEach(b => params[b.id] = b.exp);
@@ -763,13 +775,13 @@ if (!_topDevMode) {
 window.addEventListener('load', () => switchTab('work'));
 </script>
 
-<link rel="stylesheet" href="work-tracker/styles.css?v=286">
-<script src="work-tracker/types.js?v=286"></script>
-<script src="work-tracker/db.js?v=286"></script>
-<script src="work-tracker/rules.js?v=286"></script>
-<script src="work-tracker/tips.js?v=286"></script>
-<script src="work-tracker/stats.js?v=286"></script>
-<script src="work-tracker/ui.js?v=286"></script>
+<link rel="stylesheet" href="work-tracker/styles.css?v=287">
+<script src="work-tracker/types.js?v=287"></script>
+<script src="work-tracker/db.js?v=287"></script>
+<script src="work-tracker/rules.js?v=287"></script>
+<script src="work-tracker/tips.js?v=287"></script>
+<script src="work-tracker/stats.js?v=287"></script>
+<script src="work-tracker/ui.js?v=287"></script>
 <link rel="stylesheet" href="study-tracker/styles.css">
 <script src="study-tracker/types.js"></script>
 <script src="study-tracker/db.js"></script>
