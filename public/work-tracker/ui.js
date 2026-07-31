@@ -435,7 +435,7 @@ const WorkTracker = (() => {
                 ${myCash > 0 ? `<div style="font-size:11px;color:var(--wt-text-tertiary)">+$${myCash} cash</div>` : ''}
               </div>` : `<div style="font-size:12px;color:var(--wt-text-tertiary)">no cut set</div>`}
             </div>
-            ${shiftPerHourVal !== null ? `<div style="margin-top:8px"><span data-shift-perhour="${s.id}" style="background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:2px 8px;color:#fff;font-weight:700;font-size:11px;cursor:pointer">${TipRules.fmtMoney(shiftPerHourVal)}/hr</span></div>` : ''}
+            ${shiftPerHourVal !== null ? `<div style="margin-top:8px"><span data-shift-perhour="${s.id}" style="background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:2px 8px;color:${shiftPerHourIncludeCash ? '#30D158' : '#FF9F0A'};font-weight:700;font-size:11px;cursor:pointer">${TipRules.fmtMoney(shiftPerHourVal)}/hr${shiftPerHourIncludeCash ? ' with cash' : ''}</span></div>` : ''}
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
               ${(() => {
                 const workerCount = result.payouts.length;
