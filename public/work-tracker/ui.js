@@ -2812,6 +2812,50 @@ const WorkTracker = (() => {
     renderList();
   }
 
+  function _showClosedOrdersHistory(locationId) {
+    const closed = WTDb.getClosedOrders(locationId).sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt));
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:#0A0A0C;z-index:52;overflow-y:auto;-webkit-overflow-scrolling:touch';
+    ov.innerHTML = `
+      <div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <button id="wt-hist-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer">‹</button>
+          <div style="font-size:14px;font-weight:700;color:#fff">Closed Tables</div>
+        </div>
+        ${!closed.length ? `<div style="font-size:12px;color:#48484A;text-align:center;padding:30px 0">No closed tables yet</div>` : `
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${closed.map((o, idx) => {
+            const d = new Date(o.closedAt);
+            const allItems = o.seats.flatMap(s => s.items);
+            const grouped = {};
+            allItems.forEach(it => { grouped[it.name] = (grouped[it.name] || 0) + 1; });
+            return `<div style="background:#18181B;border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:10px 12px">
+              <div data-hist-toggle="${idx}" class="wt-tap-scale" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#fff">${o.tableLabel} <span style="color:#48484A;font-weight:400">· Check #${o.internalCheckNumber}${o.realCheckNumber ? ' / #' + o.realCheckNumber : ''}</span></div>
+                  <div style="font-size:10px;color:#8A8A8E">${d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+                </div>
+                <div style="font-size:14px;font-weight:700;color:#30D158">$${(o.total || 0).toFixed(2)}</div>
+              </div>
+              <div data-hist-detail="${idx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)">
+                ${Object.keys(grouped).map(name => `<div style="display:flex;justify-content:space-between;font-size:11px;color:#D0D0D2;padding:2px 0"><span>${grouped[name]}× ${name}</span></div>`).join('')}
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#8A8A8E;margin-top:6px"><span>Subtotal</span><span>$${(o.subtotal || 0).toFixed(2)}</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#8A8A8E"><span>Tax</span><span>$${(o.tax || 0).toFixed(2)}</span></div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`}
+      </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#wt-hist-back').onclick = () => ov.remove();
+    ov.querySelectorAll('[data-hist-toggle]').forEach(row => {
+      row.onclick = () => {
+        const detail = ov.querySelector(`[data-hist-detail="${row.dataset.histToggle}"]`);
+        if (detail) detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+      };
+    });
+  }
+
   function _showMenuEditor(locationId) {
     const catalog = _getOrSeedBarCatalog();
     let activeCat = 'cocktail';
@@ -2825,7 +2869,8 @@ const WorkTracker = (() => {
           <button id="wt-menu-back" class="wt-tap-scale" style="width:32px;height:32px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;font-size:16px;cursor:pointer">‹</button>
           <div style="font-size:14px;font-weight:700;color:#fff">Menu Editor <span style="color:#48484A;font-weight:400">· master list</span></div>
         </div>
-        ${loc ? `<button id="wt-menu-loc-config" class="wt-tap-scale" style="width:100%;margin-bottom:14px;background:rgba(94,92,230,.1);border:1px solid rgba(94,92,230,.3);border-radius:10px;padding:10px;text-align:center;font-size:12px;font-weight:700;color:#B0AEFF;cursor:pointer">📍 Configure what's active at ${loc.name} →</button>` : ''}
+        ${loc ? `<button id="wt-menu-loc-config" class="wt-tap-scale" style="width:100%;margin-bottom:8px;background:rgba(94,92,230,.1);border:1px solid rgba(94,92,230,.3);border-radius:10px;padding:10px;text-align:center;font-size:12px;font-weight:700;color:#B0AEFF;cursor:pointer">📍 Configure what's active at ${loc.name} →</button>` : ''}
+        ${loc ? `<button id="wt-menu-history" class="wt-tap-scale" style="width:100%;margin-bottom:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;text-align:center;font-size:12px;font-weight:700;color:#8A8A8E;cursor:pointer">📋 Closed tables history →</button>` : ''}
         <div id="wt-menu-cat-grid" style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto"></div>
         <div id="wt-menu-list"></div>
         <button id="wt-menu-add" class="wt-tap-scale" style="width:100%;margin-top:12px;background:rgba(94,92,230,.1);border:1px dashed rgba(94,92,230,.4);border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:700;color:#B0AEFF;cursor:pointer">+ Add new item</button>
@@ -2834,6 +2879,8 @@ const WorkTracker = (() => {
     ov.querySelector('#wt-menu-back').onclick = () => ov.remove();
     const locConfigBtn = ov.querySelector('#wt-menu-loc-config');
     if (locConfigBtn) locConfigBtn.onclick = () => _showLocationMenuEditor(locationId);
+    const historyBtn = ov.querySelector('#wt-menu-history');
+    if (historyBtn) historyBtn.onclick = () => _showClosedOrdersHistory(locationId);
 
     function save() { WTDb.saveBarCatalog(catalog); }
 
