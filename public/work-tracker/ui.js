@@ -408,6 +408,7 @@ const WorkTracker = (() => {
       let totalMyCCCut = 0;
       let totalMyCash = 0;
 
+      const shiftPerHourIncludeCash = localStorage.getItem('wt_perhour_include_cash') === 'true';
       const shiftTipRows = shiftsWithTips.map(s => {
         const t = WTDb.getTipsForShift(s.id);
         const tWorkers = t.workers || [];
@@ -416,6 +417,11 @@ const WorkTracker = (() => {
         const myCash = myPayout ? (typeof myPayout.cashAmount === 'number' ? myPayout.cashAmount : (myPayout.amount - (myPayout.ccAmount || 0))) : 0;
         if (myPayout) totalMyCCCut += myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount;
         totalMyCash += myCash;
+
+        const shiftPay = WTRules.weeklyPay([s]);
+        const myCCCutForShift = myPayout ? (myPayout.ccAmount !== undefined ? myPayout.ccAmount : myPayout.amount) : 0;
+        const shiftPerHourBase = shiftPay.total + myCCCutForShift + (shiftPerHourIncludeCash ? myCash : 0);
+        const shiftPerHourVal = (myPayout && shiftPay.totalHours > 0) ? shiftPerHourBase / shiftPay.totalHours : null;
 
         return `
           <div style="border-top:1px solid rgba(255,149,0,.15);margin-top:8px;padding-top:8px">
@@ -429,6 +435,7 @@ const WorkTracker = (() => {
                 ${myCash > 0 ? `<div style="font-size:11px;color:var(--wt-text-tertiary)">+$${myCash} cash</div>` : ''}
               </div>` : `<div style="font-size:12px;color:var(--wt-text-tertiary)">no cut set</div>`}
             </div>
+            ${shiftPerHourVal !== null ? `<div style="margin-top:8px"><span data-shift-perhour="${s.id}" style="background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:2px 8px;color:#fff;font-weight:700;font-size:11px;cursor:pointer">${TipRules.fmtMoney(shiftPerHourVal)}/hr</span></div>` : ''}
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
               ${(() => {
                 const workerCount = result.payouts.length;
@@ -503,6 +510,14 @@ const WorkTracker = (() => {
           </div>
           ${shiftTipRows}
         </div>`;
+      tipBlock.querySelectorAll('[data-shift-perhour]').forEach(el => {
+        el.onclick = (e) => {
+          e.stopPropagation();
+          const current = localStorage.getItem('wt_perhour_include_cash') === 'true';
+          localStorage.setItem('wt_perhour_include_cash', String(!current));
+          _go('home');
+        };
+      });
       tipBlock.querySelectorAll('[data-tip-warn]').forEach(el => {
         el.onclick = () => _showTipPool(el.dataset.tipWarn);
       });
