@@ -231,7 +231,7 @@ const WorkTracker = (() => {
         </div>
         <div id="wt-hero-warn" style="display:none;background:rgba(255,149,0,.15);border-radius:10px;padding:8px 12px;margin:10px 0 0;font-size:12px;color:#FF9F0A;font-weight:600;text-align:center"></div>
         <div class="wt-hero-actions">
-          <button class="wt-clockout-hero" id="wt-hero-out"
+          <button class="wt-clockout-hero wt-tap-scale" id="wt-hero-out"
             ${onBreak ? 'disabled style="opacity:.4"' : ''}>
             Clock Out
           </button>
