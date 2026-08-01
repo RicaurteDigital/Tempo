@@ -418,6 +418,47 @@ const WorkTracker = (() => {
       return t && (t.creditCardTotal > 0 || t.cashTotal > 0);
     });
 
+    // Reusable: total "my cut" (CC + cash) for any single shift with tips, or 0 if none logged.
+    // Powers both the same-weekday average and the month's-best comparison below.
+    const _shiftMyCutTotal = (shift) => {
+      const t = WTDb.getTipsForShift(shift.id);
+      if (!t || (!(t.creditCardTotal > 0) && !(t.cashTotal > 0))) return 0;
+      const tWorkers = t.workers || [];
+      const result = _computeTipResult(t.creditCardTotal, t.cashTotal, tWorkers, _getLocationFeePercent(shift.locationId), t.manualFee, t.cashFlatAmounts, t.cashPointOverrides, t.cashManualAmounts);
+      const myPayout = result.payouts.find(p => p.isMe) || null;
+      if (!myPayout) return 0;
+      return myPayout.amount;
+    };
+
+    let sameWeekdayAvg = null;
+    let isMonthBest = false;
+    let monthBestPrevAmount = null;
+    if (shiftsWithTips.length > 0) {
+      const todayTotalCut = todayShifts.reduce((sum, s) => sum + _shiftMyCutTotal(s), 0);
+
+      // Same-weekday average — last 90 days, excluding today, same profile/location set.
+      const lookbackStart = new Date(selectedDate); lookbackStart.setDate(lookbackStart.getDate() - 90);
+      const lookbackStartStr = `${lookbackStart.getFullYear()}-${String(lookbackStart.getMonth()+1).padStart(2,'0')}-${String(lookbackStart.getDate()).padStart(2,'0')}`;
+      const pastShifts = WTDb.getShiftsInRange(lookbackStartStr, today)
+        .filter(s => s.date !== today && (s.workProfile || 'restaurant') === currentProfile && new Date(s.date + 'T12:00:00').getDay() === selectedDate.getDay());
+      const pastTotals = pastShifts.map(s => _shiftMyCutTotal(s)).filter(v => v > 0);
+      if (pastTotals.length >= 2) {
+        sameWeekdayAvg = pastTotals.reduce((a, b) => a + b, 0) / pastTotals.length;
+      }
+
+      // Best shift of the current calendar month — compares today's total against the max
+      // from every OTHER shift this month, so "today" can correctly become the new best.
+      const monthStartStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-01`;
+      const monthShifts = WTDb.getShiftsInRange(monthStartStr, today)
+        .filter(s => s.date !== today && (s.workProfile || 'restaurant') === currentProfile);
+      const monthTotals = monthShifts.map(s => _shiftMyCutTotal(s)).filter(v => v > 0);
+      const prevBest = monthTotals.length ? Math.max(...monthTotals) : 0;
+      if (monthTotals.length >= 3 && todayTotalCut > prevBest) {
+        isMonthBest = true;
+        monthBestPrevAmount = prevBest;
+      }
+    }
+
     if (shiftsWithTips.length > 0) {
       let totalMyCCCut = 0;
       let totalMyCash = 0;
@@ -509,19 +550,28 @@ const WorkTracker = (() => {
           </div>`;
       }).join('');
 
+      const cardAccent = isMonthBest
+        ? { border: 'rgba(212,175,55,.5)', bg: 'linear-gradient(135deg,rgba(255,201,74,.18),rgba(184,134,11,.1))', label: '#FFC94A', sub: '#9C8A5E', divider: 'rgba(212,175,55,.3)' }
+        : { border: 'rgba(255,149,0,.2)', bg: 'rgba(255,149,0,.08)', label: '#FF9F0A', sub: 'var(--wt-text-tertiary)', divider: 'rgba(255,149,0,.15)' };
+      const totalCutToday = totalMyCCCut + totalMyCash;
+      const vsAvgDiff = sameWeekdayAvg !== null ? totalCutToday - sameWeekdayAvg : null;
+
       tipBlock.innerHTML = `
-        <div style="background:rgba(255,149,0,.08);border:1px solid rgba(255,149,0,.2);border-radius:20px;padding:16px 18px">
+        <div style="background:${cardAccent.bg};border:1px solid ${cardAccent.border};border-radius:20px;padding:16px 18px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
             <div>
-              <div style="font-size:11px;font-weight:700;color:#FF9F0A;text-transform:uppercase;letter-spacing:.5px">${isToday ? "Today's Tips" : dayLabel + "'s Tips"}</div>
-              <div style="font-size:11px;color:var(--wt-text-tertiary);margin-top:2px">${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''} with tips</div>
+              <div style="font-size:11px;font-weight:700;color:${cardAccent.label};text-transform:uppercase;letter-spacing:.5px">${isToday ? "Today's Tips" : dayLabel + "'s Tips"}</div>
+              <div style="font-size:11px;color:${cardAccent.sub};margin-top:2px">${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''} with tips</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:11px;color:var(--wt-text-tertiary)">Your CC cut</div>
+              <div style="font-size:11px;color:${cardAccent.sub}">Your CC cut</div>
               <div style="font-size:24px;font-weight:800;color:#30D158">$${totalMyCCCut}</div>
-              ${totalMyCash > 0 ? `<div style="font-size:11px;color:var(--wt-text-tertiary)">+$${totalMyCash} cash</div>` : ''}
+              ${totalMyCash > 0 ? `<div style="font-size:11px;color:${cardAccent.sub}">+$${totalMyCash} cash</div>` : ''}
+              ${vsAvgDiff !== null ? `<div style="font-size:10px;color:${vsAvgDiff >= 0 ? '#30D158' : '#FF453A'};margin-top:2px">${vsAvgDiff >= 0 ? '↑' : '↓'} $${Math.abs(vsAvgDiff).toFixed(0)} vs your ${dayLabel.slice(0,3)} avg</div>` : ''}
             </div>
           </div>
+          ${isMonthBest ? `<div style="margin:8px 0 4px;font-size:11px;font-weight:800;color:${cardAccent.label}">↑ Best shift of the month</div>
+          <div style="font-size:10px;color:${cardAccent.sub};margin-bottom:10px">Previous best: $${monthBestPrevAmount.toFixed(0)}</div>` : ''}
           ${shiftTipRows}
         </div>`;
       tipBlock.querySelectorAll('[data-shift-perhour]').forEach(el => {
