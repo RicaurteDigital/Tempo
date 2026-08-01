@@ -433,6 +433,7 @@ const WorkTracker = (() => {
     let sameWeekdayAvg = null;
     let isMonthBest = false;
     let monthBestPrevAmount = null;
+    let monthBestPrevDate = null;
     if (shiftsWithTips.length > 0) {
       const todayTotalCut = todayShifts.reduce((sum, s) => sum + _shiftMyCutTotal(s), 0);
 
@@ -451,11 +452,16 @@ const WorkTracker = (() => {
       const monthStartStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-01`;
       const monthShifts = WTDb.getShiftsInRange(monthStartStr, today)
         .filter(s => s.date !== today && (s.workProfile || 'restaurant') === currentProfile);
-      const monthTotals = monthShifts.map(s => _shiftMyCutTotal(s)).filter(v => v > 0);
-      const prevBest = monthTotals.length ? Math.max(...monthTotals) : 0;
-      if (monthTotals.length >= 3 && todayTotalCut > prevBest) {
+      // Keeps {date, total} pairs (not just totals) so the previous-best day can be shown
+      // and tapped through to, not just its dollar amount.
+      const monthEntries = monthShifts.map(s => ({ date: s.date, total: _shiftMyCutTotal(s) })).filter(e => e.total > 0);
+      let prevBestEntry = null;
+      monthEntries.forEach(e => { if (!prevBestEntry || e.total > prevBestEntry.total) prevBestEntry = e; });
+      const prevBest = prevBestEntry ? prevBestEntry.total : 0;
+      if (monthEntries.length >= 3 && todayTotalCut > prevBest) {
         isMonthBest = true;
         monthBestPrevAmount = prevBest;
+        monthBestPrevDate = prevBestEntry.date;
       }
     }
 
@@ -571,9 +577,11 @@ const WorkTracker = (() => {
             </div>
           </div>
           ${isMonthBest ? `<div style="margin:8px 0 4px;font-size:11px;font-weight:800;color:${cardAccent.label}">↑ Best shift of the month</div>
-          <div style="font-size:10px;color:${cardAccent.sub};margin-bottom:10px">Previous best: $${monthBestPrevAmount.toFixed(0)}</div>` : ''}
+          <div data-goto-best-date="${monthBestPrevDate}" class="wt-tap-scale" style="font-size:10px;color:${cardAccent.sub};margin-bottom:10px;cursor:pointer;display:inline-block">Previous best: $${monthBestPrevAmount.toFixed(0)} · ${monthNames[new Date(monthBestPrevDate + 'T12:00:00').getMonth()]} ${new Date(monthBestPrevDate + 'T12:00:00').getDate()}</div>` : ''}
           ${shiftTipRows}
         </div>`;
+      const bestDateEl = tipBlock.querySelector('[data-goto-best-date]');
+      if (bestDateEl) bestDateEl.onclick = () => { _date = bestDateEl.dataset.gotoBestDate; _go('home'); };
       tipBlock.querySelectorAll('[data-shift-perhour]').forEach(el => {
         el.onclick = (e) => {
           e.stopPropagation();
