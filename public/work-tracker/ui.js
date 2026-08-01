@@ -267,6 +267,20 @@ const WorkTracker = (() => {
           const liveHrs = (completedSecs + paidBreakSecs + currentSecs) / 3600;
           const livePay = liveHrs * (run.shift.hourlyRate || NYC_MIN_WAGE);
           acc.textContent = 'Total shift: ' + WTRules.fmtHours(liveHrs) + ' · ' + WTRules.fmtMoney(livePay);
+
+          // Same live delta, applied to This Week's summary card — only the still-open entry's
+          // elapsed time, since any already-completed portion of this shift is already counted
+          // in the static pay/weekTotal figures computed at render time.
+          const weekTotalEl = document.getElementById('wt-week-total');
+          const weekHoursEl = document.getElementById('wt-week-hours');
+          const weekHourlyEl = document.getElementById('wt-week-hourly');
+          if (weekTotalEl && weekHoursEl && weekHourlyEl) {
+            const liveDeltaHrs = currentSecs / 3600;
+            const liveDeltaPay = liveDeltaHrs * (run.shift.hourlyRate || NYC_MIN_WAGE);
+            weekTotalEl.textContent = WTRules.fmtMoney(weekTotal + liveDeltaPay);
+            weekHoursEl.textContent = WTRules.fmtHours(pay.totalHours + liveDeltaHrs);
+            weekHourlyEl.textContent = WTRules.fmtMoney(pay.total + liveDeltaPay);
+          }
         }
       }, 1000);
     } else if (isToday) {
@@ -350,15 +364,15 @@ const WorkTracker = (() => {
     stats.innerHTML = `
       <div class="wt-stat-card" id="wt-pay-card" style="cursor:pointer;width:100%;box-sizing:border-box;${weekCardStyle}">
         <div class="wt-stat-label" style="${weekLabelStyle}">${weekCardTitle}</div>
-        <div style="font-size:26px;font-weight:800;color:var(--wt-text-primary);margin-top:2px">${WTRules.fmtMoney(weekTotal)}</div>
+        <div id="wt-week-total" style="font-size:26px;font-weight:800;color:var(--wt-text-primary);margin-top:2px">${WTRules.fmtMoney(weekTotal)}</div>
         <div style="font-size:12px;color:var(--wt-text-secondary);margin-top:3px;margin-bottom:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span>${WTRules.fmtHours(pay.totalHours)}</span><span style="color:var(--wt-text-tertiary)">· Gross</span>
+          <span id="wt-week-hours">${WTRules.fmtHours(pay.totalHours)}</span><span style="color:var(--wt-text-tertiary)">· Gross</span>
           ${perHourVal !== null ? `<span id="wt-perhour-chip" style="background:${perHourIncludeCash ? 'rgba(48,209,88,.15)' : 'rgba(255,159,10,.15)'};border:1px solid ${perHourIncludeCash ? 'rgba(48,209,88,.3)' : 'rgba(255,159,10,.3)'};border-radius:20px;padding:2px 8px;color:${perHourIncludeCash ? '#30D158' : '#FF9F0A'};font-weight:700;font-size:11px;cursor:pointer">${WTRules.fmtMoney(perHourVal)}/hr${perHourIncludeCash ? ' with cash' : ''}</span>` : ''}
         </div>
         ${pay.isOvertime ? `<div class="wt-ot-tag" style="margin-bottom:10px">Overtime +${WTRules.fmtHours(pay.overtimeHours)}</div>` : ''}
         <div style="display:flex;gap:8px">
           <div style="flex:1;background:var(--wt-pill-neutral-bg);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
-            <div style="font-size:14px;font-weight:800;color:var(--wt-pill-neutral-text)">${WTRules.fmtMoney(pay.total)}</div>
+            <div id="wt-week-hourly" style="font-size:14px;font-weight:800;color:var(--wt-pill-neutral-text)">${WTRules.fmtMoney(pay.total)}</div>
             <div style="font-size:10px;color:var(--wt-text-secondary);margin-top:2px;text-transform:uppercase;letter-spacing:.2px">Hourly</div>
           </div>
           <div style="flex:1;background:var(--wt-pill-orange-bg);border-radius:12px;padding:9px 8px;text-align:center;box-sizing:border-box">
