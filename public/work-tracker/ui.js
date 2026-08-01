@@ -142,7 +142,8 @@ const WorkTracker = (() => {
     return { cc, cash: typeof mp.cashAmount === 'number' ? mp.cashAmount : (mp.amount - cc) };
   }
 
-  function _Home() {    const realToday = _today();
+  function _Home() {
+    const realToday = _today();
     const today = _date || realToday;
     const isToday = today === realToday;
     const selectedDate = new Date(today + 'T12:00:00');
@@ -196,7 +197,7 @@ const WorkTracker = (() => {
             })() : ''}
           </div>
         </div>
-        <button class="wt-hdr-btn" id="wt-settings-btn">⚙</button>
+        <button class="wt-hdr-btn wt-tap-scale" id="wt-settings-btn">⚙</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;gap:12px">
         <button id="wt-nav-prev" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:var(--wt-text-primary);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
@@ -234,7 +235,7 @@ const WorkTracker = (() => {
             ${onBreak ? 'disabled style="opacity:.4"' : ''}>
             Clock Out
           </button>
-          <button class="${onBreak ? 'wt-breakend-btn' : 'wt-breakstart-btn'}" id="wt-hero-break">
+          <button class="${onBreak ? 'wt-breakend-btn' : 'wt-breakstart-btn'} wt-tap-scale" id="wt-hero-break">
             ${onBreak ? '▶ End Break' : '⏸ Start Break'}
           </button>
         </div>`;
@@ -632,7 +633,7 @@ const WorkTracker = (() => {
       secHdr.className = 'wt-sec-hdr';
       secHdr.innerHTML = `
         <span class="wt-sec-title">${isToday ? 'Today' : dayLabel} · ${_fmtDate(today)}</span>
-        <button class="wt-sec-action" id="wt-add-shift">+ Shift</button>`;
+        <button class="wt-sec-action wt-tap-scale" id="wt-add-shift">+ Shift</button>`;
       w.appendChild(secHdr);
 
       todayShifts.reverse();
@@ -649,14 +650,14 @@ const WorkTracker = (() => {
     const acts = document.createElement('div');
     acts.className = 'wt-actions';
     acts.innerHTML = `
-      <button class="wt-btn wt-btn-secondary" id="wt-week-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7 3.5V7L9.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>History</button>
-      <button class="wt-btn wt-btn-secondary" id="wt-stats-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><rect x="1.5" y="8" width="2.5" height="4.5" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="5.75" y="4.5" width="2.5" height="8" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="1.5" width="2.5" height="11" rx="0.5" stroke="currentColor" stroke-width="1.2"/></svg>Stats</button>
-      <button class="wt-btn wt-btn-primary" id="wt-export-btn">📊 Export</button>`;
+      <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-week-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7 3.5V7L9.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>History</button>
+      <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-stats-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><rect x="1.5" y="8" width="2.5" height="4.5" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="5.75" y="4.5" width="2.5" height="8" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="1.5" width="2.5" height="11" rx="0.5" stroke="currentColor" stroke-width="1.2"/></svg>Stats</button>
+      <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-export-btn">📊 Export</button>`;
     w.appendChild(acts);
 
     const fpRow = document.createElement('div');
     fpRow.style.cssText = 'margin-top:10px';
-    fpRow.innerHTML = `<button id="wt-floorplan-btn" style="width:100%;background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:14px;color:var(--wt-text-secondary);font-size:14px;font-weight:700;padding:12px;cursor:pointer">🪑 Floor Plan</button>`;
+    fpRow.innerHTML = `<button class="wt-tap-scale" id="wt-floorplan-btn" style="width:100%;background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:14px;color:var(--wt-text-secondary);font-size:14px;font-weight:700;padding:12px;cursor:pointer">🪑 Floor Plan</button>`;
     w.appendChild(fpRow);
 
     _root.appendChild(w);
@@ -744,8 +745,8 @@ const WorkTracker = (() => {
               Take a photo as proof you clocked out at ${_fmtTime(breakStartTime)}.
             </p>
             <div style="display:flex;gap:10px">
-              <button class="wt-btn wt-btn-primary" id="wt-take-photo-bs" style="flex:2">📷 Take Photo</button>
-              <button class="wt-btn wt-btn-secondary" id="wt-skip-photo-bs" style="flex:1">Skip (<span id="wt-skip-count-bs">5</span>)</button>
+              <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-take-photo-bs" style="flex:2">📷 Take Photo</button>
+              <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-skip-photo-bs" style="flex:1">Skip (<span id="wt-skip-count-bs">5</span>)</button>
             </div>
           </div>`;
         document.body.appendChild(photoOvBreak);
@@ -850,12 +851,12 @@ const WorkTracker = (() => {
               ${breakMins}m break ended at ${_fmtTime(breakEnd)}. Take a photo as proof you're back on the clock.
             </p>
             <div style="display:flex;gap:8px;margin-bottom:16px">
-              <button class="wt-btn" id="wt-break-paid" style="flex:1;border:1px solid ${paidBreak?'#30D158':'var(--wt-surface-secondary-border)'};background:${paidBreak?'rgba(48,209,88,.15)':'none'};color:${paidBreak?'#30D158':'var(--wt-text-secondary)'}">Paid</button>
-              <button class="wt-btn" id="wt-break-unpaid" style="flex:1;border:1px solid ${!paidBreak?'#FF453A':'var(--wt-surface-secondary-border)'};background:${!paidBreak?'rgba(255,69,58,.15)':'none'};color:${!paidBreak?'#FF453A':'var(--wt-text-secondary)'}">Unpaid</button>
+              <button class="wt-btn wt-tap-scale" id="wt-break-paid" style="flex:1;border:1px solid ${paidBreak?'#30D158':'var(--wt-surface-secondary-border)'};background:${paidBreak?'rgba(48,209,88,.15)':'none'};color:${paidBreak?'#30D158':'var(--wt-text-secondary)'}">Paid</button>
+              <button class="wt-btn wt-tap-scale" id="wt-break-unpaid" style="flex:1;border:1px solid ${!paidBreak?'#FF453A':'var(--wt-surface-secondary-border)'};background:${!paidBreak?'rgba(255,69,58,.15)':'none'};color:${!paidBreak?'#FF453A':'var(--wt-text-secondary)'}">Unpaid</button>
             </div>
             <div style="display:flex;gap:10px">
-              <button class="wt-btn wt-btn-primary" id="wt-take-photo-break" style="flex:2">📷 Take Photo</button>
-              <button class="wt-btn wt-btn-secondary" id="wt-skip-photo-break" style="flex:1">Skip (<span id="wt-skip-count-break">5</span>)</button>
+              <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-take-photo-break" style="flex:2">📷 Take Photo</button>
+              <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-skip-photo-break" style="flex:1">Skip (<span id="wt-skip-count-break">5</span>)</button>
             </div>
           </div>`;
         document.body.appendChild(photoOv);
@@ -1004,12 +1005,12 @@ const WorkTracker = (() => {
     const hasTips = tipsData && (tipsData.creditCardTotal > 0 || tipsData.cashTotal > 0);
     const cardProfile = WORK_PROFILES[WTDb.getSettings().workProfile || 'restaurant'] || WORK_PROFILES.restaurant;
     footer.innerHTML = `
-      <button class="wt-add-period" data-sid="${shift.id}">+ Add period</button>
+      <button class="wt-add-period wt-tap-scale" data-sid="${shift.id}">+ Add period</button>
       <button class="wt-tag-btn wt-tap-scale" data-sid="${shift.id}" style="background:none;border:none;color:${(shift.weatherTag||shift.paceTag||shift.contextNote)?'#5E5CE6':'var(--wt-text-tertiary)'};cursor:pointer;padding:0;display:flex;align-items:center"><svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5H6.5L12.5 7.5L7.5 12.5L1.5 6.5V1.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4" cy="4" r="1" fill="currentColor"/></svg></button>
-      ${cardProfile.hasTips ? `<button class="wt-tips-btn ${(!isRunning && !hasTips) ? 'wt-glow' : ''}" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'var(--wt-chip-bg)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'var(--wt-text-secondary)'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">` : ''}
+      ${cardProfile.hasTips ? `<button class="wt-tips-btn ${(!isRunning && !hasTips) ? 'wt-glow' : ''} wt-tap-scale" data-sid="${shift.id}" style="background:${hasTips?'rgba(255,149,0,.15)':'var(--wt-chip-bg)'};border:none;border-radius:12px;color:${hasTips?'#FF9F0A':'var(--wt-text-secondary)'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">` : ''}
         💰 ${hasTips ? TipRules.fmtMoney(tipsData.myPayout||0) + ' tips' : 'Tips'}
       ${cardProfile.hasTips ? `</button>` : ''}
-      <button class="wt-del-shift" data-sid="${shift.id}">Delete shift</button>`;
+      <button class="wt-del-shift wt-tap-scale" data-sid="${shift.id}">Delete shift</button>`;
     footer.querySelector('.wt-add-period').onclick = () => _addPeriod(shift.id);
     footer.querySelector('.wt-tag-btn').onclick = () => _showShiftContext(shift);
     if (cardProfile.hasTips) {
@@ -1053,13 +1054,13 @@ const WorkTracker = (() => {
       <div class="wt-time-group">
         <div class="wt-time-pill">
           <span class="wt-time-lbl">IN</span>
-          <button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockIn">${_fmtTime(e.clockIn)}</button>
+          <button class="wt-time-val wt-tap-scale" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockIn">${_fmtTime(e.clockIn)}</button>
         </div>
         <span class="wt-time-sep">→</span>
         <div class="wt-time-pill">
           <span class="wt-time-lbl">OUT</span>
           ${e.clockOut
-            ? `<button class="wt-time-val" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockOut">${_fmtTime(e.clockOut)}</button>`
+            ? `<button class="wt-time-val wt-tap-scale" data-sid="${shift.id}" data-eid="${e.id}" data-f="clockOut">${_fmtTime(e.clockOut)}</button>`
             : `<span class="wt-time-running">Running</span>`}
         </div>
         <span class="wt-entry-dur">${eHrs > 0 ? WTRules.fmtHours(eHrs) : '—'}</span>
@@ -1099,8 +1100,8 @@ const WorkTracker = (() => {
     const photoRow = document.createElement('div');
     photoRow.className = 'wt-photo-row';
     photoRow.innerHTML = `
-      <button class="wt-photo-btn" data-pid="${shift.id}_in_${e.id}">📷 In proof</button>
-      ${e.clockOut ? `<button class="wt-photo-btn" data-pid="${shift.id}_out_${e.id}">📷 Out proof</button>` : ''}`;
+      <button class="wt-photo-btn wt-tap-scale" data-pid="${shift.id}_in_${e.id}">📷 In proof</button>
+      ${e.clockOut ? `<button class="wt-photo-btn wt-tap-scale" data-pid="${shift.id}_out_${e.id}">📷 Out proof</button>` : ''}`;
     photoRow.querySelectorAll('.wt-photo-btn').forEach(b => {
       b.onclick = () => _doPhoto(shift.id, b.dataset.pid);
       WTDb.getPhoto(shift.id, b.dataset.pid).then(base64 => {
@@ -1184,7 +1185,7 @@ const WorkTracker = (() => {
 
     w.innerHTML = `
       <div class="wt-hdr">
-        <button class="wt-back" id="wt-back">‹ Back</button>
+        <button class="wt-back wt-tap-scale" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Pay History</div>
         <button id="wt-home-icon" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.4);color:#30D158;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>`;
@@ -1552,7 +1553,7 @@ const WorkTracker = (() => {
 
                 ${tipHtml}
                 <div style="display:flex;gap:8px;margin-top:10px">
-                  <button data-go-day="${ds}" style="flex:1;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px;cursor:pointer">
+                  <button class="wt-tap-scale" data-go-day="${ds}" style="flex:1;background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px;cursor:pointer">
                     View full day →
                   </button>
                 </div>`;
@@ -1615,9 +1616,9 @@ const WorkTracker = (() => {
     w.className = 'wt-screen';
     w.innerHTML = `
       <div class="wt-hdr">
-        <button class="wt-back" id="wt-back">‹ Back</button>
+        <button class="wt-back wt-tap-scale" id="wt-back">‹ Back</button>
         <div style="font-size:13px;color:var(--wt-text-secondary)">${weekLabel}</div>
-        <button class="wt-sec-action" id="wt-add-shift-day">+ Shift</button>
+        <button class="wt-sec-action wt-tap-scale" id="wt-add-shift-day">+ Shift</button>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;gap:12px">
         <button id="wt-day-prev" style="width:40px;height:40px;border-radius:50%;background:var(--wt-icon-btn-bg);border:1px solid var(--wt-icon-btn-border);color:${!prevDate ? 'var(--wt-text-tertiary)' : 'var(--wt-text-primary)'};font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;${!prevDate ? 'opacity:0.3;pointer-events:none' : ''}"
@@ -1721,13 +1722,13 @@ const WorkTracker = (() => {
     const previewLocs = WTDb.getLocations().filter(l => (l.workProfile || 'restaurant') === previewProfile);
     w.innerHTML = `
       <div class="wt-hdr">
-        <button class="wt-back" id="wt-back">‹ Back</button>
+        <button class="wt-back wt-tap-scale" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Preview & Export</div>
         <button id="wt-home-icon" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.4);color:#30D158;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>
       <div id="wt-pv-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:0 16px 4px;margin-bottom:8px">
         ${['Week','Month','Quarter','6M','Year','All Time'].map(p =>
-          `<button class="wt-pv-pill" data-gran="${p.toLowerCase().replace(' ', '').replace('6m','sixmonths')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--wt-input-border);background:none;color:var(--wt-text-secondary);font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+          `<button class="wt-pv-pill wt-tap-scale" data-gran="${p.toLowerCase().replace(' ', '').replace('6m','sixmonths')}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--wt-input-border);background:none;color:var(--wt-text-secondary);font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
       <button id="wt-pv-custom-btn" class="wt-tap-scale" style="display:block;width:calc(100% - 32px);margin:0 16px 10px;background:var(--wt-chip-bg);border:1px solid var(--wt-input-border);border-radius:12px;color:var(--wt-text-secondary);font-size:13px;font-weight:700;padding:11px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:5px"><rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 5.5H12.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 1.3V3.3M10 1.3V3.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Pick a custom date range</button>
@@ -1747,8 +1748,8 @@ const WorkTracker = (() => {
       </select>` : ''}
       <div class="wt-table-wrap" id="wt-tbl"></div>
       <div class="wt-actions">
-        <button class="wt-btn wt-btn-secondary" id="wt-backup">💾 Backup</button>
-        <button class="wt-btn wt-btn-cyan" id="wt-pdf">📄 PDF</button>
+        <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-backup">💾 Backup</button>
+        <button class="wt-btn wt-btn-cyan wt-tap-scale" id="wt-pdf">📄 PDF</button>
       </div>`;
     _root.appendChild(w);
     const tbl = w.querySelector('#wt-tbl');
@@ -1975,7 +1976,7 @@ const WorkTracker = (() => {
         <div class="wt-modal-handle"></div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div class="wt-modal-title" style="margin:0">How this is calculated</div>
-          <button id="wt-sustain-info-close" style="width:28px;height:28px;border-radius:50%;background:var(--wt-surface-secondary);border:none;color:var(--wt-text-secondary);font-size:14px;cursor:pointer">✕</button>
+          <button class="wt-tap-scale" id="wt-sustain-info-close" style="width:28px;height:28px;border-radius:50%;background:var(--wt-surface-secondary);border:none;color:var(--wt-text-secondary);font-size:14px;cursor:pointer">✕</button>
         </div>
         <div style="font-size:13px;color:var(--wt-text-primary);line-height:1.6">
           <p style="margin-bottom:12px">To estimate your hourly rate, Tempo looks at your recent work history — up to the last 90 days.</p>
@@ -1983,7 +1984,7 @@ const WorkTracker = (() => {
           <p style="margin-bottom:12px">As you log more shifts, the window grows day by day. Once you pass 90 days, it settles there and stops growing, so a real recent change in your pace (a raise, a new job, a slow season) doesn't get diluted by data from many months ago.</p>
           <p style="margin-bottom:0">You currently have <strong>${r.daysAvailable}</strong> day${r.daysAvailable !== 1 ? 's' : ''} of history, so this is based on the last <strong>${r.lookbackDays}</strong> day${r.lookbackDays !== 1 ? 's' : ''}.</p>
         </div>
-        <button class="wt-btn wt-btn-primary" id="wt-sustain-info-done" style="width:100%;margin-top:20px">Got it</button>
+        <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-sustain-info-done" style="width:100%;margin-top:20px">Got it</button>
       </div>`;
     document.body.appendChild(ov);
     const close = () => ov.remove();
@@ -2001,7 +2002,7 @@ const WorkTracker = (() => {
     let html = `
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
         <div style="font-size:11px;color:var(--wt-text-tertiary);line-height:1.4">Based on your last ${r.lookbackDays} day${r.lookbackDays !== 1 ? 's' : ''} of work${taxLabel}.</div>
-        <button data-sustain-info style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);color:var(--wt-text-secondary);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">ⓘ</button>
+        <button class="wt-tap-scale" data-sustain-info style="flex-shrink:0;width:18px;height:18px;border-radius:50%;background:var(--wt-surface-secondary);border:1px solid var(--wt-surface-secondary-border);color:var(--wt-text-secondary);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">ⓘ</button>
       </div>`;
 
     if (r.monthlyExpenses > 0 && r.cycleData) {
@@ -2069,13 +2070,13 @@ const WorkTracker = (() => {
     const curYear = new Date().getFullYear();
     w.innerHTML = `
       <div class="wt-hdr">
-        <button class="wt-back" id="wt-back">‹ Back</button>
+        <button class="wt-back wt-tap-scale" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Stats</div>
         <button id="wt-home-icon" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.4);color:#30D158;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>
       <div id="wt-stats-pills" class="wt-scroll-hide" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0 12px;margin-bottom:0;position:sticky;top:0;z-index:10;background:var(--wt-bg-page)">
         ${['7D','30D','3M','6M','1Y','By Year','Custom'].map(p =>
-          `<button class="wt-stats-pill" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--wt-surface-secondary-border);background:none;color:var(--wt-text-secondary);font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
+          `<button class="wt-stats-pill wt-tap-scale" data-pill="${p}" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:1px solid var(--wt-surface-secondary-border);background:none;color:var(--wt-text-secondary);font-size:13px;font-weight:700;cursor:pointer">${p}</button>`
         ).join('')}
       </div>
       <div style="margin-bottom:12px"></div>
@@ -2092,13 +2093,13 @@ const WorkTracker = (() => {
       <div id="wt-stats-custom-picker" style="display:none;margin-bottom:12px;display:flex;gap:8px">
         <input type="date" class="wt-input" id="wt-stats-start" style="flex:1">
         <input type="date" class="wt-input" id="wt-stats-end" style="flex:1">
-        <button class="wt-btn wt-btn-primary" id="wt-stats-apply" style="flex-shrink:0">Go</button>
+        <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-stats-apply" style="flex-shrink:0">Go</button>
       </div>
       <div id="wt-stats-range-label" style="font-size:12px;color:#636366;margin-bottom:4px"></div>
       <div id="wt-stats-week-nav" style="display:none;align-items:center;justify-content:center;gap:16px;margin-bottom:12px">
-        <button id="wt-stats-week-prev" style="background:none;border:none;color:#5E5CE6;font-size:20px;cursor:pointer;padding:4px 14px">‹</button>
+        <button class="wt-tap-scale" id="wt-stats-week-prev" style="background:none;border:none;color:#5E5CE6;font-size:20px;cursor:pointer;padding:4px 14px">‹</button>
         <span id="wt-stats-week-label" style="font-size:13px;font-weight:700;color:#fff;min-width:120px;text-align:center"></span>
-        <button id="wt-stats-week-next" style="background:none;border:none;color:${'var(--wt-text-tertiary)'};font-size:20px;cursor:pointer;padding:4px 14px;opacity:0.3;pointer-events:none">›</button>
+        <button class="wt-tap-scale" id="wt-stats-week-next" style="background:none;border:none;color:${'var(--wt-text-tertiary)'};font-size:20px;cursor:pointer;padding:4px 14px;opacity:0.3;pointer-events:none">›</button>
       </div>
       <div id="wt-stats-results"></div>`;
     _root.appendChild(w);
@@ -2733,7 +2734,7 @@ const WorkTracker = (() => {
         </div>
         <input id="wt-guest-custom" type="number" min="1" placeholder="Custom number..." class="wt-input" style="margin-top:8px;text-align:center" onclick="this.select()" onfocus="this.select()">
         <div id="wt-table-hist-link" class="wt-tap-scale" style="margin-top:10px;font-size:11px;color:#8A8A8E;cursor:pointer">📋 History for ${el.label}</div>
-        <button id="wt-guest-confirm" class="wt-btn wt-btn-primary" style="width:100%;margin-top:16px;opacity:.5" disabled>Open Table</button>
+        <button id="wt-guest-confirm" class="wt-btn wt-btn-primary wt-tap-scale" style="width:100%;margin-top:16px;opacity:.5" disabled>Open Table</button>
       </div>`;
     document.body.appendChild(ov);
     ov.querySelector('#wt-table-hist-link').onclick = () => _showClosedOrdersHistory(locationId, el.id, el.label);
@@ -3059,7 +3060,7 @@ const WorkTracker = (() => {
           <input id="wt-new-item-name" class="wt-input" type="text" placeholder="e.g. Old Fashioned" style="margin-bottom:12px">
           <label class="wt-modal-label">Price ($)</label>
           <input id="wt-new-item-price" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 18" onclick="this.select()" onfocus="this.select()" style="margin-bottom:14px">
-          <button id="wt-new-item-save" class="wt-btn wt-btn-primary" style="width:100%">Add</button>
+          <button id="wt-new-item-save" class="wt-btn wt-btn-primary wt-tap-scale" style="width:100%">Add</button>
         </div>`;
       document.body.appendChild(addOv);
       addOv.addEventListener('click', e => { if (e.target === addOv) addOv.remove(); });
@@ -3387,8 +3388,8 @@ const WorkTracker = (() => {
           <label class="wt-modal-label" style="margin-top:14px">Restaurant's real check number (optional)</label>
           <input id="wt-real-check-num" class="wt-input" type="text" value="${order.realCheckNumber || ''}" placeholder="e.g. 4471" style="margin-bottom:14px">
           <div style="display:flex;gap:8px">
-            <button id="wt-receipt-cancel" class="wt-btn" style="flex:1;background:var(--wt-surface-secondary);color:var(--wt-text-primary);border:1px solid var(--wt-surface-secondary-border)">Cancel</button>
-            <button id="wt-receipt-confirm" class="wt-btn wt-btn-primary" style="flex:1">Close Table</button>
+            <button id="wt-receipt-cancel" class="wt-btn wt-tap-scale" style="flex:1;background:var(--wt-surface-secondary);color:var(--wt-text-primary);border:1px solid var(--wt-surface-secondary-border)">Cancel</button>
+            <button id="wt-receipt-confirm" class="wt-btn wt-btn-primary wt-tap-scale" style="flex:1">Close Table</button>
           </div>
         </div>`;
       document.body.appendChild(receiptOv);
@@ -3472,7 +3473,7 @@ const WorkTracker = (() => {
       <div style="position:fixed;inset:0;background:#141416;z-index:1;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-x pan-y">
         <div id="wt-fp-canvas" style="position:absolute;inset:0;touch-action:none"></div>
 
-        <button class="wt-back" id="wt-back" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:14px;width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">‹</button>
+        <button class="wt-back wt-tap-scale" id="wt-back" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:14px;width:36px;height:36px;border-radius:50%;background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);color:#98989D;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">‹</button>
 
         ${allLocs.length > 1 ? `
         <select id="wt-fp-loc" style="position:absolute;top:calc(env(safe-area-inset-top) + 14px);left:58px;max-width:calc(100% - 130px);background:rgba(28,28,30,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:12px;font-weight:700;padding:8px 10px;z-index:2">
@@ -3488,7 +3489,7 @@ const WorkTracker = (() => {
             ${Object.keys(seasonsData.seasons).map(sid => `<option value="${sid}" ${sid === activeSeasonId ? 'selected' : ''}>${seasonsData.seasons[sid].name}</option>`).join('')}
             <option value="__new__">+ New Season</option>
           </select>
-          <button id="wt-fp-season-rename" style="display:${editMode ? 'inline-flex' : 'none'};align-items:center;justify-content:center;background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;padding:7px 9px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+          <button class="wt-tap-scale" id="wt-fp-season-rename" style="display:${editMode ? 'inline-flex' : 'none'};align-items:center;justify-content:center;background:rgba(28,28,30,0.85);border:1px solid #38383A;border-radius:10px;color:#98989D;padding:7px 9px;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
           ${Object.keys(seasonsData.seasons).length > 1 ? `<button id="wt-fp-season-delete" style="display:${editMode ? 'inline-block' : 'none'};background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:7px 9px;border-radius:8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>` : ''}
         </div>
 
@@ -4232,13 +4233,13 @@ const WorkTracker = (() => {
           <div class="wt-modal-title">Add seats to this bar?</div>
           <div style="font-size:13px;color:#636366;margin-bottom:14px">Choose up to 2 sides — most bars only have seating on one or two.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
-            <button data-side="top" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Top</button>
-            <button data-side="bottom" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Bottom</button>
-            <button data-side="left" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Left</button>
-            <button data-side="right" class="wt-fp-side-btn" style="${sideBtnStyle}" ${pressAttrs}>Right</button>
+            <button data-side="top" class="wt-fp-side-btn wt-tap-scale" style="${sideBtnStyle}" ${pressAttrs}>Top</button>
+            <button data-side="bottom" class="wt-fp-side-btn wt-tap-scale" style="${sideBtnStyle}" ${pressAttrs}>Bottom</button>
+            <button data-side="left" class="wt-fp-side-btn wt-tap-scale" style="${sideBtnStyle}" ${pressAttrs}>Left</button>
+            <button data-side="right" class="wt-fp-side-btn wt-tap-scale" style="${sideBtnStyle}" ${pressAttrs}>Right</button>
           </div>
-          <button class="wt-btn wt-btn-primary" id="wt-fp-seats-continue">Continue</button>
-          <button class="wt-btn wt-btn-secondary" id="wt-fp-seats-skip" style="margin-top:8px">No seats for now</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-fp-seats-continue">Continue</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-fp-seats-skip" style="margin-top:8px">No seats for now</button>
         </div>`;
       document.body.appendChild(ov);
       const selected = new Set();
@@ -4385,8 +4386,8 @@ const WorkTracker = (() => {
           <label class="wt-modal-label">Type DELETE to confirm</label>
           <input id="wt-fp-clear-confirm-input" class="wt-input" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="DELETE" style="margin-bottom:14px">
           <div class="wt-modal-actions">
-            <button class="wt-btn wt-btn-secondary" id="wt-fp-clear-cancel">Cancel</button>
-            <button class="wt-btn" id="wt-fp-clear-confirm" disabled style="background:#3A3A3C;color:#8E8E93">Delete All</button>
+            <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-fp-clear-cancel">Cancel</button>
+            <button class="wt-btn wt-tap-scale" id="wt-fp-clear-confirm" disabled style="background:#3A3A3C;color:#8E8E93">Delete All</button>
           </div>
         </div>`;
       document.body.appendChild(ov);
@@ -4458,7 +4459,7 @@ const WorkTracker = (() => {
               <span style="flex:1;text-align:center;color:#fff;font-weight:700;font-size:15px">${sizeW.toFixed(1)}%</span>
               <button id="wt-bulk-size-plus" style="width:48px;height:48px;background:none;border:none;color:#98989D;font-size:20px;cursor:pointer;transition:transform .1s" onpointerdown="this.style.transform='scale(.9)'" onpointerup="this.style.transform='scale(1)'" onpointerleave="this.style.transform='scale(1)'">+</button>
             </div>
-            <button class="wt-btn wt-btn-primary" id="wt-bulk-create" style="width:100%">Create ${count}</button>
+            <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-bulk-create" style="width:100%">Create ${count}</button>
           </div>`;
         ov.querySelector('#wt-bulk-size-minus').onclick = () => { sizeW = Math.max(3, sizeW - 1); sizeH = Math.max(3, sizeH - (tpl.h / tpl.w)); paint(); };
         ov.querySelector('#wt-bulk-size-plus').onclick = () => { sizeW = sizeW + 1; sizeH = sizeH + (tpl.h / tpl.w); paint(); };
@@ -4576,7 +4577,7 @@ const WorkTracker = (() => {
     w.className = 'wt-screen';
     w.innerHTML = `
       <div class="wt-hdr">
-        <button class="wt-back" id="wt-back">‹ Back</button>
+        <button class="wt-back wt-tap-scale" id="wt-back">‹ Back</button>
         <div style="font-size:18px;font-weight:800">Settings</div>
         <button id="wt-home-icon" class="wt-tap-scale" style="width:40px;height:40px;border-radius:50%;background:rgba(48,209,88,.15);border:1px solid rgba(48,209,88,.4);color:#30D158;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer">⌂</button>
       </div>
@@ -4588,8 +4589,8 @@ const WorkTracker = (() => {
         <div class="wt-setting-row">
           <label>Appearance</label>
           <div style="display:flex;gap:6px">
-            <button id="wt-theme-dark" style="background:${!settings.lightMode ? 'rgba(94,92,230,.15)' : '#1C1C1E'};border:1px solid ${!settings.lightMode ? '#5E5CE6' : '#38383A'};border-radius:10px;color:${!settings.lightMode ? '#5E5CE6' : '#98989D'};font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">Dark</button>
-            <button id="wt-theme-light" style="background:${settings.lightMode ? 'rgba(94,92,230,.15)' : '#1C1C1E'};border:1px solid ${settings.lightMode ? '#5E5CE6' : '#38383A'};border-radius:10px;color:${settings.lightMode ? '#5E5CE6' : '#98989D'};font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">Light</button>
+            <button class="wt-tap-scale" id="wt-theme-dark" style="background:${!settings.lightMode ? 'rgba(94,92,230,.15)' : '#1C1C1E'};border:1px solid ${!settings.lightMode ? '#5E5CE6' : '#38383A'};border-radius:10px;color:${!settings.lightMode ? '#5E5CE6' : '#98989D'};font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">Dark</button>
+            <button class="wt-tap-scale" id="wt-theme-light" style="background:${settings.lightMode ? 'rgba(94,92,230,.15)' : '#1C1C1E'};border:1px solid ${settings.lightMode ? '#5E5CE6' : '#38383A'};border-radius:10px;color:${settings.lightMode ? '#5E5CE6' : '#98989D'};font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">Light</button>
           </div>
         </div>
       </div>
@@ -4635,7 +4636,7 @@ const WorkTracker = (() => {
             ).join('')}
           </select>
         </div>
-        <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-save-profile-top">Save Profile & Pay Period</button>
+        <button class="wt-btn wt-btn-primary wt-tap-scale" style="margin-top:12px;width:100%" id="wt-save-profile-top">Save Profile & Pay Period</button>
         </div>
       </div>
       <div class="wt-settings-block">
@@ -4710,17 +4711,17 @@ const WorkTracker = (() => {
               <span style="color:#98989D;font-size:13px">×</span>
             </div>
           </div>
-          <button class="wt-text-btn" id="wt-add-ot2" style="margin-top:8px">+ Add Level 2 (double time)</button>
+          <button class="wt-text-btn wt-tap-scale" id="wt-add-ot2" style="margin-top:8px">+ Add Level 2 (double time)</button>
           <p class="wt-note" style="margin-top:8px">No OT? Leave Level 1 empty and set multiplier to 1.0</p>
         </div>
 
-        <button class="wt-btn wt-btn-primary" style="margin-top:12px;width:100%" id="wt-add-loc">Add Location</button>
+        <button class="wt-btn wt-btn-primary wt-tap-scale" style="margin-top:12px;width:100%" id="wt-add-loc">Add Location</button>
         </div>
       </div>
 
       <div class="wt-settings-block" id="wt-data-backup-legacy-block" style="display:none">
         <div class="wt-settings-title">Data & Backup</div>
-        <button class="wt-btn wt-btn-secondary" id="wt-import-btn" style="margin-bottom:10px">📥 Import Backup JSON</button>
+        <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-import-btn" style="margin-bottom:10px">📥 Import Backup JSON</button>
         <input type="file" id="wt-import-file" accept=".json" style="display:none">
         <p class="wt-note">Photos auto-download to Camera Roll when captured. Export JSON regularly.</p>
       </div>`;
@@ -4799,8 +4800,8 @@ const WorkTracker = (() => {
             <button data-pos-del="${i}" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>
           </div>`).join('')}
       </div>
-      <button class="wt-btn wt-btn-secondary" style="margin-top:10px;width:100%" id="wt-tip-add-pos">+ Add Position</button>
-      <button class="wt-btn wt-btn-primary" style="margin-top:10px;width:100%" id="wt-tip-save">Save Tip Settings</button>
+      <button class="wt-btn wt-btn-secondary wt-tap-scale" style="margin-top:10px;width:100%" id="wt-tip-add-pos">+ Add Position</button>
+      <button class="wt-btn wt-btn-primary wt-tap-scale" style="margin-top:10px;width:100%" id="wt-tip-save">Save Tip Settings</button>
       </div>`;
     w.appendChild(tipBlock);
 
@@ -4887,8 +4888,8 @@ const WorkTracker = (() => {
       </div>` : ''}
 
       <div style="display:flex;gap:8px;margin:12px 0 16px">
-        <button id="wt-tax-mode-detailed" class="wt-btn" style="flex:1;border:1px solid ${taxSettings.mode==='simple'?'#38383A':'#5E5CE6'};background:${taxSettings.mode==='simple'?'none':'rgba(94,92,230,.15)'};color:${taxSettings.mode==='simple'?'#98989D':'#5E5CE6'}">Detailed</button>
-        <button id="wt-tax-mode-simple" class="wt-btn" style="flex:1;border:1px solid ${taxSettings.mode==='simple'?'#5E5CE6':'#38383A'};background:${taxSettings.mode==='simple'?'rgba(94,92,230,.15)':'none'};color:${taxSettings.mode==='simple'?'#5E5CE6':'#98989D'}">Simple %</button>
+        <button id="wt-tax-mode-detailed" class="wt-btn wt-tap-scale" style="flex:1;border:1px solid ${taxSettings.mode==='simple'?'#38383A':'#5E5CE6'};background:${taxSettings.mode==='simple'?'none':'rgba(94,92,230,.15)'};color:${taxSettings.mode==='simple'?'#98989D':'#5E5CE6'}">Detailed</button>
+        <button id="wt-tax-mode-simple" class="wt-btn wt-tap-scale" style="flex:1;border:1px solid ${taxSettings.mode==='simple'?'#5E5CE6':'#38383A'};background:${taxSettings.mode==='simple'?'rgba(94,92,230,.15)':'none'};color:${taxSettings.mode==='simple'?'#5E5CE6':'#98989D'}">Simple %</button>
       </div>
 
       <div id="wt-tax-simple" style="${taxSettings.mode==='simple'?'':'display:none'}">
@@ -4896,9 +4897,9 @@ const WorkTracker = (() => {
         <div class="wt-setting-row">
           <label>Estimated tax %</label>
           <div style="display:flex;align-items:center;background:#2C2C2E;border:1px solid #38383A;border-radius:10px;overflow:hidden">
-            <button id="wt-tax-simple-minus" style="background:none;border:none;color:#5E5CE6;padding:8px 12px;font-size:18px;cursor:pointer">−</button>
+            <button class="wt-tap-scale" id="wt-tax-simple-minus" style="background:none;border:none;color:#5E5CE6;padding:8px 12px;font-size:18px;cursor:pointer">−</button>
             <input type="text" inputmode="decimal" id="wt-tax-simple-pct" value="${taxSettings.simplePercent||25}" style="width:40px;background:none;border:none;color:#fff;font-weight:700;text-align:center;font-size:16px;outline:none" onclick="this.select()" onfocus="this.select()">
-            <button id="wt-tax-simple-plus" style="background:none;border:none;color:#5E5CE6;padding:8px 12px;font-size:18px;cursor:pointer">+</button>
+            <button class="wt-tap-scale" id="wt-tax-simple-plus" style="background:none;border:none;color:#5E5CE6;padding:8px 12px;font-size:18px;cursor:pointer">+</button>
           </div>
         </div>
       </div>
@@ -4932,7 +4933,7 @@ const WorkTracker = (() => {
         <input type="checkbox" id="wt-tax-show" style="width:18px;height:18px;accent-color:#5E5CE6" ${taxSettings.showEstimate?'checked':''}>
       </div>
       <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Estimate only — not tax advice. All rates are editable. Does not account for filing status, dependents, or multi-state situations. Update rates each year as laws change.</div>
-      <button class="wt-btn wt-btn-primary" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>
+      <button class="wt-btn wt-btn-primary wt-tap-scale" style="margin-top:14px;width:100%" id="wt-tax-save">Save Tax Settings</button>
       </div>`;
     w.appendChild(taxBlock);
 
@@ -4946,10 +4947,10 @@ const WorkTracker = (() => {
       <div class="wt-settings-body" data-standalone-body="backup" style="display:none;margin-top:14px">
       <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Export all your shifts, tips, locations, and payment records to a file. Use it to move your data to a new device or a newly installed app, or just to keep a safe copy.</div>
       <div id="wt-last-backup" style="font-size:12px;font-weight:700;margin-bottom:12px"></div>
-      <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:10px" id="wt-backup-export">⬇️ Export All Data</button>
-      <button class="wt-btn wt-btn-secondary" style="width:100%;margin-bottom:10px" id="wt-backup-import">⬆️ Import from Backup</button>
+      <button class="wt-btn wt-btn-primary wt-tap-scale" style="width:100%;margin-bottom:10px" id="wt-backup-export">⬇️ Export All Data</button>
+      <button class="wt-btn wt-btn-secondary wt-tap-scale" style="width:100%;margin-bottom:10px" id="wt-backup-import">⬆️ Import from Backup</button>
       <input type="file" id="wt-backup-file" accept="application/json" style="display:none">
-      <button class="wt-btn wt-btn-secondary" style="width:100%" id="wt-clean-orphans">🧹 Clean Up Old Data</button>
+      <button class="wt-btn wt-btn-secondary wt-tap-scale" style="width:100%" id="wt-clean-orphans">🧹 Clean Up Old Data</button>
       <div style="font-size:11px;color:#636366;margin-top:8px;line-height:1.5">Photos aren't included — they're already saved to your phone's photo gallery separately.<br>"Clean Up" removes tip records left behind by deleted shifts. It never touches a shift that still exists.</div>
       </div>
     `;
@@ -4974,7 +4975,7 @@ const WorkTracker = (() => {
         <span style="font-size:12px;color:var(--wt-text-primary)">${budget.includeCashInBreakEven ? '🔓' : '🔒'} Count cash tips toward this goal</span>
         <span style="font-size:11px;color:var(--wt-text-tertiary)">${budget.includeCashInBreakEven ? 'Yes' : 'No'}</span>
       </div>
-      <button class="wt-btn wt-btn-primary" style="width:100%;margin-bottom:14px" id="wt-sustain-save">Calculate</button>
+      <button class="wt-btn wt-btn-primary wt-tap-scale" style="width:100%;margin-bottom:14px" id="wt-sustain-save">Calculate</button>
       <div id="wt-sustain-results"></div>
       <div id="wt-sustain-view-stats" class="wt-tap-fade" style="text-align:center;font-size:12px;color:#5E5CE6;font-weight:700;margin-top:12px;cursor:pointer">View full analysis in Stats →</div>
       </div>
@@ -5027,7 +5028,7 @@ const WorkTracker = (() => {
       </div>
       <div class="wt-settings-body" data-standalone-body="danger" style="display:none;margin-top:14px">
       <div style="font-size:12px;color:#636366;margin-bottom:12px;line-height:1.5">Permanently erases every shift, tip, location, payment record, and photo in the Work Tracker on this device. Study Tracker and Tempo are not affected.</div>
-      <button class="wt-btn" style="width:100%;background:none;border:1px solid #FF453A;color:#FF453A" id="wt-danger-delete">🗑️ Delete All Work Tracker Data</button>
+      <button class="wt-btn wt-tap-scale" style="width:100%;background:none;border:1px solid #FF453A;color:#FF453A" id="wt-danger-delete">🗑️ Delete All Work Tracker Data</button>
       </div>
     `;
     w.appendChild(dangerBlock);
@@ -5055,12 +5056,12 @@ const WorkTracker = (() => {
             </ul>
           </div>
           <div style="color:#FF453A;font-size:13px;margin-bottom:14px;font-weight:600">This cannot be undone. There is no way to recover this data afterward.</div>
-          <button class="wt-btn wt-btn-secondary" style="width:100%;margin-bottom:14px" id="wt-danger-backup-first">⬇️ Back Up First</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" style="width:100%;margin-bottom:14px" id="wt-danger-backup-first">⬇️ Back Up First</button>
           <label class="wt-modal-label">Type DELETE to confirm</label>
           <input id="wt-danger-confirm-input" class="wt-input" type="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="DELETE" style="margin-bottom:14px">
           <div class="wt-modal-actions">
-            <button class="wt-btn wt-btn-secondary" id="wt-danger-cancel">Cancel</button>
-            <button class="wt-btn" id="wt-danger-confirm" disabled style="background:#3A3A3C;color:#8E8E93">Delete Everything</button>
+            <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-danger-cancel">Cancel</button>
+            <button class="wt-btn wt-tap-scale" id="wt-danger-confirm" disabled style="background:#3A3A3C;color:#8E8E93">Delete Everything</button>
           </div>
         </div>`;
       document.body.appendChild(ov);
@@ -5160,8 +5161,8 @@ const WorkTracker = (() => {
             ${versionMismatch ? `<div style="background:rgba(255,149,0,.15);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#FF9F0A">⚠️ This backup is from a different app version (v${parsed.version} vs current v${WT_VERSION}). It should still work, but double-check your data after restoring.</div>` : ''}
             <div style="color:#FF453A;font-size:13px;margin-bottom:18px;font-weight:600">This replaces everything currently on this device. Cannot be undone.</div>
             <div class="wt-modal-actions">
-              <button class="wt-btn wt-btn-secondary" id="wt-restore-cancel">Cancel</button>
-              <button class="wt-btn wt-btn-primary" id="wt-restore-confirm" style="background:#FF453A">Replace Everything</button>
+              <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-restore-cancel">Cancel</button>
+              <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-restore-confirm" style="background:#FF453A">Replace Everything</button>
             </div>
           </div>`;
         document.body.appendChild(ov);
@@ -5475,10 +5476,10 @@ const WorkTracker = (() => {
           <div style="font-size:12px;color:#636366;margin-top:4px">No payment recorded yet for this week</div>
         </div>`}
         <div style="display:flex;flex-direction:column;gap:10px">
-          <button id="wt-pd-record" class="wt-btn wt-btn-primary">💰 ${payment ? 'Update Payment' : 'Record Payment'}</button>
-          <button id="wt-pd-editloc" class="wt-btn wt-btn-secondary">Edit Pay Day</button>
-          ${payment ? `<button id="wt-pd-delete" class="wt-btn" style="background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.2);color:#FF453A">Delete Record</button>` : ''}
-          <button id="wt-pd-close" class="wt-btn wt-btn-secondary">Cancel</button>
+          <button id="wt-pd-record" class="wt-btn wt-btn-primary wt-tap-scale">💰 ${payment ? 'Update Payment' : 'Record Payment'}</button>
+          <button id="wt-pd-editloc" class="wt-btn wt-btn-secondary wt-tap-scale">Edit Pay Day</button>
+          ${payment ? `<button id="wt-pd-delete" class="wt-btn wt-tap-scale" style="background:rgba(255,69,58,.1);border:1px solid rgba(255,69,58,.2);color:#FF453A">Delete Record</button>` : ''}
+          <button id="wt-pd-close" class="wt-btn wt-btn-secondary wt-tap-scale">Cancel</button>
         </div>
       </div>`;
 
@@ -5557,14 +5558,14 @@ const WorkTracker = (() => {
           <div style="font-size:12px;color:#98989D;margin-bottom:8px">📎 Photos (optional — check stubs, signed hours, etc.)</div>
           <div id="wt-rp-photos" style="display:flex;flex-wrap:wrap;gap:8px">
             ${Array.from({length: existingCount}, (_,i) => `
-              <button class="wt-photo-btn has-photo" data-rp-photo="${i+1}">✓ Photo ${i+1}</button>
+              <button class="wt-photo-btn has-photo wt-tap-scale" data-rp-photo="${i+1}">✓ Photo ${i+1}</button>
             `).join('')}
-            <button id="wt-rp-add-photo" class="wt-photo-btn">📋 Add photo</button>
+            <button id="wt-rp-add-photo" class="wt-photo-btn wt-tap-scale">📋 Add photo</button>
           </div>
         </div>
         <div class="wt-modal-actions">
-          <button class="wt-btn wt-btn-secondary" id="wt-rp-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-rp-save">Save</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-rp-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-rp-save">Save</button>
         </div>
       </div>`;
 
@@ -5695,8 +5696,8 @@ const WorkTracker = (() => {
           ).join('')}
         </select>
         <div class="wt-modal-actions">
-          <button class="wt-btn wt-btn-secondary" id="wt-ql-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-ql-save">Add Location</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-ql-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-ql-save">Add Location</button>
         </div>
       </div>`;
 
@@ -5773,7 +5774,7 @@ const WorkTracker = (() => {
             ${locs.map(l => `<option value="${l.id}" data-rate="${l.hourlyRate}" ${preSelectLocId === l.id ? 'selected' : ''}>${l.name} — $${l.hourlyRate}/hr</option>`).join('')}
           </select>
         </div>
-        <button id="wt-ml-add" type="button" style="display:block;width:100%;background:none;border:none;color:#5E5CE6;font-size:13px;font-weight:600;padding:8px 0 4px;cursor:pointer;text-align:left">+ Add new location</button>
+        <button class="wt-tap-scale" id="wt-ml-add" type="button" style="display:block;width:100%;background:none;border:none;color:#5E5CE6;font-size:13px;font-weight:600;padding:8px 0 4px;cursor:pointer;text-align:left">+ Add new location</button>
         <label class="wt-modal-label">Shift Type <span style="font-size:10px;color:#5E5CE6;font-weight:700;letter-spacing:.5px">AUTO-DETECTED</span></label>
         <div style="width:100%;box-sizing:border-box">
           <select class="wt-input" id="wt-ms" style="width:100%;box-sizing:border-box;display:block">
@@ -5792,8 +5793,8 @@ const WorkTracker = (() => {
           <button id="wt-rate-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;flex-shrink:0;line-height:1;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
         </div>
         <div class="wt-modal-actions">
-          <button class="wt-btn wt-btn-secondary" id="wt-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-clockin-now">⏱ Clock In Now</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-clockin-now">⏱ Clock In Now</button>
         </div>
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
@@ -5865,8 +5866,8 @@ const WorkTracker = (() => {
           <div class="wt-modal-title">📷 Clock In proof</div>
           <p style="color:#98989D;font-size:14px;margin-bottom:18px">Take a photo as proof of your clock in at ${_fmtTime(clockInTime)}.</p>
           <div style="display:flex;gap:10px">
-            <button class="wt-btn wt-btn-primary" id="wt-take-photo" style="flex:2">📷 Take Photo</button>
-            <button class="wt-btn wt-btn-secondary" id="wt-skip-photo" style="flex:1">Skip (<span id="wt-skip-count">5</span>)</button>
+            <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-take-photo" style="flex:2">📷 Take Photo</button>
+            <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-skip-photo" style="flex:1">Skip (<span id="wt-skip-count">5</span>)</button>
           </div>
         </div>`;
       document.body.appendChild(photoOv);
@@ -5923,8 +5924,8 @@ const WorkTracker = (() => {
         <label class="wt-modal-label">Hours worked <span style="font-size:11px;color:#636366;font-weight:400">(optional — leave blank if you don't remember; you can still log tips)</span></label>
         <input id="wt-lp-hours" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 7.5">
         <div class="wt-modal-actions">
-          <button class="wt-btn wt-btn-secondary" id="wt-lp-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-lp-save">Continue to Tips</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-lp-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-lp-save">Continue to Tips</button>
         </div>
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
@@ -5987,8 +5988,8 @@ const WorkTracker = (() => {
         <div class="wt-modal-title">Edit ${field === 'clockIn' ? 'Clock In' : 'Clock Out'}</div>
         <input type="time" id="wt-etime" class="wt-input" style="font-size:28px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums" value="${cur.toTimeString().slice(0,5)}">
         <div class="wt-modal-actions">
-          <button class="wt-btn wt-btn-secondary" id="wt-ec">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-es">Save</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-ec">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-es">Save</button>
         </div>
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
@@ -6029,8 +6030,8 @@ const WorkTracker = (() => {
         <div class="wt-modal-title">📷 Clock Out proof</div>
         <p style="color:#98989D;font-size:14px;margin-bottom:18px">Take a photo as proof of your clock out at ${_fmtTime(clockOutTime)}. This is your timestamp evidence.</p>
         <div style="display:flex;gap:10px">
-          <button class="wt-btn wt-btn-primary" id="wt-take-photo-out" style="flex:2">📷 Take Photo</button>
-          <button class="wt-btn wt-btn-secondary" id="wt-skip-photo-out" style="flex:1">Skip (<span id="wt-skip-count-out">5</span>)</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-take-photo-out" style="flex:2">📷 Take Photo</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-skip-photo-out" style="flex:1">Skip (<span id="wt-skip-count-out">5</span>)</button>
         </div>
       </div>`;
     document.body.appendChild(photoOv);
@@ -6078,8 +6079,8 @@ const WorkTracker = (() => {
           <div class="wt-modal-handle"></div>
           <div class="wt-modal-title">Add Missing Period</div>
           <div style="display:flex;gap:8px;margin-bottom:16px">
-            <button id="wt-ap-mode-times" style="flex:1;background:${mode==='times'?'rgba(94,92,230,.15)':'#1C1C1E'};border:1px solid ${mode==='times'?'#5E5CE6':'#38383A'};border-radius:10px;color:${mode==='times'?'#5E5CE6':'#98989D'};font-size:13px;font-weight:700;padding:10px;cursor:pointer">I know the times</button>
-            <button id="wt-ap-mode-hours" style="flex:1;background:${mode==='hours'?'rgba(94,92,230,.15)':'#1C1C1E'};border:1px solid ${mode==='hours'?'#5E5CE6':'#38383A'};border-radius:10px;color:${mode==='hours'?'#5E5CE6':'#98989D'};font-size:13px;font-weight:700;padding:10px;cursor:pointer">Just total hours</button>
+            <button class="wt-tap-scale" id="wt-ap-mode-times" style="flex:1;background:${mode==='times'?'rgba(94,92,230,.15)':'#1C1C1E'};border:1px solid ${mode==='times'?'#5E5CE6':'#38383A'};border-radius:10px;color:${mode==='times'?'#5E5CE6':'#98989D'};font-size:13px;font-weight:700;padding:10px;cursor:pointer">I know the times</button>
+            <button class="wt-tap-scale" id="wt-ap-mode-hours" style="flex:1;background:${mode==='hours'?'rgba(94,92,230,.15)':'#1C1C1E'};border:1px solid ${mode==='hours'?'#5E5CE6':'#38383A'};border-radius:10px;color:${mode==='hours'?'#5E5CE6':'#98989D'};font-size:13px;font-weight:700;padding:10px;cursor:pointer">Just total hours</button>
           </div>
           ${mode === 'times' ? `
             <label class="wt-modal-label">Clock in</label>
@@ -6092,8 +6093,8 @@ const WorkTracker = (() => {
             <input id="wt-ap-hours" class="wt-input" type="text" inputmode="decimal" placeholder="e.g. 7.5">
           `}
           <div class="wt-modal-actions">
-            <button class="wt-btn wt-btn-secondary" id="wt-ap-cancel">Cancel</button>
-            <button class="wt-btn wt-btn-primary" id="wt-ap-save">Save</button>
+            <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-ap-cancel">Cancel</button>
+            <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-ap-save">Save</button>
           </div>
         </div>`;
       ov.querySelector('#wt-ap-mode-times').onclick = () => { mode = 'times'; paint(); };
@@ -6428,12 +6429,12 @@ const WorkTracker = (() => {
           <div style="color:#98989D">🏁 <span style="color:#fff">OUT:</span> ${lastOut ? fmtDt(lastOut) : '<span style="color:#64D2FF">Running</span>'}</div>
         </div>
         <div style="display:flex;gap:10px;margin-bottom:10px">
-          <button class="wt-btn wt-btn-primary" id="wt-vp-download">⬇ Download with stamp</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-vp-download">⬇ Download with stamp</button>
         </div>
         <div style="display:flex;gap:10px">
-          <button class="wt-btn wt-btn-secondary" id="wt-vp-close">Close</button>
-          <button class="wt-btn wt-btn-secondary" id="wt-vp-replace">📷 Replace</button>
-          <button id="wt-vp-delete" style="width:44px;height:44px;border-radius:50%;background:rgba(255,69,58,.15);border:1.5px solid rgba(255,69,58,.3);color:#FF453A;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-vp-close">Close</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-vp-replace">📷 Replace</button>
+          <button class="wt-tap-scale" id="wt-vp-delete" style="width:44px;height:44px;border-radius:50%;background:rgba(255,69,58,.15);border:1.5px solid rgba(255,69,58,.3);color:#FF453A;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5h12M8 5V3h4v2M6 5l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
@@ -6517,7 +6518,7 @@ const WorkTracker = (() => {
               Mantén presionada la imagen → <strong style="color:#fff">Añadir a fotos</strong>
             </p>
             <img src="${dataUrl}" style="max-width:100%;max-height:75vh;border-radius:12px;object-fit:contain">
-            <button style="margin-top:20px;background:#2C2C2E;border:none;color:#fff;padding:14px 32px;border-radius:14px;font-size:15px;font-weight:700">Cerrar</button>`;
+            <button class="wt-tap-scale" style="margin-top:20px;background:#2C2C2E;border:none;color:#fff;padding:14px 32px;border-radius:14px;font-size:15px;font-weight:700">Cerrar</button>`;
           previewOv.querySelector('button').onclick = () => previewOv.remove();
           document.body.appendChild(previewOv);
         } else {
@@ -6741,11 +6742,11 @@ const WorkTracker = (() => {
                     <div style="display:flex;align-items:center;gap:4px">
                       <span style="font-size:10px;color:#636366">pts</span>
                       <div style="display:flex;align-items:center;background:#1C1C1E;border-radius:8px;overflow:hidden;border:1px solid #38383A">
-                        <button data-cashpt-minus="${r.name}" style="width:22px;height:22px;background:none;border:none;color:#64D2FF;font-size:13px;cursor:pointer;line-height:1">−</button>
+                        <button class="wt-tap-scale" data-cashpt-minus="${r.name}" style="width:22px;height:22px;background:none;border:none;color:#64D2FF;font-size:13px;cursor:pointer;line-height:1">−</button>
                         <input data-cashpt-direct="${r.name}" type="text" inputmode="decimal" value="${r.cashPoints.toFixed(2)}"
                           style="width:32px;text-align:center;font-size:12px;font-weight:700;color:#64D2FF;background:none;border:none;outline:none;padding:0"
                           onclick="this.select()" onfocus="this.select()">
-                        <button data-cashpt-plus="${r.name}" style="width:22px;height:22px;background:none;border:none;color:#64D2FF;font-size:13px;cursor:pointer;line-height:1">+</button>
+                        <button class="wt-tap-scale" data-cashpt-plus="${r.name}" style="width:22px;height:22px;background:none;border:none;color:#64D2FF;font-size:13px;cursor:pointer;line-height:1">+</button>
                       </div>
                     </div>
                     <div style="display:flex;align-items:center;background:#1C1C1E;border-radius:8px;overflow:hidden;border:1px solid #38383A">
@@ -6777,8 +6778,8 @@ const WorkTracker = (() => {
 
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">
             <div style="font-size:14px;font-weight:700;flex:1">Workers (${workers.length})</div>
-            ${locationId ? `<button id="wt-tp-roster" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:7px 12px;cursor:pointer">👥 Roster</button>` : ''}
-            <button id="wt-tp-add" class="${workers.length === 0 ? 'wt-glow' : ''}" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">+ Add</button>
+            ${locationId ? `<button class="wt-tap-scale" id="wt-tp-roster" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#98989D;font-size:13px;font-weight:700;padding:7px 12px;cursor:pointer">👥 Roster</button>` : ''}
+            <button id="wt-tp-add" class="${workers.length === 0 ? 'wt-glow' : ''} wt-tap-scale" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">+ Add</button>
           </div>
           ${workers.length > 0 && !(ccTotal > 0 || cashTotal > 0) ? `<div style="font-size:12px;color:#636366;margin:-4px 0 10px">${result.totalPoints} pts total</div>` : ''}
 
@@ -6836,8 +6837,8 @@ const WorkTracker = (() => {
           </div>` : ''}
 
           <div class="wt-modal-actions" style="margin-top:16px">
-            <button class="wt-btn wt-btn-secondary" id="wt-tp-cancel">Cancel</button>
-            <button class="wt-btn wt-btn-primary" id="wt-tp-save" ${result.ccRemainder!==0&&workers.length>0?'style="background:#FF9F0A"':''}>
+            <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-tp-cancel">Cancel</button>
+            <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-tp-save" ${result.ccRemainder!==0&&workers.length>0?'style="background:#FF9F0A"':''}>
               ${result.ccRemainder===0||workers.length===0 ? 'Save' : `Save ($${result.ccRemainder.toFixed(2)} CC unallocated)`}
             </button>
           </div>
@@ -7232,7 +7233,7 @@ const WorkTracker = (() => {
                 ${amounts.length > 1 ? `<button data-sa-del="${i}" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>` : ''}
               </div>`).join('')}
           </div>
-          <button id="wt-sa-add" type="button" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;margin-bottom:14px">+ Add amount</button>
+          <button class="wt-tap-scale" id="wt-sa-add" type="button" style="background:rgba(94,92,230,.15);border:none;border-radius:10px;color:#5E5CE6;font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer;margin-bottom:14px">+ Add amount</button>
           <div style="background:rgba(28,28,30,0.8);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:13px">
             <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#98989D">Total gross</span><span style="color:#fff;font-weight:700">$${breakdown.gross.toFixed(2)}</span></div>
             <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:#98989D">Fee-applicable</span><span style="color:#fff">$${breakdown.feeApplicableGross.toFixed(2)}</span></div>
@@ -7240,8 +7241,8 @@ const WorkTracker = (() => {
             <div style="display:flex;justify-content:space-between;border-top:1px solid #38383A;padding-top:6px;margin-top:4px"><span style="color:#FF9F0A;font-weight:700">Net</span><span style="color:#FF9F0A;font-weight:800">$${breakdown.net.toFixed(2)}</span></div>
           </div>
           <div class="wt-modal-actions">
-            <button class="wt-btn wt-btn-secondary" id="wt-sa-cancel">Cancel</button>
-            <button class="wt-btn wt-btn-primary" id="wt-sa-save">Use This</button>
+            <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-sa-cancel">Cancel</button>
+            <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-sa-save">Use This</button>
           </div>
         </div>`;
 
@@ -7305,7 +7306,7 @@ const WorkTracker = (() => {
           <div class="wt-modal-title">Add workers first</div>
           <div style="color:#98989D;font-size:14px;margin-bottom:18px">This works out the total pool from your share — it needs at least one worker with points added first so it knows how the pool is split.</div>
           <div class="wt-modal-actions">
-            <button class="wt-btn wt-btn-primary" id="wt-rv-warn-ok" style="width:100%">Got it</button>
+            <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-rv-warn-ok" style="width:100%">Got it</button>
           </div>
         </div>`;
       document.body.appendChild(warnOv);
@@ -7342,8 +7343,8 @@ const WorkTracker = (() => {
         </div>
         <div id="wt-rv-preview" style="color:#636366;font-size:12px;margin-bottom:10px;min-height:16px"></div>
         <div class="wt-modal-actions">
-          <button class="wt-btn wt-btn-secondary" id="wt-rv-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-rv-apply">Use This</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-rv-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-rv-apply">Use This</button>
         </div>
       </div>`;
 
@@ -7412,7 +7413,7 @@ const WorkTracker = (() => {
                   <div style="font-size:12px;color:#636366;margin-top:2px">${m.position || ''} · ${m.points || 1} pts</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px">
-                  <button data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
+                  <button class="wt-tap-scale" data-roster-add="${i}" style="background:${already?'rgba(255,69,58,.12)':'rgba(48,209,88,.15)'};border:none;border-radius:10px;color:${already?'#FF453A':'#30D158'};font-size:13px;font-weight:700;padding:8px 14px;cursor:pointer">
                     ${already ? '✓ Added — tap to remove' : '+ Add'}
                   </button>
                   <button data-roster-delete="${i}" title="Remove from roster" style="background:none;border:none;color:#636366;font-size:14px;cursor:pointer;padding:4px 8px;transition:transform .18s ease;display:${already?'none':'inline-flex'}" onpointerdown="this.style.transform='rotate(90deg)'" onpointerup="this.style.transform='rotate(0deg)'" onpointerleave="this.style.transform='rotate(0deg)'">✕</button>
@@ -7421,7 +7422,7 @@ const WorkTracker = (() => {
             }).join('')
         }
         <div class="wt-modal-actions" style="margin-top:12px">
-          <button class="wt-btn wt-btn-secondary" id="wt-roster-close">Close</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-roster-close">Close</button>
         </div>
       </div>`;
 
@@ -7530,10 +7531,10 @@ const WorkTracker = (() => {
           `).join('')}
         </div>
         <div class="wt-modal-actions" style="margin-top:20px">
-          <button class="wt-btn wt-btn-secondary" id="wt-do-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-do-save">Save</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-do-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-do-save">Save</button>
         </div>
-        ${existing ? `<button id="wt-do-remove" class="wt-tap-fade" style="width:100%;margin-top:10px;background:none;border:none;color:#FF453A;font-size:13px;font-weight:600;cursor:pointer;padding:8px">Remove</button>` : ''}
+        ${existing ? `<button id="wt-do-remove" class="wt-tap-fade wt-tap-scale" style="width:100%;margin-top:10px;background:none;border:none;color:#FF453A;font-size:13px;font-weight:600;cursor:pointer;padding:8px">Remove</button>` : ''}
       </div>`;
     document.body.appendChild(ov);
     ov.addEventListener('click', e => {
@@ -7654,8 +7655,8 @@ const WorkTracker = (() => {
         </div>
         <p style="font-size:12px;color:#636366;margin-top:8px;line-height:1.5">Just for this one person — not the group's total. Each position is weighted on its own; the app adds everyone up automatically.</p>
         <div class="wt-modal-actions" style="margin-top:20px">
-          <button class="wt-btn wt-btn-secondary" id="wt-aw-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-aw-add">${typeof editIndex === 'number' ? 'Save Changes' : 'Add Worker'}</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-aw-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-aw-add">${typeof editIndex === 'number' ? 'Save Changes' : 'Add Worker'}</button>
         </div>
       </div>`;
 
@@ -7891,13 +7892,13 @@ const WorkTracker = (() => {
               <span style="color:#98989D;font-size:13px">×</span>
             </div>
           </div>
-          <button id="wt-el-add-ot2" style="margin-top:8px;color:#5E5CE6;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;padding:0">
+          <button class="wt-tap-scale" id="wt-el-add-ot2" style="margin-top:8px;color:#5E5CE6;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;padding:0">
             ${level2 ? '− Remove Level 2' : '+ Add Level 2 (double time)'}
           </button>
         </div>
         <div class="wt-modal-actions" style="margin-top:20px">
-          <button class="wt-btn wt-btn-secondary" id="wt-el-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-el-save">Save</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-el-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-el-save">Save</button>
         </div>
       </div>`;
 
@@ -8044,20 +8045,20 @@ const WorkTracker = (() => {
         <div class="wt-modal-title">Shift Notes</div>
         <label class="wt-modal-label">Weather</label>
         <div id="wt-sc-weather" style="display:flex;gap:8px;margin-bottom:16px">
-          <button data-v="" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Normal</button>
-          <button data-v="bad" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Bad</button>
+          <button data-v="" class="wt-sc-opt wt-tap-scale" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Normal</button>
+          <button data-v="bad" class="wt-sc-opt wt-tap-scale" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Bad</button>
         </div>
         <label class="wt-modal-label">Pace</label>
         <div id="wt-sc-pace" style="display:flex;gap:8px;margin-bottom:16px">
-          <button data-v="slow" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Slower</button>
-          <button data-v="" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Normal</button>
-          <button data-v="busy" class="wt-sc-opt" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Busier</button>
+          <button data-v="slow" class="wt-sc-opt wt-tap-scale" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Slower</button>
+          <button data-v="" class="wt-sc-opt wt-tap-scale" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Normal</button>
+          <button data-v="busy" class="wt-sc-opt wt-tap-scale" style="flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer">Busier</button>
         </div>
         <label class="wt-modal-label">Note <span style="font-size:11px;color:#636366;font-weight:400">(just for you — not used in Stats)</span></label>
         <textarea id="wt-sc-note" class="wt-input" style="min-height:60px;resize:vertical" placeholder="e.g. concert let out nearby...">${shift.contextNote || ''}</textarea>
         <div class="wt-modal-actions" style="margin-top:18px">
-          <button class="wt-btn wt-btn-secondary" id="wt-sc-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-sc-save">Save</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-sc-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-sc-save">Save</button>
         </div>
       </div>`;
     document.body.appendChild(ov);
@@ -8125,8 +8126,8 @@ const WorkTracker = (() => {
           <button id="wt-es-plus" style="width:52px;height:52px;background:none;border:none;color:#98989D;font-size:24px;font-weight:200;cursor:pointer;line-height:1;transition:all .1s;border-radius:0" onpointerdown="this.style.background='rgba(255,255,255,0.12)';this.style.color='#fff'" onpointerup="this.style.background='none';this.style.color='#98989D'" onpointerleave="this.style.background='none';this.style.color='#98989D'">+</button>
         </div>
         <div class="wt-modal-actions">
-          <button class="wt-btn wt-btn-secondary" id="wt-es-cancel">Cancel</button>
-          <button class="wt-btn wt-btn-primary" id="wt-es-save">Save</button>
+          <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-es-cancel">Cancel</button>
+          <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-es-save">Save</button>
         </div>
       </div>`;
     ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
