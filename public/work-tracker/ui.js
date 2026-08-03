@@ -6202,14 +6202,22 @@ const WorkTracker = (() => {
   // storage or private-mode restrictions) would leave the user thinking the photo was saved
   // when it never was, with zero indication anything went wrong. Returns false on any
   // failure so callers can stop and tell the user, instead of proceeding as if it worked.
-  async function _savePhotoSafe(shiftId, photoKey, base64) {
+  // Retries once after a brief pause — many of these iOS Safari IndexedDB failures are
+  // transient (a momentary lock/pressure spike) and succeed on a second attempt, so this
+  // quietly recovers the common case instead of alarming the user for something that
+  // resolves itself half a second later.
+  async function _savePhotoSafe(shiftId, photoKey, base64, _isRetry) {
     try {
       await WTDb.savePhoto(shiftId, photoKey, base64);
       const verify = await WTDb.getPhoto(shiftId, photoKey);
       if (!verify) throw new Error('Photo did not persist');
       return true;
     } catch (err) {
-      console.error('Photo save failed:', err);
+      console.error('Photo save failed' + (_isRetry ? ' (after retry)' : '') + ':', err);
+      if (!_isRetry) {
+        await new Promise(r => setTimeout(r, 600));
+        return _savePhotoSafe(shiftId, photoKey, base64, true);
+      }
       alert('⚠️ This photo could not be saved (storage error). Please try again — if this keeps happening, your device may be low on storage.');
       return false;
     }
