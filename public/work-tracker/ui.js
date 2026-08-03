@@ -6605,10 +6605,11 @@ const WorkTracker = (() => {
 
     const ov = document.createElement('div');
     ov.className = 'wt-overlay';
+    let activeCashPerson = null;
 
     const render = () => {
-      const __modal = ov.querySelector('.wt-modal');
-      const __scrollTop = __modal ? __modal.scrollTop : 0;
+      const __scrollEl = ov.querySelector('#wt-tp-scroll');
+      const __scrollTop = __scrollEl ? __scrollEl.scrollTop : 0;
       // Preserve input values before re-render
       const ccInput = ov.querySelector('#wt-tp-cc');
       const cashInput = ov.querySelector('#wt-tp-cash');
@@ -6697,7 +6698,7 @@ const WorkTracker = (() => {
             </div>
           </div>
 
-          <div style="flex:1;overflow-y:auto">
+          <div id="wt-tp-scroll" style="flex:1;overflow-y:auto">
 
           ${ccTotal > 0 || cashTotal > 0 ? `
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
@@ -6747,7 +6748,7 @@ const WorkTracker = (() => {
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
               <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
               ${cashRows.map(r => `
-                <div data-cash-row="${r.name}" class="wt-cash-row-highlight" style="padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
+                <div data-cash-row="${r.name}" class="wt-cash-row-highlight" style="padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1);${activeCashPerson === r.name ? 'background:rgba(94,92,230,.08);border-radius:8px;border-bottom-color:rgba(94,92,230,.35)' : ''}">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                     <span style="color:#98989D;font-weight:600">${r.name} · <span style="color:#FF9F0A">$${r.exactCashShare.toFixed(2)}</span></span>
                     <span style="font-size:11px;color:${r.diff>0?'#FF9F0A':r.diff<0?'#64D2FF':'#636366'}">
@@ -6861,8 +6862,8 @@ const WorkTracker = (() => {
           </div>
         </div>`;
 
-      const __modalAfter = ov.querySelector('.wt-modal');
-      if (__modalAfter && __scrollTop) requestAnimationFrame(() => { __modalAfter.scrollTop = __scrollTop; });
+      const __scrollElAfter = ov.querySelector('#wt-tp-scroll');
+      if (__scrollElAfter && __scrollTop) requestAnimationFrame(() => { __scrollElAfter.scrollTop = __scrollTop; });
       ov.querySelectorAll('input').forEach(i => {
         i.addEventListener('focus', () => {
           i.select && i.select();
@@ -7032,6 +7033,7 @@ const WorkTracker = (() => {
           const name = inp.dataset.cashDirect;
           const val = parseFloat(inp.value);
           if (!isNaN(val) && val >= 0) saved.cashManualAmounts[name] = val;
+          activeCashPerson = name;
           render();
         });
         inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
@@ -7042,6 +7044,7 @@ const WorkTracker = (() => {
           const name = inp.dataset.cashptDirect;
           const val = parseFloat(inp.value);
           if (!isNaN(val) && val >= 0) saved.cashPointOverrides[name] = parseFloat(val.toFixed(2));
+          activeCashPerson = name;
           render();
         });
         inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
@@ -7054,6 +7057,7 @@ const WorkTracker = (() => {
           if (!p) return;
           const cur = saved.cashPointOverrides[name] !== undefined ? saved.cashPointOverrides[name] : p.cashPoints;
           saved.cashPointOverrides[name] = Math.max(0, parseFloat((cur - 0.05).toFixed(2)));
+          activeCashPerson = name;
           render();
         };
       });
@@ -7065,6 +7069,7 @@ const WorkTracker = (() => {
           if (!p) return;
           const cur = saved.cashPointOverrides[name] !== undefined ? saved.cashPointOverrides[name] : p.cashPoints;
           saved.cashPointOverrides[name] = parseFloat((cur + 0.05).toFixed(2));
+          activeCashPerson = name;
           render();
         };
       });
@@ -7077,6 +7082,7 @@ const WorkTracker = (() => {
           const exactCashShare = _exactCashShare(p);
           const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
           saved.cashManualAmounts[name] = Math.max(0, cur - 1);
+          activeCashPerson = name;
           render();
         };
       });
@@ -7089,6 +7095,7 @@ const WorkTracker = (() => {
           const exactCashShare = _exactCashShare(p);
           const cur = saved.cashManualAmounts[name] !== undefined ? saved.cashManualAmounts[name] : Math.floor(exactCashShare);
           saved.cashManualAmounts[name] = cur + 1;
+          activeCashPerson = name;
           render();
         };
       });
