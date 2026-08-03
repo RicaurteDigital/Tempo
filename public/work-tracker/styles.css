@@ -876,3 +876,11 @@ input:focus {
 .wt-scroll-hide::-webkit-scrollbar {
   display: none;
 }
+.wt-cash-row-highlight {
+  border-radius: 8px;
+  transition: background-color .15s, border-color .15s;
+}
+.wt-cash-row-highlight:focus-within {
+  background: rgba(94,92,230,.08);
+  border-bottom-color: rgba(94,92,230,.35) !important;
+}

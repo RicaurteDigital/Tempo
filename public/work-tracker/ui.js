@@ -571,10 +571,10 @@ const WorkTracker = (() => {
               <div style="font-size:11px;color:${cardAccent.sub};margin-top:2px">${shiftsWithTips.length} shift${shiftsWithTips.length>1?'s':''} with tips</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:11px;color:${cardAccent.sub}">Your CC cut</div>
+              <div style="font-size:11px;color:${cardAccent.sub}">Your Card Cut</div>
               <div style="font-size:24px;font-weight:800;color:#30D158">$${totalMyCCCut}</div>
               ${totalMyCash > 0 ? `<div style="font-size:11px;color:${cardAccent.sub}">+$${totalMyCash} cash</div>` : ''}
-              ${vsAvgDiff !== null ? `<div style="font-size:10px;color:${vsAvgDiff >= 0 ? '#30D158' : '#FF453A'};margin-top:2px">${vsAvgDiff >= 0 ? '↑' : '↓'} $${Math.abs(vsAvgDiff).toFixed(0)} vs your ${dayLabel.slice(0,3)} avg</div>` : ''}
+              ${vsAvgDiff !== null ? `<div style="font-size:10px;color:${vsAvgDiff >= 0 ? '#30D158' : '#FF453A'};margin-top:2px">${vsAvgDiff >= 0 ? '↑' : '↓'} $${Math.abs(vsAvgDiff).toFixed(0)} ${vsAvgDiff >= 0 ? 'above' : 'below'} your ${dayLabel} average</div>` : ''}
             </div>
           </div>
           ${isMonthBest ? `<div style="margin:8px 0 4px;font-size:11px;font-weight:800;color:${cardAccent.label}">↑ Best shift of the month</div>
@@ -652,12 +652,12 @@ const WorkTracker = (() => {
     acts.innerHTML = `
       <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-week-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M7 3.5V7L9.5 8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>History</button>
       <button class="wt-btn wt-btn-secondary wt-tap-scale" id="wt-stats-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;margin-right:4px"><rect x="1.5" y="8" width="2.5" height="4.5" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="5.75" y="4.5" width="2.5" height="8" rx="0.5" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="1.5" width="2.5" height="11" rx="0.5" stroke="currentColor" stroke-width="1.2"/></svg>Stats</button>
-      <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-export-btn">📊 Export</button>`;
+      <button class="wt-tap-scale" id="wt-export-btn" style="background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:14px;color:#30D158;font-size:14px;font-weight:700;padding:11px 16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:box-shadow .15s" onpointerdown="this.style.boxShadow='0 0 12px rgba(48,209,88,.5)'" onpointerup="this.style.boxShadow='none'" onpointerleave="this.style.boxShadow='none'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4"/><path d="M4 17v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>Export</button>`;
     w.appendChild(acts);
 
     const fpRow = document.createElement('div');
     fpRow.style.cssText = 'margin-top:10px';
-    fpRow.innerHTML = `<button class="wt-tap-scale" id="wt-floorplan-btn" style="width:100%;background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:14px;color:var(--wt-text-secondary);font-size:14px;font-weight:700;padding:12px;cursor:pointer">🪑 Floor Plan</button>`;
+    fpRow.innerHTML = `<button class="wt-tap-scale" id="wt-floorplan-btn" style="width:100%;background:var(--wt-chip-bg);border:1px solid var(--wt-surface-secondary-border);border-radius:14px;color:var(--wt-text-secondary);font-size:14px;font-weight:700;padding:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/></svg>Floor Plan</button>`;
     w.appendChild(fpRow);
 
     _root.appendChild(w);
@@ -6658,38 +6658,46 @@ const WorkTracker = (() => {
       });
 
       ov.innerHTML = `
-        <div class="wt-modal" style="max-height:92vh;overflow-y:auto">
-          <div class="wt-modal-handle"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-            <div class="wt-modal-title" style="margin:0">💰 Tip Pool</div>
+        <div class="wt-modal" style="height:100vh;max-height:100vh;border-radius:0;padding-top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;flex-direction:column">
+          <div id="wt-tp-handle" class="wt-modal-handle wt-tap-scale" style="cursor:pointer;position:sticky;top:0;background:rgba(28,28,30,0.98);z-index:2;padding-top:4px;padding-bottom:4px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:14px;background:rgba(28,28,30,0.98);z-index:2;padding-top:4px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="wt-modal-title" style="margin:0">💰 Tip Pool</div>
+              <div style="background:rgba(255,255,255,.08);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;color:#fff">${result.totalPoints} pts total</div>
+            </div>
             <div style="font-size:12px;color:#636366">${dayKey}</div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-            <div>
-              <label class="wt-modal-label">Credit Card Tips</label>
-              <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
-                <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
-                <input id="wt-tp-cc" type="text"
-                  value="${ccTotal||''}" placeholder="0.00"
-                  style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
-                  onclick="this.select()" onfocus="this.select()">
+          <div style="position:sticky;top:66px;background:rgba(28,28,30,0.98);z-index:2;padding-bottom:10px;margin-bottom:4px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label class="wt-modal-label">Credit Card Tips</label>
+                <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+                  <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+                  <input id="wt-tp-cc" type="text"
+                    value="${ccTotal||''}" placeholder="0.00"
+                    style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
+                    onclick="this.select()" onfocus="this.select()">
+                </div>
+                <button id="wt-tp-reverse-cc" type="button" class="wt-tap-scale" style="width:100%;background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.25);border-radius:8px;color:#5E5CE6;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:center;margin-top:6px;box-sizing:border-box">I know my amount instead</button>
+                <button id="wt-tp-split" type="button" class="wt-tap-scale" style="width:100%;background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.25);border-radius:8px;color:#FF9F0A;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:center;margin-top:6px;box-sizing:border-box">${saved.ccBreakdown && saved.ccBreakdown.length > 1 ? `✓ Split (${saved.ccBreakdown.length} amounts)` : '+ Split into multiple amounts'}</button>
               </div>
-              <button id="wt-tp-reverse-cc" type="button" class="wt-tap-scale" style="background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.25);border-radius:8px;color:#5E5CE6;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:left;margin-top:6px">I know my amount instead</button>
-              <button id="wt-tp-split" type="button" class="wt-tap-scale" style="background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.25);border-radius:8px;color:#FF9F0A;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:left;margin-top:6px">${saved.ccBreakdown && saved.ccBreakdown.length > 1 ? `✓ Split (${saved.ccBreakdown.length} amounts)` : '+ Split into multiple amounts'}</button>
-            </div>
-            <div>
-              <label class="wt-modal-label">Cash Tips</label>
-              <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
-                <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
-                <input id="wt-tp-cash" type="text"
-                  value="${cashTotal||''}" placeholder="0.00"
-                  style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
-                  onclick="this.select()" onfocus="this.select()">
+              <div>
+                <label class="wt-modal-label">Cash Tips</label>
+                <div style="display:flex;align-items:center;background:#2C2C2E;border-radius:14px;overflow:hidden;border:1px solid #38383A">
+                  <span style="padding:0 10px;color:#98989D;font-size:15px">$</span>
+                  <input id="wt-tp-cash" type="text"
+                    value="${cashTotal||''}" placeholder="0.00"
+                    style="flex:1;background:none;border:none;color:#fff;font-size:18px;font-weight:700;padding:12px 0;outline:none;width:0"
+                    onclick="this.select()" onfocus="this.select()">
+                </div>
+                <button id="wt-tp-reverse-cash" type="button" class="wt-tap-scale" style="width:100%;background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.25);border-radius:8px;color:#5E5CE6;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:center;margin-top:6px;box-sizing:border-box">I know my amount instead</button>
+                <div style="height:29px;margin-top:6px"></div>
               </div>
-              <button id="wt-tp-reverse-cash" type="button" class="wt-tap-scale" style="background:rgba(94,92,230,.12);border:1px solid rgba(94,92,230,.25);border-radius:8px;color:#5E5CE6;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;text-align:left;margin-top:6px">I know my amount instead</button>
             </div>
           </div>
+
+          <div style="flex:1;overflow-y:auto">
 
           ${ccTotal > 0 || cashTotal > 0 ? `
           <div style="background:rgba(28,28,30,0.8);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px">
@@ -6739,7 +6747,7 @@ const WorkTracker = (() => {
             <div style="background:rgba(48,209,88,.06);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px">
               <div style="color:#636366;margin-bottom:6px;font-weight:700">Cash split by points:</div>
               ${cashRows.map(r => `
-                <div data-cash-row="${r.name}" style="padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
+                <div data-cash-row="${r.name}" class="wt-cash-row-highlight" style="padding:6px 0;border-bottom:1px solid rgba(48,209,88,0.1)">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
                     <span style="color:#98989D;font-weight:600">${r.name} · <span style="color:#FF9F0A">$${r.exactCashShare.toFixed(2)}</span></span>
                     <span style="font-size:11px;color:${r.diff>0?'#FF9F0A':r.diff<0?'#64D2FF':'#636366'}">
@@ -6849,6 +6857,7 @@ const WorkTracker = (() => {
             <button class="wt-btn wt-btn-primary wt-tap-scale" id="wt-tp-save" ${result.ccRemainder!==0&&workers.length>0?'style="background:#FF9F0A"':''}>
               ${result.ccRemainder===0||workers.length===0 ? 'Save' : `Save ($${result.ccRemainder.toFixed(2)} CC unallocated)`}
             </button>
+          </div>
           </div>
         </div>`;
 
@@ -7110,7 +7119,7 @@ const WorkTracker = (() => {
         ov.remove();
         _go('home');
       };
-      ov.querySelector('#wt-tp-save').onclick = () => {
+      const doSaveTipPool = () => {
         saved.creditCardTotal = parseFloat(ov.querySelector('#wt-tp-cc').value) || 0;
         saved.cashTotal = parseFloat(ov.querySelector('#wt-tp-cash').value) || 0;
         const finalResult = _computeTipResult(saved.creditCardTotal, saved.cashTotal, saved.workers, feePercent, saved.manualFee, saved.cashFlatAmounts, saved.cashPointOverrides, saved.cashManualAmounts);
@@ -7120,6 +7129,9 @@ const WorkTracker = (() => {
         ov.remove();
         _go('home');
       };
+      const __handleEl = ov.querySelector('#wt-tp-handle');
+      if (__handleEl) __handleEl.onclick = doSaveTipPool;
+      ov.querySelector('#wt-tp-save').onclick = doSaveTipPool;
     };
 
     render();
